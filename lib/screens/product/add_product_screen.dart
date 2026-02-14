@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/widgets/guest_view.dart';
+import '../../widgets/guest_view.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -71,19 +71,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Future<void> _uploadAndSave() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedType == null) {
+    if (_selectedType == null || _selectedCategory == null) {
       Get.snackbar(
         "แจ้งเตือน",
-        "กรุณาเลือกประเภทสินค้า",
-        backgroundColor: Colors.red.withOpacity(0.5),
-        colorText: Colors.white,
-      );
-      return;
-    }
-    if (_selectedCategory == null) {
-      Get.snackbar(
-        "แจ้งเตือน",
-        "กรุณาเลือกหมวดหมู่",
+        "กรุณาเลือกประเภทและหมวดหมู่",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -92,7 +83,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (_selectedImages.isEmpty) {
       Get.snackbar(
         "แจ้งเตือน",
-        "กรุณาอัปโหลดรูปภาพสินค้าอย่างน้อย 1 รูป",
+        "กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -104,7 +95,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     try {
       List<String> imageUrls = [];
-
       for (var imageFile in _selectedImages) {
         String fileName =
             '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
@@ -112,8 +102,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'products/$fileName',
         );
         await ref.putFile(imageFile);
-        String downloadUrl = await ref.getDownloadURL();
-        imageUrls.add(downloadUrl);
+        imageUrls.add(await ref.getDownloadURL());
       }
 
       await FirebaseFirestore.instance.collection('products').add({
@@ -156,8 +145,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
     List<String> items,
     Function(String) onSelect,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -170,19 +161,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               Text(
                 "เลือก$title",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 10),
               Expanded(
                 child: ListView.separated(
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                  separatorBuilder: (_, __) => Divider(
+                    color: isDark ? Colors.grey[700] : Colors.grey[300],
+                  ),
                   itemBuilder: (context, index) {
                     return ListTile(
-                      title: Text(items[index]),
+                      title: Text(
+                        items[index],
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
                       onTap: () {
                         onSelect(items[index]);
                         Navigator.pop(context);
@@ -203,8 +202,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
     String collectionName,
     Function(String) onSelect,
   ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -217,9 +218,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               Text(
                 "เลือก$title",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 10),
@@ -229,25 +231,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       .collection(collectionName)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (snapshot.hasError)
-                      return const Center(child: Text("เกิดข้อผิดพลาด"));
-                    if (snapshot.connectionState == ConnectionState.waiting)
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
-
+                    }
                     final docs = snapshot.data!.docs;
-                    if (docs.isEmpty)
-                      return Center(child: Text("ไม่พบข้อมูล$title"));
+                    if (docs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "ไม่พบข้อมูล",
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      );
+                    }
 
                     return ListView.separated(
                       itemCount: docs.length,
-                      separatorBuilder: (_, __) => const Divider(),
+                      separatorBuilder: (_, __) => Divider(
+                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+                      ),
                       itemBuilder: (context, index) {
                         var data = docs[index].data() as Map<String, dynamic>;
-                        String name = data['name'] ?? 'ไม่ระบุชื่อ';
                         return ListTile(
-                          title: Text(name),
+                          title: Text(
+                            data['name'] ?? '',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                          ),
                           onTap: () {
-                            onSelect(name);
+                            onSelect(data['name']);
                             Navigator.pop(context);
                           },
                         );
@@ -266,9 +280,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return const GuestView();
-    }
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (user == null) return const GuestView();
 
     return Scaffold(
       appBar: AppBar(
@@ -289,17 +304,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               _buildSectionHeader("ข้อมูลทั่วไป"),
               const SizedBox(height: 10),
-
               _buildTextField(
                 controller: _nameController,
-                hint: "ชื่อสินค้า (เช่น เสื้อยืด Uniqlo)",
-                validator: (v) => v!.isEmpty ? "กรุณากรอกชื่อสินค้า" : null,
+                hint: "ชื่อสินค้า",
+                validator: (v) => v!.isEmpty ? "ระบุชื่อสินค้า" : null,
               ),
               const SizedBox(height: 15),
-
               _buildClickableField(
                 label: _selectedType ?? "เลือกประเภท",
-                icon: Icons.keyboard_arrow_right,
                 onTap: () => _showDynamicSelectionSheet(
                   "ประเภทสินค้า",
                   "types",
@@ -308,25 +320,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              const Text(
-                "หมวดหมู่ *",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              _buildSectionHeader("หมวดหมู่ *"),
               const SizedBox(height: 10),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('categories')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const SizedBox(
-                      height: 20,
-                      child: LinearProgressIndicator(),
-                    );
-                  }
-
+                  if (!snapshot.hasData) return const SizedBox();
                   final categories = snapshot.data!.docs;
-
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
@@ -334,7 +336,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         var data = doc.data() as Map<String, dynamic>;
                         String catName = data['name'] ?? '';
                         final isSelected = _selectedCategory == catName;
-
                         return Padding(
                           padding: const EdgeInsets.only(right: 10),
                           child: GestureDetector(
@@ -348,11 +349,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? AppTheme.primaryColor.withOpacity(0.1)
-                                    : Colors.white,
+                                    : (isDark
+                                          ? Colors.grey[800]
+                                          : Colors.white),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppTheme.primaryColor
-                                      : Colors.grey.shade300,
+                                      : (isDark
+                                            ? Colors.grey[700]!
+                                            : Colors.grey.shade300),
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -361,7 +366,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 style: TextStyle(
                                   color: isSelected
                                       ? AppTheme.primaryColor
-                                      : Colors.grey.shade600,
+                                      : (isDark
+                                            ? Colors.grey[300]
+                                            : Colors.grey.shade600),
                                   fontWeight: isSelected
                                       ? FontWeight.bold
                                       : FontWeight.normal,
@@ -377,10 +384,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              const Text(
-                "อัปโหลดอย่างน้อย 1 รูป *",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              _buildSectionHeader("อัปโหลดรูป *"),
               const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -405,70 +409,61 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ),
                       ),
                     ),
-                    ..._selectedImages
-                        .map(
-                          (file) => Stack(
-                            children: [
-                              Container(
-                                width: 100,
-                                height: 100,
-                                margin: const EdgeInsets.only(right: 10),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  image: DecorationImage(
-                                    image: FileImage(file),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
+                    ..._selectedImages.map(
+                      (file) => Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              image: DecorationImage(
+                                image: FileImage(file),
+                                fit: BoxFit.cover,
                               ),
-                              Positioned(
-                                top: 4,
-                                right: 14,
-                                child: GestureDetector(
-                                  onTap: () => setState(
-                                    () => _selectedImages.remove(file),
-                                  ),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        )
-                        .toList(),
+                          Positioned(
+                            top: 4,
+                            right: 14,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedImages.remove(file)),
+                              child: const CircleAvatar(
+                                radius: 10,
+                                backgroundColor: Colors.red,
+                                child: Icon(
+                                  Icons.close,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 20),
 
-              const Text(
-                "คำอธิบายสั้นๆ เกี่ยวกับสินค้า",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              _buildSectionHeader("คำอธิบาย"),
               const SizedBox(height: 10),
               _buildTextField(
                 controller: _descController,
-                hint: "มีอะไรอีกไหมที่คุณต้องการแจ้งให้ลูกค้าทราบ ?",
+                hint: "รายละเอียดสินค้า...",
                 maxLines: 4,
               ),
               const SizedBox(height: 20),
 
-              _buildLabelWithStar("ราคา(บาท)"),
+              _buildLabelWithStar("ราคา (บาท)"),
               _buildTextField(
                 controller: _priceController,
                 hint: "ระบุราคา",
                 isNumber: true,
-                validator: (v) => v!.isEmpty ? "กรุณาระบุราคา" : null,
+                validator: (v) => v!.isEmpty ? "ระบุราคา" : null,
               ),
               const SizedBox(height: 15),
 
@@ -485,7 +480,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               ),
               const SizedBox(height: 15),
-
               _buildClickableField(
                 label: _selectedCondition ?? "สภาพสินค้า",
                 onTap: () => _showSelectionSheet(
@@ -496,13 +490,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabelWithStar("น้ำหนัก", isRequired: false),
+              _buildLabelWithStar("น้ำหนัก (กรัม)", isRequired: false),
               _buildTextField(
                 controller: _weightController,
                 hint: "กรัม",
                 isNumber: true,
               ),
-
               const SizedBox(height: 40),
 
               SizedBox(
@@ -515,7 +508,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    elevation: 0,
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
@@ -540,10 +532,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.onSurface,
       ),
     );
   }
@@ -554,10 +546,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
       child: RichText(
         text: TextSpan(
           text: text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
-            color: Colors.black87,
-            fontFamily: 'Nunito Sans',
+            color: Theme.of(context).colorScheme.onSurface,
+            fontFamily: 'Kanit',
           ),
           children: isRequired
               ? [
@@ -579,26 +571,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
     bool isNumber = false,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor, // ใช้สีตาม Theme (ขาว หรือ เทาเข้ม)
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey.shade200,
+        ),
       ),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        style: TextStyle(color: theme.colorScheme.onSurface), // สีตัวอักษร
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+          hintStyle: TextStyle(
+            color: isDark ? Colors.grey[400] : Colors.grey.shade400,
+            fontSize: 14,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
@@ -613,23 +614,27 @@ class _AddProductScreenState extends State<AddProductScreen> {
   Widget _buildClickableField({
     required String label,
     required VoidCallback onTap,
-    IconData icon = Icons.keyboard_arrow_right,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(
+            color: isDark ? Colors.grey[700]! : Colors.grey.shade200,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -638,15 +643,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
               label,
               style: TextStyle(
                 color:
-                    label.startsWith("เลือก") ||
+                    (label.startsWith("เลือก") ||
                         label == "ไซส์" ||
-                        label == "สภาพสินค้า"
-                    ? Colors.grey.shade400
-                    : Colors.black87,
+                        label == "สภาพสินค้า")
+                    ? (isDark ? Colors.grey[400] : Colors.grey.shade400)
+                    : theme.colorScheme.onSurface,
                 fontSize: 14,
               ),
             ),
-            Icon(icon, color: Colors.grey),
+            Icon(
+              Icons.keyboard_arrow_right,
+              color: isDark ? Colors.grey[400] : Colors.grey,
+            ),
           ],
         ),
       ),

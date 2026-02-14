@@ -32,7 +32,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       textCancel: "ยกเลิก",
       confirmTextColor: Colors.white,
       buttonColor: Colors.red,
-      cancelTextColor: Colors.black,
+      cancelTextColor: Theme.of(context).colorScheme.onSurface,
+      backgroundColor: Theme.of(context).cardColor,
       onConfirm: () async {
         await FirebaseAuth.instance.signOut();
         Get.offAll(() => const LoginScreen());
@@ -50,106 +51,111 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FC),
+      backgroundColor: isDark
+          ? theme.scaffoldBackgroundColor
+          : const Color(0xFFF7F9FC),
       body: SafeArea(
         child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  const SizedBox(width: 48, height: 48),
-
-                  Expanded(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Text(
-                          'ADMIN',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.staatliches(
-                            fontSize: 52,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = 3
-                              ..color = Colors.pinkAccent,
-                            shadows: const [
-                              Shadow(
-                                color: Colors.pinkAccent,
-                                offset: Offset(6, 2.5),
-                              ),
-                            ],
-                          ),
+                  Stack(
+                    children: [
+                      Text(
+                        'ADMIN',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.staatliches(
+                          fontSize: 52,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 3
+                            ..color = Colors.pinkAccent,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.pinkAccent,
+                              offset: Offset(6, 2.5),
+                            ),
+                          ],
                         ),
-                        Text(
-                          'ADMIN',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.staatliches(
-                            fontSize: 52,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            foreground: Paint()
-                              ..style = PaintingStyle.stroke
-                              ..strokeWidth = 2.5
-                              ..color = Colors.black,
-                          ),
+                      ),
+                      Text(
+                        'ADMIN',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.staatliches(
+                          fontSize: 52,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          foreground: Paint()
+                            ..style = PaintingStyle.stroke
+                            ..strokeWidth = 2.5
+                            ..color = Colors.black,
                         ),
-                        Text(
-                          'ADMIN',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.staatliches(
-                            fontSize: 52,
-                            letterSpacing: 1.2,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.2),
-                                offset: const Offset(0, 4),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
+                      ),
+                      Text(
+                        'ADMIN',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.staatliches(
+                          fontSize: 52,
+                          letterSpacing: 1.2,
+                          color: Colors.white,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black.withOpacity(0.2),
+                              offset: const Offset(0, 4),
+                              blurRadius: 6,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
 
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          blurRadius: 5,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      tooltip: 'ออกจากระบบ',
-                      onPressed: _handleLogout,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const SizedBox(width: 48, height: 48),
+
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isDark ? Icons.light_mode : Icons.dark_mode,
+                            ),
+                            onPressed: () {
+                              Get.changeThemeMode(
+                                isDark ? ThemeMode.light : ThemeMode.dark,
+                              );
+                            },
+                          ),
+
+                          IconButton(
+                            icon: const Icon(Icons.logout, color: Colors.red),
+                            tooltip: 'ออกจากระบบ',
+                            onPressed: _handleLogout,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
                     const SizedBox(height: 10),
-
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -209,10 +215,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 30),
-
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
@@ -220,6 +224,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         Text(
@@ -233,7 +238,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ],
                     ),
                     const SizedBox(height: 15),
-
                     StreamBuilder<QuerySnapshot>(
                       stream: FirebaseFirestore.instance
                           .collection('users')
@@ -241,16 +245,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           .snapshots(),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
-                          return const Text("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+                          return const Text("โหลดข้อมูลผิดพลาด");
                         }
                         if (!snapshot.hasData) {
                           return const Center(
                             child: CircularProgressIndicator(),
                           );
                         }
-
                         final users = snapshot.data!.docs;
-
                         if (users.isEmpty) {
                           return const Center(child: Text("ยังไม่มีผู้ใช้งาน"));
                         }
@@ -267,7 +269,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         );
                       },
                     ),
-
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -276,7 +277,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onBottomNavTapped,
@@ -284,6 +284,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         showUnselectedLabels: true,
         selectedItemColor: AppTheme.primaryColor,
         unselectedItemColor: Colors.grey,
+        backgroundColor: theme.cardColor,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
@@ -307,20 +308,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
     required VoidCallback onTap,
     bool isReport = false,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final cardColor = isReport
+        ? (isDark ? Colors.brown.withOpacity(0.3) : const Color(0xFFFFE0B2))
+        : (isDark
+              ? const Color(0xFF1B5E20).withOpacity(0.6)
+              : const Color(0xFFC1F7C3));
+
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: const Color(0xFFC1F7C3),
+          color: cardColor,
           borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 5,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: isDark
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 5,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,15 +343,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 35, color: Colors.black87),
+                Icon(icon, size: 35, color: textColor),
                 Expanded(
                   child: Text(
                     title,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: textColor,
                     ),
                   ),
                 ),
@@ -357,10 +370,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   alignment: Alignment.bottomRight,
                   child: Text(
                     count,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
-                      color: Colors.black,
+                      color: textColor,
                     ),
                   ),
                 );
@@ -373,17 +386,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildUserCard(Map<String, dynamic> data) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     bool isActive = (data['status'] ?? 'active') == 'active';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -393,46 +408,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundColor: Colors.grey[200],
+            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[200],
             backgroundImage:
                 (data['profileImage'] != null && data['profileImage'] != '')
                 ? NetworkImage(data['profileImage'])
                 : null,
             child: (data['profileImage'] == null || data['profileImage'] == '')
-                ? const Icon(Icons.person, color: Colors.grey)
+                ? Icon(
+                    Icons.person,
+                    color: isDark ? Colors.grey[400] : Colors.grey,
+                  )
                 : null,
           ),
           const SizedBox(width: 15),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   data['name'] ?? 'Unknown User',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
+                    color: theme.colorScheme.onSurface,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.star, size: 16, color: Colors.amber),
-                    SizedBox(width: 5),
+                    const Icon(Icons.star, size: 16, color: Colors.amber),
+                    const SizedBox(width: 5),
                     Text(
                       "5.0/5 Rating",
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey[400] : Colors.grey,
+                      ),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -447,14 +467,17 @@ class _AdminDashboardState extends State<AdminDashboard> {
               const SizedBox(height: 10),
               Text(
                 "ยอดเงินคงเหลือ",
-                style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
               ),
               Text(
                 "${data['wallet_balance'] ?? 0} ฿",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ],
