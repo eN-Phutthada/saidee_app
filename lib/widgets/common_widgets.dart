@@ -138,9 +138,7 @@ class AppLogo extends StatelessWidget {
       height: size,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF2C2C2C)
-            : Colors.white, // ปรับสีพื้นหลังโลโก้
+        color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
         shape: BoxShape.circle,
         boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/guest_view.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -10,7 +11,9 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text("กรุณาเข้าสู่ระบบ"));
+    if (user == null) {
+      return const GuestView();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -27,12 +30,14 @@ class CartScreen extends StatelessWidget {
             .collection('cart')
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final cartItems = snapshot.data!.docs;
-          if (cartItems.isEmpty)
+          if (cartItems.isEmpty) {
             return const Center(child: Text("ตะกร้าว่างเปล่า"));
+          }
 
           double totalPrice = 0;
           for (var item in cartItems) {

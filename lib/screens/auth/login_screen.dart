@@ -81,6 +81,8 @@ class _LoginScreenState extends State<LoginScreen> {
         message = 'รหัสผ่านไม่ถูกต้อง';
       } else if (e.code == 'invalid-email') {
         message = 'รูปแบบอีเมลไม่ถูกต้อง';
+      } else {
+        message = e.message ?? message;
       }
 
       Get.snackbar(
@@ -195,6 +197,63 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: TextStyle(
                               color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- DEBUG SECTION (ลบออกเมื่อขึ้น Production) ---
+                    const Divider(),
+                    const Text(
+                      "DEBUG MODE (Login ด่วน)",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // ปุ่ม Login Admin
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _emailController.text =
+                                "admin@saidee.com"; // อีเมล Admin ที่สร้างไว้
+                            _passwordController.text = "password1234";
+                            _login(); // เรียกฟังก์ชัน Login เดิม
+                          },
+                          icon: const Icon(
+                            Icons.admin_panel_settings,
+                            size: 18,
+                          ),
+                          label: const Text("Admin"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black87,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 8,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+
+                        // ปุ่ม Login User
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _emailController.text =
+                                "saidee@gmail.com"; // อีเมล User ตามตัวอย่างในเอกสาร
+                            _passwordController.text = "123456";
+                            _login();
+                          },
+                          icon: const Icon(Icons.person, size: 18),
+                          label: const Text("User"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 15,
+                              vertical: 8,
                             ),
                           ),
                         ),

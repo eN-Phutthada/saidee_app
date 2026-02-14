@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:saidee_app/screens/splash_screen.dart';
 import 'config/theme.dart';
 import 'providers/theme_provider.dart';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 

@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/guest_view.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -28,7 +29,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   String? _selectedSize;
   String? _selectedCondition;
 
-  // List สำหรับข้อมูลที่มักจะไม่เปลี่ยนบ่อย (Hardcode ได้)
   final List<String> _sizeList = [
     'XS',
     'S',
@@ -151,7 +151,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  // Helper สำหรับเลือกข้อมูลจาก List ปกติ (Size, Condition)
   void _showSelectionSheet(
     String title,
     List<String> items,
@@ -199,7 +198,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // Helper ใหม่: สำหรับเลือกข้อมูลจาก Firebase (Types)
   void _showDynamicSelectionSheet(
     String title,
     String collectionName,
@@ -267,6 +265,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const GuestView();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -276,10 +279,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -298,7 +297,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 15),
 
-              // --- เลือกประเภทสินค้า (ดึงจาก Firebase: types) ---
               _buildClickableField(
                 label: _selectedType ?? "เลือกประเภท",
                 icon: Icons.keyboard_arrow_right,
@@ -310,7 +308,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- เลือกหมวดหมู่ (ดึงจาก Firebase: categories) ---
               const Text(
                 "หมวดหมู่ *",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -321,11 +318,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     .collection('categories')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData)
+                  if (!snapshot.hasData) {
                     return const SizedBox(
                       height: 20,
                       child: LinearProgressIndicator(),
                     );
+                  }
 
                   final categories = snapshot.data!.docs;
 
@@ -379,7 +377,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- ส่วนรูปภาพ ---
               const Text(
                 "อัปโหลดอย่างน้อย 1 รูป *",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -454,7 +451,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- ส่วนรายละเอียด ---
               const Text(
                 "คำอธิบายสั้นๆ เกี่ยวกับสินค้า",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
