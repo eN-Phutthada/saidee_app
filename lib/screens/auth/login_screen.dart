@@ -1,4 +1,3 @@
-// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
@@ -20,13 +19,11 @@ class LoginScreen extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 80),
-                  // Logo
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: AppLogo(size: 100),
                   ),
                   const SizedBox(height: 20),
-                  // Texts
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
@@ -45,8 +42,8 @@ class LoginScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 16, color: Colors.white70),
                     ),
                   ),
-                  const SizedBox(height: 120), // เว้นระยะให้พ้น BG สีเขียว
-                  // Form Fields
+                  const SizedBox(height: 120),
+
                   const CustomTextField(label: "อีเมล"),
                   const CustomTextField(
                     label: "รหัสผ่าน",
@@ -56,7 +53,6 @@ class LoginScreen extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  // Login Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -67,7 +63,6 @@ class LoginScreen extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Register Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

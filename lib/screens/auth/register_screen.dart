@@ -1,4 +1,3 @@
-// lib/screens/auth/register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
@@ -47,21 +46,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // Content Area
                 Expanded(
                   child: PageView(
                     controller: _pageController,
-                    physics:
-                        const NeverScrollableScrollPhysics(), // ห้ามปัดเอง ต้องกดปุ่ม
-                    children: [
-                      _buildStep1(), // ข้อมูลทั่วไป
-                      _buildStep2(), // รูปโปรไฟล์
-                      _buildStep3(), // รหัสผ่าน
-                    ],
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [_buildStep1(), _buildStep2(), _buildStep3()],
                   ),
                 ),
 
-                // Footer
                 Padding(
                   padding: const EdgeInsets.only(bottom: 30),
                   child: Row(
@@ -99,7 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Step 1: ชื่อ, อีเมล, เบอร์โทร
   Widget _buildStep1() {
     return SingleChildScrollView(
       child: Column(
@@ -126,7 +117,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Step 2: รูปโปรไฟล์
   Widget _buildStep2() {
     return Column(
       children: [
@@ -170,7 +160,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // Step 3: รหัสผ่าน
   Widget _buildStep3() {
     return Column(
       children: [
