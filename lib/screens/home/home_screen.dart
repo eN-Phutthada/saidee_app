@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
-import '../profile/profile_screen.dart';
+import 'package:saidee_app/screens/profile/profile_screen.dart';
+
+// Import หน้าจออื่นๆ ที่สร้างไว้
+import 'package:saidee_app/screens/cart/cart_screen.dart';
+import 'package:saidee_app/screens/product/add_product_screen.dart';
+import 'package:saidee_app/screens/product/product_detail_screen.dart';
+import 'package:saidee_app/models/product_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,11 +22,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
+  // รายการหน้าจอของแต่ละ Tab
   final List<Widget> _pages = [
-    const HomeContent(),
-    const Center(child: Text("ตะกร้าสินค้า")),
-    const Center(child: Text("ขายสินค้า")),
-    const ProfileScreen(),
+    const HomeContent(), // หน้าแรก (Feed สินค้า)
+    const CartScreen(), // หน้าตะกร้าสินค้า
+    const AddProductScreen(), // หน้าลงขายสินค้า
+    const ProfileScreen(), // หน้าโปรไฟล์
   ];
 
   @override
@@ -28,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      // AppBar แสดงเฉพาะหน้าแรก (HomeContent) หน้าอื่นๆ มี AppBar ของตัวเองแล้ว
       appBar: _selectedIndex == 0
           ? AppBar(
               title: const Text(
@@ -38,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               actions: [
+                // ปุ่มเปลี่ยน Theme
                 IconButton(
                   icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
                   onPressed: () {
@@ -46,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
+                // ถ้าเป็น Guest ให้แสดงปุ่ม Login / ถ้า Login แล้วแสดงปุ่ม Favorite
                 if (user == null)
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
@@ -71,7 +82,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             )
           : null,
+
       body: _pages[_selectedIndex],
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -109,6 +122,7 @@ class HomeContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- Search Field ---
             TextField(
               decoration: InputDecoration(
                 hintText: 'ค้นหาสินค้า แบรนด์ หรือเสื้อผ้า...',
@@ -120,6 +134,8 @@ class HomeContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+
+            // --- Banner ---
             Container(
               height: 150,
               width: double.infinity,
@@ -152,52 +168,119 @@ class HomeContent extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            // --- Guest Welcome Card (แสดงเมื่อยังไม่ Login) ---
             if (user == null) ...[
               _buildGuestWelcomeCard(context),
               const SizedBox(height: 20),
             ],
 
+            // --- หมวดหมู่ (ดึงจาก Firebase) ---
             const Text(
               "หมวดหมู่",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildCategoryChip(context, "เสื้อผ้า", true),
-                  _buildCategoryChip(context, "รองเท้า", false),
-                  _buildCategoryChip(context, "กระเป๋า", false),
-                  _buildCategoryChip(context, "หมวก", false),
-                ],
-              ),
+
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('categories')
+                  .orderBy('name')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(); // กำลังโหลด ไม่แสดงอะไร
+                }
+
+                final categories = snapshot.data!.docs;
+                if (categories.isEmpty) {
+                  return const Text(
+                    "ไม่มีหมวดหมู่",
+                    style: TextStyle(color: Colors.grey),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: categories.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return _buildCategoryChip(
+                        context,
+                        data['name'] ?? '',
+                        false,
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             ),
+
             const SizedBox(height: 20),
+
+            // --- สินค้าแนะนำ (ดึงจาก Firebase) ---
             const Text(
               "สินค้าแนะนำ",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
-              itemCount: 4,
-              itemBuilder: (context, index) =>
-                  _buildProductCard(context, index),
+
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('products')
+                  .limit(10)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Container(
+                    height: 200,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.inbox, size: 50, color: Colors.grey),
+                        SizedBox(height: 10),
+                        Text(
+                          "ยังไม่มีสินค้าลงขาย",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final products = snapshot.data!.docs;
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.70, // ปรับสัดส่วนให้พอดีกับการ์ด
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                  ),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    var doc = products[index];
+                    var data = doc.data() as Map<String, dynamic>;
+                    return _buildProductCard(context, data, doc.id);
+                  },
+                );
+              },
             ),
+
+            const SizedBox(height: 80), // เว้นที่ด้านล่างกัน BottomNav บัง
           ],
         ),
       ),
     );
   }
 
+  // Widget การ์ดต้อนรับ Guest
   Widget _buildGuestWelcomeCard(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -290,69 +373,108 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildProductCard(BuildContext context, int index) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[800]
-                    : Colors.grey[300],
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(10),
+  Widget _buildProductCard(
+    BuildContext context,
+    Map<String, dynamic> data,
+    String docId,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // ดึงรูปแรก
+    String? imageUrl;
+    if (data['images'] != null && (data['images'] as List).isNotEmpty) {
+      imageUrl = data['images'][0];
+    }
+
+    return GestureDetector(
+      onTap: () {
+        // สร้าง Model จากข้อมูลที่ได้ แล้วส่งไปหน้า Detail
+        ProductModel product = ProductModel.fromMap(data, docId);
+        Get.to(() => ProductDetailScreen(product: product));
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ส่วนรูปภาพ
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[300],
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(10),
+                  ),
+                  image: imageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(imageUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-              ),
-              child: const Center(
-                child: Icon(Icons.image, size: 50, color: Colors.grey),
+                child: imageUrl == null
+                    ? const Center(
+                        child: Icon(Icons.image, size: 50, color: Colors.grey),
+                      )
+                    : null,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Uniqlo เสื้อยืด",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  "Size M",
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      "฿100",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
+            // ส่วนข้อมูล
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['name'] ?? 'ไม่มีชื่อ',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
                     ),
-                    Icon(Icons.favorite_border, size: 16, color: Colors.grey),
-                  ],
-                ),
-              ],
+                  ),
+                  Text(
+                    data['brand'] ?? '',
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "฿${data['price']}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const Icon(
+                        Icons.favorite_border,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

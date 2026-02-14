@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import '../../widgets/common_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,23 +42,37 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
-      // --- เพิ่มการแจ้งเตือนเมื่อเข้าสู่ระบบสำเร็จ ---
-      Get.snackbar(
-        "สำเร็จ",
-        "เข้าสู่ระบบเรียบร้อยแล้ว",
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.9),
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        margin: const EdgeInsets.all(10),
-        duration: const Duration(seconds: 2),
-      );
+      User? user = userCredential.user;
+      if (user != null) {
+        DocumentSnapshot adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(user.uid)
+            .get();
 
-      Get.offAll(() => const HomeScreen());
+        if (adminDoc.exists) {
+          Get.snackbar(
+            "ยินดีต้อนรับผู้ดูแลระบบ",
+            "เข้าสู่ระบบ Admin เรียบร้อยแล้ว",
+            backgroundColor: Colors.blueAccent.withOpacity(0.9),
+            colorText: Colors.white,
+          );
+          Get.offAll(() => const AdminDashboard());
+        } else {
+          Get.snackbar(
+            "สำเร็จ",
+            "เข้าสู่ระบบเรียบร้อยแล้ว",
+            backgroundColor: AppTheme.primaryColor.withOpacity(0.9),
+            colorText: Colors.white,
+          );
+          Get.offAll(() => const HomeScreen());
+        }
+      }
     } on FirebaseAuthException catch (e) {
       String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
       if (e.code == 'user-not-found') {
@@ -65,10 +81,6 @@ class _LoginScreenState extends State<LoginScreen> {
         message = 'รหัสผ่านไม่ถูกต้อง';
       } else if (e.code == 'invalid-email') {
         message = 'รูปแบบอีเมลไม่ถูกต้อง';
-      } else if (e.code == 'too-many-requests') {
-        message = 'ลองใหม่ภายหลัง (Login ถี่เกินไป)';
-      } else if (e.code == 'credential-already-in-use') {
-        message = 'อีเมลนี้ถูกใช้งานแล้ว';
       }
 
       Get.snackbar(
@@ -76,16 +88,9 @@ class _LoginScreenState extends State<LoginScreen> {
         message,
         backgroundColor: AppTheme.errorColor.withOpacity(0.8),
         colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        margin: const EdgeInsets.all(10),
       );
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        e.toString(),
-        backgroundColor: Colors.red.withOpacity(0.7),
-        colorText: Colors.white,
-      );
+      Get.snackbar("Error", e.toString());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -102,7 +107,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         children: [
           const TopGreenShape(),
-
           SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -111,12 +115,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     const SizedBox(height: 80),
-
                     const Align(
                       alignment: Alignment.centerLeft,
                       child: AppLogo(size: 100),
                     ),
-
                     const SizedBox(height: 20),
 
                     Align(
@@ -130,30 +132,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "ยินดีต้อนรับกลับมา",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 40),
 
                     CustomTextField(
                       label: "อีเมล",
                       inputType: TextInputType.emailAddress,
                       controller: _emailController,
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'กรุณากรอกอีเมล';
-                        if (!GetUtils.isEmail(value))
-                          return 'รูปแบบอีเมลไม่ถูกต้อง';
-                        return null;
-                      },
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'กรุณากรอกอีเมล'
+                          : null,
                     ),
 
                     CustomTextField(
@@ -162,11 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _passwordController,
                       obscureText: _hidePassword,
                       onToggleVisibility: _togglePasswordVisibility,
-                      validator: (value) {
-                        if (value == null || value.isEmpty)
-                          return 'กรุณากรอกรหัสผ่าน';
-                        return null;
-                      },
+                      validator: (value) => (value == null || value.isEmpty)
+                          ? 'กรุณากรอกรหัสผ่าน'
+                          : null,
                     ),
 
                     const SizedBox(height: 40),
@@ -175,14 +160,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(),
                         child: _isLoading
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   color: Colors.white,
-                                  strokeWidth: 2.5,
                                 ),
                               )
                             : const Text("เข้าสู่ระบบ"),
@@ -201,14 +184,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RegisterScreen(),
-                              ),
-                            );
-                          },
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          ),
                           child: const Text(
                             "ลงทะเบียน",
                             style: TextStyle(
@@ -225,11 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
           if (_isLoading)
             Container(
               color: Colors.black.withOpacity(0.3),
-              child: const Center(),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
