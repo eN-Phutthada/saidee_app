@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color primaryColor = Color(0xFF2CB834);
   static const Color darkGreen = Color(0xFF1B8022);
+
   static const Color lightBg = Color(0xFFF5F9FF);
+  static const Color lightSurface = Colors.white;
+
   static const Color darkBg = Color(0xFF121212);
+  static const Color darkSurface = Color(0xFF1E1E1E);
   static const Color errorColor = Color(0xFFD32F2F);
 
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Kanit', // อย่าลืมลงทะเบียน Font ใน pubspec.yaml
     brightness: Brightness.light,
     primaryColor: primaryColor,
     scaffoldBackgroundColor: lightBg,
+    cardColor: lightSurface,
+    canvasColor: lightSurface,
+
+    textTheme: GoogleFonts.nunitoSansTextTheme(),
+    fontFamily: GoogleFonts.nunitoSans().fontFamily,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryColor,
       brightness: Brightness.light,
       primary: primaryColor,
-      secondary: primaryColor,
-      surface: Colors.white,
+      surface: lightSurface,
       error: errorColor,
+      onSurface: Colors.black,
     ),
 
     appBarTheme: const AppBarTheme(
@@ -37,10 +46,6 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: primaryColor, width: 1.5),
@@ -53,27 +58,11 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.nunitoSans(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          fontFamily: 'Kanit',
-        ),
-      ),
-    ),
-
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: primaryColor,
-        side: const BorderSide(color: primaryColor),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Kanit',
         ),
       ),
     ),
@@ -81,18 +70,22 @@ class AppTheme {
 
   static final ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Kanit',
     brightness: Brightness.dark,
     primaryColor: primaryColor,
     scaffoldBackgroundColor: darkBg,
+    cardColor: darkSurface,
+    canvasColor: darkSurface,
+
+    textTheme: GoogleFonts.nunitoSansTextTheme(ThemeData.dark().textTheme),
+    fontFamily: GoogleFonts.nunitoSans().fontFamily,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryColor,
       brightness: Brightness.dark,
       primary: primaryColor,
-      secondary: primaryColor,
-      surface: const Color(0xFF1E1E1E),
+      surface: darkSurface,
       error: errorColor,
+      onSurface: Colors.white,
     ),
 
     appBarTheme: const AppBarTheme(
@@ -121,27 +114,11 @@ class AppTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
-        elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(
+        textStyle: GoogleFonts.nunitoSans(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          fontFamily: 'Kanit',
-        ),
-      ),
-    ),
-
-    outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: primaryColor,
-        side: const BorderSide(color: primaryColor),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          fontFamily: 'Kanit',
         ),
       ),
     ),

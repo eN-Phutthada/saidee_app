@@ -1,8 +1,7 @@
-// lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:saidee_app/screens/opening_screen.dart';
+import 'package:saidee_app/screens/home/home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,7 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _decideRoute() async {
     Get.off(
-      () => const OpeningScreen(),
+      () => const HomeScreen(),
       transition: Transition.circularReveal,
       duration: const Duration(milliseconds: 1000),
     );
