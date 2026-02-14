@@ -30,28 +30,45 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
 
     Get.defaultDialog(
       title: docId == null ? "เพิ่ม${widget.title}" : "แก้ไข${widget.title}",
-      content: Column(
-        children: [
-          TextField(
-            controller: _nameController,
-            decoration: InputDecoration(labelText: "ชื่อ${widget.title}"),
-          ),
-          const SizedBox(height: 10),
-          // สถานะเปิด/ปิดใช้งาน (ตามเอกสารข้อ 3 หน้า 1)
-          StatefulBuilder(
-            builder: (context, setState) => SwitchListTile(
-              title: const Text("เปิดใช้งาน"),
-              value: isActive,
-              onChanged: (val) => setState(() => isActive = val),
+      titleStyle: const TextStyle(fontWeight: FontWeight.bold),
+      content: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: "ชื่อ${widget.title}",
+                hintText: "กรอกชื่อภาษาไทยหรืออังกฤษ",
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            StatefulBuilder(
+              builder: (context, setState) => SwitchListTile(
+                title: const Text("เปิดใช้งาน"),
+                value: isActive,
+                activeColor: AppTheme.primaryColor,
+                onChanged: (val) => setState(() => isActive = val),
+              ),
+            ),
+          ],
+        ),
       ),
       textConfirm: "บันทึก",
       textCancel: "ยกเลิก",
       confirmTextColor: Colors.white,
+      buttonColor: AppTheme.primaryColor,
+      cancelTextColor: Colors.black,
       onConfirm: () async {
-        if (_nameController.text.isEmpty) return;
+        if (_nameController.text.isEmpty) {
+          Get.snackbar(
+            "แจ้งเตือน",
+            "กรุณากรอกข้อมูล",
+            backgroundColor: Colors.red.withOpacity(0.5),
+            colorText: Colors.white,
+          );
+          return;
+        }
 
         final data = {
           'name': _nameController.text.trim(),
@@ -59,18 +76,28 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         };
 
-        if (docId == null) {
-          await FirebaseFirestore.instance
-              .collection(widget.collection)
-              .add(data);
-        } else {
-          await FirebaseFirestore.instance
-              .collection(widget.collection)
-              .doc(docId)
-              .update(data);
+        try {
+          if (docId == null) {
+            await FirebaseFirestore.instance
+                .collection(widget.collection)
+                .add(data);
+          } else {
+            await FirebaseFirestore.instance
+                .collection(widget.collection)
+                .doc(docId)
+                .update(data);
+          }
+          Get.back();
+          _nameController.clear();
+          Get.snackbar(
+            "สำเร็จ",
+            "บันทึกข้อมูลเรียบร้อย",
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } catch (e) {
+          Get.snackbar("Error", e.toString());
         }
-        Get.back();
-        _nameController.clear();
       },
     );
   }
@@ -83,6 +110,7 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
       textCancel: "ยกเลิก",
       confirmTextColor: Colors.white,
       buttonColor: Colors.red,
+      cancelTextColor: Colors.black,
       onConfirm: () {
         FirebaseFirestore.instance
             .collection(widget.collection)
@@ -107,24 +135,48 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
             .collection(widget.collection)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError)
+            return const Center(child: Text("เกิดข้อผิดพลาดในการโหลดข้อมูล"));
           if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());
 
           final docs = snapshot.data!.docs;
+
+          if (docs.isEmpty)
+            return Center(child: Text("ยังไม่มีข้อมูล${widget.title}"));
+
           return ListView.builder(
             itemCount: docs.length,
+            padding: const EdgeInsets.all(10),
             itemBuilder: (context, index) {
               var data = docs[index].data() as Map<String, dynamic>;
               bool isActive = data['status'] == 'active';
 
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                elevation: 2,
+                margin: const EdgeInsets.symmetric(vertical: 5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: ListTile(
-                  title: Text(data['name']),
+                  leading: CircleAvatar(
+                    backgroundColor: isActive
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.grey.withOpacity(0.1),
+                    child: Icon(
+                      isActive ? Icons.check_circle : Icons.cancel,
+                      color: isActive ? Colors.green : Colors.grey,
+                    ),
+                  ),
+                  title: Text(
+                    data['name'] ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(
                     isActive ? "เปิดใช้งาน" : "ปิดใช้งาน",
                     style: TextStyle(
                       color: isActive ? Colors.green : Colors.red,
+                      fontSize: 12,
                     ),
                   ),
                   trailing: Row(

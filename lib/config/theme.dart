@@ -20,8 +20,8 @@ class AppTheme {
     cardColor: lightSurface,
     canvasColor: lightSurface,
 
-    textTheme: GoogleFonts.nunitoSansTextTheme(),
-    fontFamily: GoogleFonts.nunitoSans().fontFamily,
+    textTheme: GoogleFonts.kanitTextTheme(),
+    fontFamily: GoogleFonts.kanit().fontFamily,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryColor,
@@ -60,10 +60,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: GoogleFonts.nunitoSans(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        textStyle: GoogleFonts.kanit(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     ),
   );
@@ -76,8 +73,8 @@ class AppTheme {
     cardColor: darkSurface,
     canvasColor: darkSurface,
 
-    textTheme: GoogleFonts.nunitoSansTextTheme(ThemeData.dark().textTheme),
-    fontFamily: GoogleFonts.nunitoSans().fontFamily,
+    textTheme: GoogleFonts.kanitTextTheme(ThemeData.dark().textTheme),
+    fontFamily: GoogleFonts.kanit().fontFamily,
 
     colorScheme: ColorScheme.fromSeed(
       seedColor: primaryColor,
@@ -116,10 +113,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        textStyle: GoogleFonts.nunitoSans(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        textStyle: GoogleFonts.kanit(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     ),
   );
