@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
@@ -13,7 +14,7 @@ class TopGreenShape extends StatelessWidget {
         width: 300,
         height: 300,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.9), // ใช้สีจาก Theme
+          color: AppTheme.primaryColor.withOpacity(0.9),
           borderRadius: const BorderRadius.only(
             bottomRight: Radius.circular(200),
             bottomLeft: Radius.circular(100),
@@ -48,7 +49,6 @@ class CustomTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ดึง Theme ปัจจุบันมาใช้
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -68,28 +68,27 @@ class CustomTextField extends StatelessWidget {
         Stack(
           alignment: Alignment.topCenter,
           children: [
-            // Layer 1: พื้นหลังกล่อง (เปลี่ยนสีตาม Theme)
             Container(
               height: 50,
               decoration: BoxDecoration(
-                color: theme.inputDecorationTheme.fillColor, // ใช้สีจาก Theme
+                color: theme.inputDecorationTheme.fillColor,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05), // ลดความเข้มเงา
+                    color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),
                 ],
               ),
             ),
-            // Layer 2: Input Field
+
             TextFormField(
               controller: controller,
               validator: validator,
               obscureText: isPassword ? obscureText : false,
               keyboardType: isNumber ? TextInputType.number : inputType,
-              style: theme.textTheme.bodyLarge, // สีตัวอักษรตาม Theme
+              style: theme.textTheme.bodyLarge,
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
@@ -108,8 +107,8 @@ class CustomTextField extends StatelessWidget {
                     ? IconButton(
                         icon: Icon(
                           obscureText
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                              ? CupertinoIcons.eye
+                              : CupertinoIcons.eye_slash,
                           color: Colors.grey,
                         ),
                         onPressed: onToggleVisibility,
@@ -146,7 +145,7 @@ class AppLogo extends StatelessWidget {
         'assets/images/logo.png',
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.image, size: 50, color: Colors.grey),
+            Icon(CupertinoIcons.bag, size: 50, color: Colors.grey),
       ),
     );
   }

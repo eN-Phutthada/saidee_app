@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,7 +47,7 @@ class ProfileScreen extends StatelessWidget {
                       await FirebaseAuth.instance.signOut();
                       Get.offAll(() => const HomeScreen());
                     },
-                    icon: const Icon(Icons.logout),
+                    icon: const Icon(CupertinoIcons.square_arrow_right),
                     label: const Text("ออกจากระบบ"),
                   ),
                 ],
@@ -70,7 +71,10 @@ class ProfileScreen extends StatelessWidget {
             ),
             actions: [
               IconButton(
-                icon: Icon(Icons.settings, color: theme.colorScheme.onSurface),
+                icon: Icon(
+                  CupertinoIcons.settings,
+                  color: theme.colorScheme.onSurface,
+                ),
                 onPressed: () {
                   Get.to(() => EditProfileScreen(userData: userData));
                 },
@@ -114,7 +118,7 @@ class ProfileScreen extends StatelessWidget {
                                 (userData['profileImage'] == null ||
                                     userData['profileImage'] == '')
                                 ? Icon(
-                                    Icons.person,
+                                    CupertinoIcons.person_fill,
                                     size: 35,
                                     color: isDark
                                         ? Colors.grey[400]
@@ -149,7 +153,7 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           Icon(
-                            Icons.edit,
+                            CupertinoIcons.pencil,
                             color: isDark ? Colors.grey[400] : Colors.grey,
                           ),
                         ],
@@ -163,7 +167,7 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _buildBigButton(
                           context,
-                          Icons.inventory_2_outlined,
+                          CupertinoIcons.cube_box,
                           "การสั่งซื้อ\nของฉัน",
                         ),
                       ),
@@ -171,7 +175,7 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: _buildBigButton(
                           context,
-                          Icons.shopping_bag_outlined,
+                          CupertinoIcons.bag,
                           "การขาย\nของฉัน",
                         ),
                       ),
@@ -309,7 +313,7 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       trailing: Icon(
-        Icons.arrow_forward_ios,
+        CupertinoIcons.chevron_right,
         size: 16,
         color: theme.iconTheme.color?.withOpacity(0.5),
       ),

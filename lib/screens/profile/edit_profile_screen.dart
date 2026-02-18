@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
-// อย่าลืม Import หน้า AddAddressScreen
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -43,13 +43,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  // 1. แก้ไขฟังก์ชันนี้ให้รับ parameter source
   Future<void> _pickImage(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? pickedFile = await picker.pickImage(
         source: source,
-        imageQuality: 80, // ปรับคุณภาพรูปไม่ให้ไฟล์ใหญ่เกินไป
+        imageQuality: 80,
       );
       if (pickedFile != null) {
         setState(() {
@@ -61,7 +60,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // 2. เพิ่มฟังก์ชันแสดงตัวเลือก (Bottom Sheet)
   void _showImageSourceOptions() {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -86,21 +84,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildOptionBtn(
-                    icon: Icons.camera_alt,
+                    icon: CupertinoIcons.camera_fill,
                     label: "กล้อง",
                     color: Colors.blueAccent,
                     onTap: () {
-                      Get.back(); // ปิด Bottom Sheet ก่อน
-                      _pickImage(ImageSource.camera); // เรียกกล้อง
+                      Get.back();
+                      _pickImage(ImageSource.camera);
                     },
                   ),
                   _buildOptionBtn(
-                    icon: Icons.photo_library,
+                    icon: CupertinoIcons.photo_on_rectangle,
                     label: "คลังภาพ",
                     color: Colors.purpleAccent,
                     onTap: () {
                       Get.back();
-                      _pickImage(ImageSource.gallery); // เรียกแกลเลอรี
+                      _pickImage(ImageSource.gallery);
                     },
                   ),
                 ],
@@ -113,7 +111,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // Widget ปุ่มตัวเลือกย่อย
   Widget _buildOptionBtn({
     required IconData icon,
     required String label,
@@ -196,7 +193,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(CupertinoIcons.back, color: Colors.white),
           onPressed: () => Get.back(),
         ),
         title: const Text(
@@ -214,7 +211,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Icon(Icons.check_circle, color: Colors.white),
+                : const Icon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    color: Colors.white,
+                  ),
             onPressed: _isLoading ? null : _saveProfile,
           ),
         ],
@@ -225,7 +225,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Profile Image Section ---
               Center(
                 child: GestureDetector(
                   onTap: _showImageSourceOptions,
@@ -259,7 +258,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 (_currentImageUrl == null ||
                                     _currentImageUrl!.isEmpty))
                             ? const Icon(
-                                Icons.person,
+                                CupertinoIcons.person_fill,
                                 size: 60,
                                 color: Colors.grey,
                               )
@@ -281,7 +280,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ],
                           ),
                           child: Icon(
-                            Icons.camera_alt,
+                            CupertinoIcons.camera_fill,
                             size: 20,
                             color: theme.iconTheme.color,
                           ),
@@ -293,7 +292,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
 
-              // --- Name & Bio ---
               _buildLabel(context, "ชื่อ - สกุล"),
               _buildTextField(context, _nameController),
               const SizedBox(height: 20),
@@ -323,7 +321,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
 
-              // --- Contact Info ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -358,7 +355,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
 
-              // --- Address Section (แก้ไขใหม่) ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -372,7 +368,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   GestureDetector(
                     onTap: () {
-                      // ส่งค่าว่างไป เพื่อบอกว่าเป็นโหมด "เพิ่มใหม่"
                       Get.to(() => const AddAddressScreen());
                     },
                     child: const Text(
@@ -388,22 +383,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 10),
 
-              // StreamBuilder เพื่อแสดงรายการที่อยู่
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('users')
                     .doc(currentUser!.uid)
                     .collection('addresses')
-                    .orderBy(
-                      'is_default',
-                      descending: true,
-                    ) // เอาค่า Default ขึ้นก่อน
+                    .orderBy('is_default', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.hasError)
+                  if (snapshot.hasError) {
                     return const Text("เกิดข้อผิดพลาดในการโหลดที่อยู่");
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
 
                   final addresses = snapshot.data!.docs;
 
@@ -446,7 +439,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // --- Widget การ์ดแสดงที่อยู่ ---
   Widget _buildAddressCard(
     BuildContext context,
     String docId,
@@ -458,7 +450,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return GestureDetector(
       onTap: () {
-        // กดเพื่อแก้ไข: ส่ง docId และ data ไปด้วย
         Get.to(() => AddAddressScreen(docId: docId, existingData: data));
       },
       child: Container(
@@ -478,7 +469,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              Icons.location_on,
+              CupertinoIcons.location_solid,
               color: isDefault ? AppTheme.primaryColor : Colors.grey,
               size: 24,
             ),
@@ -532,14 +523,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ],
               ),
             ),
-            Icon(Icons.edit, size: 18, color: Colors.grey[400]),
+            Icon(CupertinoIcons.pencil, size: 18, color: Colors.grey[400]),
           ],
         ),
       ),
     );
   }
 
-  // ... (Widget _buildLabel, _buildTextField, _buildReadOnlyRow เดิม ไม่ต้องแก้)
   Widget _buildLabel(BuildContext context, String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),

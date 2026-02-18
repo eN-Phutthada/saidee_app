@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -223,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _login(); // เรียกฟังก์ชัน Login เดิม
                           },
                           icon: const Icon(
-                            Icons.admin_panel_settings,
+                            CupertinoIcons.at_badge_minus,
                             size: 18,
                           ),
                           label: const Text("Admin"),
@@ -238,7 +239,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(width: 15),
 
-                        // ปุ่ม Login User
                         ElevatedButton.icon(
                           onPressed: () {
                             _emailController.text =
@@ -246,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             _passwordController.text = "123456";
                             _login();
                           },
-                          icon: const Icon(Icons.person, size: 18),
+                          icon: const Icon(CupertinoIcons.person, size: 18),
                           label: const Text("User"),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blueGrey,

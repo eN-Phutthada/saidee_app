@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -27,11 +28,13 @@ class ManageReportScreen extends StatelessWidget {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
-          if (snapshot.data!.docs.isEmpty)
+          if (snapshot.data!.docs.isEmpty) {
             return const Center(child: Text("ไม่มีรายงานปัญหา"));
+          }
 
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
@@ -41,7 +44,10 @@ class ManageReportScreen extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.all(8),
                 child: ExpansionTile(
-                  leading: const Icon(Icons.warning, color: Colors.orange),
+                  leading: const Icon(
+                    CupertinoIcons.exclamationmark_triangle,
+                    color: Colors.orange,
+                  ),
                   title: Text(report['topic'] ?? 'หัวข้อ'),
                   subtitle: Text("รายงานผู้ใช้ ID: ${report['reported_id']}"),
                   children: [
@@ -61,7 +67,10 @@ class ManageReportScreen extends StatelessWidget {
                               backgroundColor: Colors.red,
                             ),
                             onPressed: () => _banUser(report['reported_id']),
-                            icon: const Icon(Icons.block, color: Colors.white),
+                            icon: const Icon(
+                              CupertinoIcons.nosign,
+                              color: Colors.white,
+                            ),
                             label: const Text(
                               "ระงับบัญชีผู้ใช้นี้ (Ban)",
                               style: TextStyle(color: Colors.white),

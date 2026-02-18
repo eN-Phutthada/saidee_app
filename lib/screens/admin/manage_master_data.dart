@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -127,7 +128,7 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
       appBar: AppBar(title: Text("จัดการ${widget.title}")),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(CupertinoIcons.add, color: Colors.white),
         onPressed: () => _showEditDialog(),
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -135,15 +136,18 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
             .collection(widget.collection)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError)
+          if (snapshot.hasError) {
             return const Center(child: Text("เกิดข้อผิดพลาดในการโหลดข้อมูล"));
-          if (!snapshot.hasData)
+          }
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final docs = snapshot.data!.docs;
 
-          if (docs.isEmpty)
+          if (docs.isEmpty) {
             return Center(child: Text("ยังไม่มีข้อมูล${widget.title}"));
+          }
 
           return ListView.builder(
             itemCount: docs.length,
@@ -164,7 +168,9 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
                         ? Colors.green.withOpacity(0.1)
                         : Colors.grey.withOpacity(0.1),
                     child: Icon(
-                      isActive ? Icons.check_circle : Icons.cancel,
+                      isActive
+                          ? CupertinoIcons.checkmark_circle_fill
+                          : CupertinoIcons.xmark_circle,
                       color: isActive ? Colors.green : Colors.grey,
                     ),
                   ),
@@ -183,7 +189,10 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        icon: const Icon(
+                          CupertinoIcons.pencil,
+                          color: Colors.blue,
+                        ),
                         onPressed: () => _showEditDialog(
                           docId: docs[index].id,
                           currentName: data['name'],
@@ -191,7 +200,10 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(
+                          CupertinoIcons.delete,
+                          color: Colors.red,
+                        ),
                         onPressed: () => _deleteItem(docs[index].id),
                       ),
                     ],

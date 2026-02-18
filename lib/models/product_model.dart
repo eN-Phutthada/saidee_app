@@ -4,14 +4,17 @@ class ProductModel {
   String id;
   String sellerId;
   String name;
-  String category; // ผู้หญิง, ผู้ชาย, เด็ก
-  String type; // เสื้อ, กางเกง, รองเท้า
+  String category;
+  String type;
+  String description;
   double price;
   String size;
   String brand;
-  String condition; // มือหนึ่ง, มือสอง
-  String description;
+  String condition;
+  double weight;
   List<String> images;
+  String video;
+  String status;
   Timestamp createdAt;
 
   ProductModel({
@@ -20,16 +23,18 @@ class ProductModel {
     required this.name,
     required this.category,
     required this.type,
+    required this.description,
     required this.price,
     required this.size,
     required this.brand,
     required this.condition,
-    required this.description,
+    required this.weight,
     required this.images,
+    required this.video,
+    required this.status,
     required this.createdAt,
   });
 
-  // แปลงข้อมูลจาก Firestore มาเป็น Object
   factory ProductModel.fromMap(Map<String, dynamic> data, String documentId) {
     return ProductModel(
       id: documentId,
@@ -37,29 +42,34 @@ class ProductModel {
       name: data['name'] ?? '',
       category: data['category'] ?? '',
       type: data['type'] ?? '',
+      description: data['description'] ?? '',
       price: (data['price'] ?? 0).toDouble(),
       size: data['size'] ?? '',
       brand: data['brand'] ?? '',
       condition: data['condition'] ?? '',
-      description: data['description'] ?? '',
+      weight: (data['weight'] ?? 0.0).toDouble(),
       images: List<String>.from(data['images'] ?? []),
+      video: data['video'] ?? '',
+      status: data['status'] ?? 'active',
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
 
-  // แปลง Object ไปเป็น Map เพื่อลง Firestore
   Map<String, dynamic> toMap() {
     return {
       'sellerId': sellerId,
       'name': name,
       'category': category,
       'type': type,
+      'description': description,
       'price': price,
       'size': size,
       'brand': brand,
       'condition': condition,
-      'description': description,
+      'weight': weight,
       'images': images,
+      'video': video,
+      'status': status,
       'createdAt': createdAt,
     };
   }

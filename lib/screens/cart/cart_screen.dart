@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -83,7 +84,10 @@ class CartScreen extends StatelessWidget {
                           ),
                         ),
                         trailing: IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
+                          icon: const Icon(
+                            CupertinoIcons.delete,
+                            color: Colors.red,
+                          ),
                           onPressed: () {
                             FirebaseFirestore.instance
                                 .collection('users')

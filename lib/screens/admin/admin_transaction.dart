@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -14,8 +15,9 @@ class AdminTransactionScreen extends StatelessWidget {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
@@ -26,7 +28,9 @@ class AdminTransactionScreen extends StatelessWidget {
 
               return ListTile(
                 leading: Icon(
-                  isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+                  isIncome
+                      ? CupertinoIcons.arrow_down
+                      : CupertinoIcons.arrow_up,
                   color: isIncome ? Colors.green : Colors.red,
                 ),
                 title: Text("${data['type']} - User: ${data['member_id']}"),

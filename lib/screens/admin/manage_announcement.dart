@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -32,7 +33,7 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
       appBar: AppBar(title: const Text("จัดการประกาศข่าวสาร")),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(CupertinoIcons.add, color: Colors.white),
         onPressed: () => Get.defaultDialog(
           title: "เพิ่มประกาศใหม่",
           content: Column(
@@ -58,8 +59,9 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
@@ -74,7 +76,7 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                   ),
                   subtitle: Text(data['detail']),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
+                    icon: const Icon(CupertinoIcons.delete, color: Colors.red),
                     onPressed: () =>
                         snapshot.data!.docs[index].reference.delete(),
                   ),

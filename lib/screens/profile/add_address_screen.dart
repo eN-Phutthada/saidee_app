@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -34,12 +35,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   bool _isLoading = false;
   bool _isMapReady = false;
 
-  // --- ตัวแปรควบคุมการดึงที่อยู่ ---
-  // ถ้าเป็น true ถึงจะยอมให้ onCameraIdle ดึงที่อยู่
-  // เริ่มต้นเป็น true (สำหรับโหมดเพิ่มใหม่) แต่ถ้าแก้ไขจะถูก set เป็น false
   bool _canFetchAddress = true;
 
-  // Map Variables
   final Completer<GoogleMapController> _mapController = Completer();
   LatLng _currentPosition = const LatLng(13.7563, 100.5018);
 
@@ -67,12 +64,10 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     _postcodeController.text = data['postcode'] ?? '';
     _isDefault = data['is_default'] ?? false;
 
-    // 1. ตั้งค่าพิกัดจากข้อมูลเดิม
     if (data['latitude'] != null && data['longitude'] != null) {
       _currentPosition = LatLng(data['latitude'], data['longitude']);
     }
 
-    // 2. ปิดการดึงที่อยู่อัตโนมัติชั่วคราว (ป้องกันข้อมูลเดิมหายตอนเปิดหน้า)
     _canFetchAddress = false;
 
     setState(() => _isMapReady = true);
@@ -94,8 +89,9 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             if (_nameController.text.isEmpty) {
               _nameController.text = data['name'] ?? '';
             }
-            if (_phoneController.text.isEmpty)
+            if (_phoneController.text.isEmpty) {
               _phoneController.text = data['phone'] ?? '';
+            }
           });
         }
       } catch (e) {
@@ -136,7 +132,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       _isMapReady = true;
     });
 
-    // ถ้าเพิ่มใหม่ ให้ดึงที่อยู่ปัจจุบันเลย
     if (!_isEditing) {
       _getAddressFromLatLng(_currentPosition);
     }
@@ -184,7 +179,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (result != null && result is LatLng) {
       setState(() {
         _currentPosition = result;
-        // เมื่อกลับจาก Full Screen ถือว่าผู้ใช้เลือกแล้ว ให้ดึงข้อมูลได้เลย
         _canFetchAddress = true;
       });
       final GoogleMapController controller = await _mapController.future;
@@ -322,14 +316,14 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(CupertinoIcons.back),
           onPressed: () => Get.back(),
         ),
         actions: [
           if (_isEditing)
             IconButton(
               onPressed: _isLoading ? null : _deleteAddress,
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(CupertinoIcons.delete),
               tooltip: "ลบที่อยู่",
             ),
           TextButton(
@@ -346,7 +340,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       ),
       body: Column(
         children: [
-          // --- ส่วนแผนที่ ---
           SizedBox(
             height: 300,
             child: !_isMapReady
@@ -368,33 +361,26 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                         myLocationButtonEnabled: true,
                         zoomControlsEnabled: false,
                         markers: {},
-
-                        // 3. เมื่อผู้ใช้เริ่มขยับแผนที่ด้วยตัวเอง -> อนุญาตให้ดึงที่อยู่ได้
                         onCameraMoveStarted: () {
                           _canFetchAddress = true;
                         },
-
                         onCameraMove: (position) {
                           _currentPosition = position.target;
                         },
-
-                        // 4. เมื่อหยุดเลื่อน -> เช็คก่อนว่าอนุญาตไหม ถ้าใช่ค่อยดึง
                         onCameraIdle: () {
                           if (_canFetchAddress) {
                             _getAddressFromLatLng(_currentPosition);
                           }
                         },
                       ),
-
                       Padding(
                         padding: const EdgeInsets.only(bottom: 30),
                         child: Icon(
-                          Icons.location_on,
+                          CupertinoIcons.location_solid,
                           size: 45,
                           color: AppTheme.primaryColor,
                         ),
                       ),
-
                       Positioned(
                         bottom: 10,
                         right: 10,
@@ -403,7 +389,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                           backgroundColor: Colors.white,
                           onPressed: _openFullScreenMap,
                           child: const Icon(
-                            Icons.fullscreen,
+                            CupertinoIcons.fullscreen,
                             color: Colors.black87,
                           ),
                         ),
@@ -412,7 +398,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   ),
           ),
 
-          // --- ส่วนฟอร์ม ---
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -537,7 +522,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 }
 
-// --- Full Screen Map ---
 class FullScreenMapPicker extends StatefulWidget {
   final LatLng initialPosition;
   const FullScreenMapPicker({super.key, required this.initialPosition});
@@ -569,10 +553,14 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             myLocationButtonEnabled: true,
             onCameraMove: (pos) => _currentPosition = pos.target,
           ),
-          const Center(
+          Center(
             child: Padding(
-              padding: EdgeInsets.only(bottom: 30),
-              child: Icon(Icons.location_on, size: 50, color: Colors.red),
+              padding: const EdgeInsets.only(bottom: 30),
+              child: Icon(
+                CupertinoIcons.location_solid,
+                size: 50,
+                color: Colors.red,
+              ),
             ),
           ),
           Positioned(
@@ -584,7 +572,10 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
                 width: 200,
                 child: ElevatedButton.icon(
                   onPressed: () => Get.back(result: _currentPosition),
-                  icon: const Icon(Icons.check_circle, color: Colors.white),
+                  icon: const Icon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    color: Colors.white,
+                  ),
                   label: const Text(
                     "ยืนยันตำแหน่ง",
                     style: TextStyle(
@@ -611,7 +602,7 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             child: CircleAvatar(
               backgroundColor: Colors.white,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                icon: const Icon(CupertinoIcons.back, color: Colors.black),
                 onPressed: () => Get.back(),
               ),
             ),

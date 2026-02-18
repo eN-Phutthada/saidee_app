@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -291,7 +292,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               child: _imageFile == null
                   ? const Icon(
-                      Icons.camera_alt_outlined,
+                      CupertinoIcons.camera,
                       size: 50,
                       color: Colors.grey,
                     )

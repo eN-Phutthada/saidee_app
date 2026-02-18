@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -129,7 +130,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         children: [
                           IconButton(
                             icon: Icon(
-                              isDark ? Icons.light_mode : Icons.dark_mode,
+                              isDark
+                                  ? CupertinoIcons.sun_max
+                                  : CupertinoIcons.moon,
                             ),
                             onPressed: () {
                               Get.changeThemeMode(
@@ -139,7 +142,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           ),
 
                           IconButton(
-                            icon: const Icon(Icons.logout, color: Colors.red),
+                            icon: const Icon(
+                              CupertinoIcons.square_arrow_right,
+                              color: Colors.red,
+                            ),
                             tooltip: 'ออกจากระบบ',
                             onPressed: _handleLogout,
                           ),
@@ -166,7 +172,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       children: [
                         _buildDashboardCard(
                           title: "หมวดหมู่",
-                          icon: Icons.category,
+                          icon: CupertinoIcons.square_grid_2x2,
                           collection: 'categories',
                           onTap: () => Get.to(
                             () => const ManageMasterDataScreen(
@@ -177,7 +183,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                         _buildDashboardCard(
                           title: "ประเภท",
-                          icon: Icons.style,
+                          icon: CupertinoIcons.tag,
                           collection: 'types',
                           onTap: () => Get.to(
                             () => const ManageMasterDataScreen(
@@ -188,27 +194,27 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         ),
                         _buildDashboardCard(
                           title: "ขนส่ง",
-                          icon: Icons.local_shipping_outlined,
+                          icon: CupertinoIcons.cube_box,
                           collection: 'shipping',
                           onTap: () =>
                               Get.to(() => const ManageShippingScreen()),
                         ),
                         _buildDashboardCard(
                           title: "คูปอง",
-                          icon: Icons.local_offer_outlined,
+                          icon: CupertinoIcons.ticket,
                           collection: 'coupons',
                           onTap: () => Get.to(() => const ManageCouponScreen()),
                         ),
                         _buildDashboardCard(
                           title: "ประกาศ",
-                          icon: Icons.campaign_outlined,
+                          icon: CupertinoIcons.news,
                           collection: 'announcements',
                           onTap: () =>
                               Get.to(() => const ManageAnnouncementScreen()),
                         ),
                         _buildDashboardCard(
                           title: "รายงาน\nผู้ใช้",
-                          icon: Icons.person_search,
+                          icon: CupertinoIcons.exclamationmark_bubble,
                           collection: 'reports',
                           isReport: true,
                           onTap: () => Get.to(() => const ManageReportScreen()),
@@ -287,13 +293,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         backgroundColor: theme.cardColor,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
+            icon: Icon(CupertinoIcons.square_grid_2x2),
+            activeIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
             label: 'หน้าหลัก',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            activeIcon: Icon(Icons.account_balance_wallet),
+            icon: Icon(CupertinoIcons.creditcard),
+            activeIcon: Icon(CupertinoIcons.creditcard_fill),
             label: 'ธุรกรรมการเงิน',
           ),
         ],
@@ -415,7 +421,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 : null,
             child: (data['profileImage'] == null || data['profileImage'] == '')
                 ? Icon(
-                    Icons.person,
+                    CupertinoIcons.person_fill,
                     color: isDark ? Colors.grey[400] : Colors.grey,
                   )
                 : null,
@@ -439,7 +445,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(height: 5),
                 Row(
                   children: [
-                    const Icon(Icons.star, size: 16, color: Colors.amber),
+                    const Icon(
+                      CupertinoIcons.star_fill,
+                      size: 16,
+                      color: Colors.amber,
+                    ),
                     const SizedBox(width: 5),
                     Text(
                       "5.0/5 Rating",

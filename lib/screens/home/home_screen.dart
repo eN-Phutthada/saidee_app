@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -71,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ..color = Colors.black,
                     ),
                   ),
+
                   Text(
                     'SAIDEE',
                     textAlign: TextAlign.center,
@@ -91,7 +93,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                  icon: Icon(
+                    isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon_stars,
+                  ),
                   onPressed: () {
                     Get.changeThemeMode(
                       isDark ? ThemeMode.light : ThemeMode.dark,
@@ -117,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 else
                   IconButton(
-                    icon: const Icon(Icons.favorite_border),
+                    icon: const Icon(CupertinoIcons.heart),
                     onPressed: () {},
                   ),
               ],
@@ -134,16 +138,22 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: AppTheme.primaryColor,
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'หน้าหลัก'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
+            icon: Icon(CupertinoIcons.house_fill),
+            label: 'หน้าหลัก',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.cart_fill),
             label: 'ตะกร้า',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
+            icon: Icon(CupertinoIcons.plus_circle),
             label: 'ขาย',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'บัญชี'),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_fill),
+            label: 'บัญชี',
+          ),
         ],
       ),
     );
@@ -166,7 +176,7 @@ class HomeContent extends StatelessWidget {
             TextField(
               decoration: InputDecoration(
                 hintText: 'ค้นหาสินค้า แบรนด์ หรือเสื้อผ้า...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(CupertinoIcons.search, size: 20),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
@@ -224,17 +234,8 @@ class HomeContent extends StatelessWidget {
                   .orderBy('name')
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const SizedBox();
-                }
-
+                if (!snapshot.hasData) return const SizedBox();
                 final categories = snapshot.data!.docs;
-                if (categories.isEmpty) {
-                  return const Text(
-                    "ไม่มีหมวดหมู่",
-                    style: TextStyle(color: Colors.grey),
-                  );
-                }
 
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -269,27 +270,11 @@ class HomeContent extends StatelessWidget {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Container(
-                    height: 200,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.inbox, size: 50, color: Colors.grey),
-                        SizedBox(height: 10),
-                        Text(
-                          "ยังไม่มีสินค้าลงขาย",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildEmptyState();
                 }
 
                 final products = snapshot.data!.docs;
-
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -316,6 +301,21 @@ class HomeContent extends StatelessWidget {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Container(
+      height: 200,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(CupertinoIcons.tray, size: 50, color: Colors.grey),
+          SizedBox(height: 10),
+          Text("ยังไม่มีสินค้าลงขาย", style: TextStyle(color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGuestWelcomeCard(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -338,9 +338,9 @@ class HomeContent extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.waving_hand,
+              CupertinoIcons.hand_raised_fill,
               color: AppTheme.primaryColor,
-              size: 30,
+              size: 26,
             ),
           ),
           const SizedBox(width: 15),
@@ -358,7 +358,7 @@ class HomeContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "เข้าสู่ระบบเพื่อเริ่มซื้อ-ขาย และบันทึกรายการโปรด",
+                  "เข้าสู่ระบบเพื่อเริ่มซื้อ-ขาย",
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey[400] : Colors.grey[700],
@@ -367,17 +367,8 @@ class HomeContent extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
           ElevatedButton(
             onPressed: () => Get.to(() => const LoginScreen()),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minimumSize: const Size(0, 36),
-              textStyle: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
             child: const Text("เข้าสู่ระบบ"),
           ),
         ],
@@ -404,6 +395,7 @@ class HomeContent extends StatelessWidget {
               : (isDark ? Colors.white : Colors.black),
         ),
         side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
     );
   }
@@ -415,11 +407,10 @@ class HomeContent extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
-    String? imageUrl;
-    if (data['images'] != null && (data['images'] as List).isNotEmpty) {
-      imageUrl = data['images'][0];
-    }
+    String? imageUrl =
+        (data['images'] != null && (data['images'] as List).isNotEmpty)
+        ? data['images'][0]
+        : null;
 
     return GestureDetector(
       onTap: () {
@@ -429,7 +420,7 @@ class HomeContent extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -444,9 +435,9 @@ class HomeContent extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[300],
+                  color: isDark ? Colors.grey[800] : Colors.grey[200],
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(10),
+                    top: Radius.circular(12),
                   ),
                   image: imageUrl != null
                       ? DecorationImage(
@@ -457,13 +448,17 @@ class HomeContent extends StatelessWidget {
                 ),
                 child: imageUrl == null
                     ? const Center(
-                        child: Icon(Icons.image, size: 50, color: Colors.grey),
+                        child: Icon(
+                          CupertinoIcons.photo,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
                       )
                     : null,
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -471,19 +466,16 @@ class HomeContent extends StatelessWidget {
                     data['name'] ?? 'ไม่มีชื่อ',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   Text(
                     data['brand'] ?? '',
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -495,7 +487,7 @@ class HomeContent extends StatelessWidget {
                         ),
                       ),
                       const Icon(
-                        Icons.favorite_border,
+                        CupertinoIcons.heart,
                         size: 16,
                         color: Colors.grey,
                       ),

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -93,14 +94,15 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
       appBar: AppBar(title: const Text("จัดการบริษัทขนส่ง")),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(CupertinoIcons.add, color: Colors.white),
         onPressed: () => _showEditDialog(),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('shipping').snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
           return ListView.builder(
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
@@ -112,7 +114,7 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                   "น้ำหนัก: ${data['weight_min']} - ${data['weight_max']} g | ราคา: ${data['price']} บาท",
                 ),
                 trailing: IconButton(
-                  icon: const Icon(Icons.edit),
+                  icon: const Icon(CupertinoIcons.pencil),
                   onPressed: () => _showEditDialog(docId: doc.id, data: data),
                 ),
               );

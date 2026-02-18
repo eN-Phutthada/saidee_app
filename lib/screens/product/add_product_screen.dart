@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -69,7 +70,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.dispose();
   }
 
-  // --- 1. จัดการรูปภาพ (Camera & Gallery) ---
   void _showImageSourceOptions() {
     showModalBottomSheet(
       context: context,
@@ -77,7 +77,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt),
+              leading: const Icon(CupertinoIcons.camera_fill),
               title: const Text('ถ่ายรูป'),
               onTap: () {
                 Navigator.pop(context);
@@ -85,7 +85,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library),
+              leading: const Icon(CupertinoIcons.photo_on_rectangle),
               title: const Text('เลือกจากอัลบั้ม'),
               onTap: () {
                 Navigator.pop(context);
@@ -112,7 +112,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     } else {
       final List<XFile> photos = await _picker.pickMultiImage(imageQuality: 80);
       if (photos.isNotEmpty) {
-        // กรองไฟล์
         final validFiles = photos.where((file) {
           final path = file.path.toLowerCase();
           return path.endsWith('.jpg') ||
@@ -135,7 +134,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  // --- 2. จัดการวิดีโอ (Camera & Gallery) ---
   void _showVideoSourceOptions() {
     showModalBottomSheet(
       context: context,
@@ -143,7 +141,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.videocam),
+              leading: const Icon(CupertinoIcons.video_camera_solid),
               title: const Text('ถ่ายวิดีโอ'),
               onTap: () {
                 Navigator.pop(context);
@@ -151,7 +149,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.video_library),
+              leading: const Icon(CupertinoIcons.film),
               title: const Text('เลือกจากอัลบั้ม'),
               onTap: () {
                 Navigator.pop(context);
@@ -193,7 +191,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  // --- 3. บันทึกข้อมูล ---
   Future<void> _uploadAndSave() async {
     if (!_formKey.currentState!.validate()) {
       Get.snackbar(
@@ -301,8 +298,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  // --- Helper UI Widgets ---
-
   void _showDynamicSelectionSheet(
     String title,
     String collectionName,
@@ -335,16 +330,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       .collection(collectionName)
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData)
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
                     final docs = snapshot.data!.docs;
-                    if (docs.isEmpty)
+                    if (docs.isEmpty) {
                       return Center(
                         child: Text(
                           "ไม่พบข้อมูล",
                           style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                       );
+                    }
 
                     return ListView.separated(
                       itemCount: docs.length,
@@ -451,7 +448,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 1. Media Section ---
               _buildSectionHeader("รูปภาพ (3-5 รูป) *"),
               const SizedBox(height: 10),
               SingleChildScrollView(
@@ -461,7 +457,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     DottedBorder(
                       color: AppTheme.primaryColor.withOpacity(0.5),
                       strokeWidth: 1,
-                      dashPattern: const [6, 3], // [ความยาวเส้นประ, ระยะห่าง]
+                      dashPattern: const [6, 3],
                       borderType: BorderType.RRect,
                       radius: const Radius.circular(10),
                       child: GestureDetector(
@@ -469,7 +465,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         child: Container(
                           width: 100,
                           height: 100,
-                          // ลบ border ออกจาก BoxDecoration เดิม
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(10),
@@ -478,7 +473,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
                               Icon(
-                                Icons.add_a_photo,
+                                CupertinoIcons.camera,
                                 color: AppTheme.primaryColor,
                                 size: 28,
                               ),
@@ -501,7 +496,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           Container(
                             width: 100,
                             height: 100,
-                            margin: const EdgeInsets.only(right: 10),
+                            margin: const EdgeInsets.only(left: 10),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
                               image: DecorationImage(
@@ -512,7 +507,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           ),
                           Positioned(
                             top: 4,
-                            right: 14,
+                            right: 4,
                             child: GestureDetector(
                               onTap: () =>
                                   setState(() => _selectedImages.remove(file)),
@@ -520,7 +515,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 radius: 10,
                                 backgroundColor: Colors.red,
                                 child: Icon(
-                                  Icons.close,
+                                  CupertinoIcons.xmark,
                                   size: 12,
                                   color: Colors.white,
                                 ),
@@ -554,7 +549,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(
-                              Icons.video_call,
+                              CupertinoIcons.video_camera,
                               size: 40,
                               color: Colors.grey,
                             ),
@@ -595,7 +590,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   radius: 12,
                                   backgroundColor: Colors.red,
                                   child: Icon(
-                                    Icons.close,
+                                    CupertinoIcons.xmark,
                                     size: 14,
                                     color: Colors.white,
                                   ),
@@ -603,7 +598,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                               ),
                             ),
                             const Icon(
-                              Icons.play_circle_fill,
+                              CupertinoIcons.play_circle_fill,
                               size: 50,
                               color: Colors.white70,
                             ),
@@ -613,7 +608,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 25),
 
-              // --- 2. Details Section ---
               _buildSectionHeader("รายละเอียดสินค้า"),
               const SizedBox(height: 15),
 
@@ -634,7 +628,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
               _buildSectionHeader("หมวดหมู่ *"),
               const SizedBox(height: 10),
-              // Category (Horizontal List)
+
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('categories')
@@ -694,7 +688,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 20),
 
               _buildTextField(
-                label: "รายละเอียดเพิ่มเติม", // Optional
+                label: "รายละเอียดเพิ่มเติม",
                 controller: _descController,
                 maxLines: 4,
               ),
@@ -706,10 +700,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 validator: (v) => v!.isEmpty ? "กรุณาระบุราคา" : null,
               ),
 
-              _buildTextField(
-                label: "แบรนด์", // Optional
-                controller: _brandController,
-              ),
+              _buildTextField(label: "แบรนด์", controller: _brandController),
 
               Row(
                 children: [
@@ -777,10 +768,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // --- Header Style (บังคับใช้ Theme Font) ---
   Widget _buildSectionHeader(String title) {
     bool isRequired = title.contains('*');
-    // ดึง Style หลักจาก Theme
     final baseStyle = Theme.of(
       context,
     ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold);
@@ -788,7 +777,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return RichText(
       text: TextSpan(
         text: title.replaceAll('*', '').trim(),
-        style: baseStyle, // ใช้ฟอนต์ Theme
+        style: baseStyle,
         children: isRequired
             ? [
                 const TextSpan(
@@ -801,7 +790,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // --- TextField Style (บังคับใช้ Theme Font) ---
   Widget _buildTextField({
     required String label,
     required TextEditingController controller,
@@ -813,7 +801,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isDark = theme.brightness == Brightness.dark;
     bool isRequired = label.contains('*');
 
-    // Style สำหรับ Label
     final labelStyle = theme.textTheme.bodyMedium!.copyWith(
       color: isDark ? Colors.grey[400] : Colors.grey[600],
     );
@@ -824,10 +811,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         maxLines: maxLines,
-        // ข้อความ input ใช้ฟอนต์ Theme
         style: theme.textTheme.bodyLarge,
         decoration: InputDecoration(
-          // ใช้ RichText ใน label เพื่อบังคับฟอนต์
           label: RichText(
             text: TextSpan(
               text: label.replaceAll('*', '').trim(),
@@ -859,7 +844,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  // --- Clickable Field Style (บังคับใช้ Theme Font) ---
   Widget _buildClickableField({
     required String label,
     required VoidCallback onTap,
@@ -868,7 +852,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isDark = theme.brightness == Brightness.dark;
     bool isRequired = label.contains('*');
 
-    // Style ของข้อความ
     final textStyle = theme.textTheme.bodyMedium!.copyWith(
       fontSize: 16,
       color:
@@ -907,7 +890,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 ),
               ),
               Icon(
-                Icons.keyboard_arrow_down,
+                CupertinoIcons.chevron_down,
+                size: 20,
                 color: isDark ? Colors.grey[400] : Colors.grey[600],
               ),
             ],

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
@@ -45,7 +46,7 @@ class GuestView extends StatelessWidget {
                       fit: BoxFit.contain,
                       scale: 4.5,
                       errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.shopping_bag_outlined,
+                        CupertinoIcons.bag,
                         size: 50,
                         color: AppTheme.primaryColor,
                       ),
@@ -143,7 +144,7 @@ class GuestView extends StatelessWidget {
       child: Row(
         children: [
           const Icon(
-            Icons.check_circle,
+            CupertinoIcons.checkmark_circle_fill,
             color: AppTheme.primaryColor,
             size: 20,
           ),
