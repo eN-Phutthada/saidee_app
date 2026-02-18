@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../widgets/guest_view.dart';
 
@@ -18,17 +20,20 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _brandController = TextEditingController();
   final _weightController = TextEditingController();
 
+  // Dropdown Values
   String? _selectedType;
   String? _selectedCategory;
   String? _selectedSize;
   String? _selectedCondition;
 
+  // Static Data
   final List<String> _sizeList = [
     'XS',
     'S',
@@ -45,7 +50,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'มีตำหนิ (Defect)',
   ];
 
+  // Media
   final List<File> _selectedImages = [];
+  File? _selectedVideo;
+  VideoPlayerController? _videoController;
+
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
@@ -56,35 +65,173 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _priceController.dispose();
     _brandController.dispose();
     _weightController.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImages() async {
-    final List<XFile> pickedFiles = await _picker.pickMultiImage();
-    if (pickedFiles.isNotEmpty) {
+  // --- 1. จัดการรูปภาพ (Camera & Gallery) ---
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('ถ่ายรูป'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('เลือกจากอัลบั้ม'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (source == ImageSource.camera) {
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+      if (photo != null) {
+        setState(() {
+          _selectedImages.add(File(photo.path));
+        });
+      }
+    } else {
+      final List<XFile> photos = await _picker.pickMultiImage(imageQuality: 80);
+      if (photos.isNotEmpty) {
+        // กรองไฟล์
+        final validFiles = photos.where((file) {
+          final path = file.path.toLowerCase();
+          return path.endsWith('.jpg') ||
+              path.endsWith('.jpeg') ||
+              path.endsWith('.png');
+        }).toList();
+
+        if (validFiles.length != photos.length) {
+          Get.snackbar(
+            "แจ้งเตือน",
+            "ระบบรองรับเฉพาะไฟล์ .jpg และ .png",
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+          );
+        }
+        setState(() {
+          _selectedImages.addAll(validFiles.map((e) => File(e.path)).toList());
+        });
+      }
+    }
+  }
+
+  // --- 2. จัดการวิดีโอ (Camera & Gallery) ---
+  void _showVideoSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.videocam),
+              title: const Text('ถ่ายวิดีโอ'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickVideo(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library),
+              title: const Text('เลือกจากอัลบั้ม'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickVideo(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickVideo(ImageSource source) async {
+    final XFile? video = await _picker.pickVideo(
+      source: source,
+      maxDuration: const Duration(seconds: 15),
+    );
+
+    if (video != null) {
+      File videoFile = File(video.path);
+      VideoPlayerController controller = VideoPlayerController.file(videoFile);
+      await controller.initialize();
+
+      if (controller.value.duration.inSeconds > 15) {
+        Get.snackbar(
+          "วิดีโอเกินกำหนด",
+          "กรุณาใช้วิดีโอความยาวไม่เกิน 15 วินาที",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        await controller.dispose();
+        return;
+      }
+
       setState(() {
-        _selectedImages.addAll(pickedFiles.map((e) => File(e.path)).toList());
+        _selectedVideo = videoFile;
+        _videoController = controller;
       });
     }
   }
 
+  // --- 3. บันทึกข้อมูล ---
   Future<void> _uploadAndSave() async {
-    // Validate FormField ด้วย
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedType == null || _selectedCategory == null) {
+    if (!_formKey.currentState!.validate()) {
       Get.snackbar(
-        "แจ้งเตือน",
-        "กรุณาเลือกประเภทและหมวดหมู่",
+        "ข้อมูลไม่ครบ",
+        "กรุณากรอกข้อมูลที่มีดอกจันสีแดงให้ครบถ้วน",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
       return;
     }
-    if (_selectedImages.isEmpty) {
+
+    if (_selectedType == null ||
+        _selectedCategory == null ||
+        _selectedSize == null ||
+        _selectedCondition == null) {
       Get.snackbar(
-        "แจ้งเตือน",
-        "กรุณาอัปโหลดรูปภาพอย่างน้อย 1 รูป",
+        "ข้อมูลไม่ครบ",
+        "กรุณาเลือก ประเภท, หมวดหมู่, ไซส์ และสภาพสินค้า",
+        backgroundColor: Colors.red.withOpacity(0.5),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (_selectedImages.length < 3 || _selectedImages.length > 5) {
+      Get.snackbar(
+        "รูปภาพไม่ถูกต้อง",
+        "กรุณาอัปโหลดรูปภาพ 3 ถึง 5 รูป",
+        backgroundColor: Colors.red.withOpacity(0.5),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (_selectedVideo == null) {
+      Get.snackbar(
+        "ขาดวิดีโอ",
+        "กรุณาอัปโหลดวิดีโอสินค้า (ไม่เกิน 15 วินาที)",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -96,16 +243,28 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     try {
       List<String> imageUrls = [];
+      String? videoUrl;
+
+      // Upload Images
       for (var imageFile in _selectedImages) {
         String fileName =
-            '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+            'img_${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
         Reference ref = FirebaseStorage.instance.ref().child(
-          'products/$fileName',
+          'products/images/$fileName',
         );
         await ref.putFile(imageFile);
         imageUrls.add(await ref.getDownloadURL());
       }
 
+      // Upload Video
+      String videoName = 'vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      Reference videoRef = FirebaseStorage.instance.ref().child(
+        'products/videos/$videoName',
+      );
+      await videoRef.putFile(_selectedVideo!);
+      videoUrl = await videoRef.getDownloadURL();
+
+      // Save Firestore
       await FirebaseFirestore.instance.collection('products').add({
         'sellerId': user!.uid,
         'name': _nameController.text.trim(),
@@ -114,10 +273,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'description': _descController.text.trim(),
         'price': double.parse(_priceController.text.trim()),
         'brand': _brandController.text.trim(),
-        'size': _selectedSize ?? '-',
-        'condition': _selectedCondition ?? '-',
+        'size': _selectedSize,
+        'condition': _selectedCondition,
         'weight': double.tryParse(_weightController.text.trim()) ?? 0.0,
         'images': imageUrls,
+        'video': videoUrl,
         'createdAt': FieldValue.serverTimestamp(),
         'status': 'active',
       });
@@ -125,7 +285,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       Get.back();
       Get.snackbar(
         "สำเร็จ",
-        "โพสต์สินค้าเรียบร้อยแล้ว",
+        "ลงขายสินค้าเรียบร้อยแล้ว",
         backgroundColor: AppTheme.primaryColor,
         colorText: Colors.white,
       );
@@ -141,15 +301,17 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
   }
 
-  void _showSelectionSheet(
+  // --- Helper UI Widgets ---
+
+  void _showDynamicSelectionSheet(
     String title,
-    List<String> items,
+    String collectionName,
     Function(String) onSelect,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).cardColor,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -162,30 +324,44 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               Text(
                 "เลือก$title",
-                style: TextStyle(
-                  fontSize: 20,
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => Divider(
-                    color: isDark ? Colors.grey[700] : Colors.grey[300],
-                  ),
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(
-                        items[index],
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection(collectionName)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData)
+                      return const Center(child: CircularProgressIndicator());
+                    final docs = snapshot.data!.docs;
+                    if (docs.isEmpty)
+                      return Center(
+                        child: Text(
+                          "ไม่พบข้อมูล",
+                          style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
-                      ),
-                      onTap: () {
-                        onSelect(items[index]);
-                        Navigator.pop(context);
+                      );
+
+                    return ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(color: theme.dividerColor),
+                      itemBuilder: (context, index) {
+                        var data = docs[index].data() as Map<String, dynamic>;
+                        return ListTile(
+                          title: Text(
+                            data['name'] ?? '',
+                            style: theme.textTheme.bodyLarge,
+                          ),
+                          onTap: () {
+                            onSelect(data['name']);
+                            Navigator.pop(context);
+                          },
+                        );
                       },
                     );
                   },
@@ -198,15 +374,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
-  void _showDynamicSelectionSheet(
+  void _showSelectionSheet(
     String title,
-    String collectionName,
+    List<String> items,
     Function(String) onSelect,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).cardColor,
+      backgroundColor: theme.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -219,53 +395,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
             children: [
               Text(
                 "เลือก$title",
-                style: TextStyle(
-                  fontSize: 20,
+                style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection(collectionName)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final docs = snapshot.data!.docs;
-                    if (docs.isEmpty) {
-                      return Center(
-                        child: Text(
-                          "ไม่พบข้อมูล",
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      );
-                    }
-
-                    return ListView.separated(
-                      itemCount: docs.length,
-                      separatorBuilder: (_, __) => Divider(
-                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+                child: ListView.separated(
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(color: theme.dividerColor),
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(
+                        items[index],
+                        style: theme.textTheme.bodyLarge,
                       ),
-                      itemBuilder: (context, index) {
-                        var data = docs[index].data() as Map<String, dynamic>;
-                        return ListTile(
-                          title: Text(
-                            data['name'] ?? '',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          onTap: () {
-                            onSelect(data['name']);
-                            Navigator.pop(context);
-                          },
-                        );
+                      onTap: () {
+                        onSelect(items[index]);
+                        Navigator.pop(context);
                       },
                     );
                   },
@@ -289,8 +437,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "สร้างรายการสินค้าใหม่",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          "ลงขายสินค้า",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
@@ -303,109 +451,46 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader("ข้อมูลทั่วไป"),
-              const SizedBox(height: 10),
-              _buildTextField(
-                controller: _nameController,
-                hint: "ชื่อสินค้า",
-                validator: (v) => v!.isEmpty ? "ระบุชื่อสินค้า" : null,
-              ),
-              const SizedBox(height: 15),
-              _buildClickableField(
-                label: _selectedType ?? "เลือกประเภท",
-                onTap: () => _showDynamicSelectionSheet(
-                  "ประเภทสินค้า",
-                  "types",
-                  (val) => setState(() => _selectedType = val),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              _buildSectionHeader("หมวดหมู่ *"),
-              const SizedBox(height: 10),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('categories')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox();
-                  final categories = snapshot.data!.docs;
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: categories.map((doc) {
-                        var data = doc.data() as Map<String, dynamic>;
-                        String catName = data['name'] ?? '';
-                        final isSelected = _selectedCategory == catName;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedCategory = catName),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppTheme.primaryColor.withOpacity(0.1)
-                                    : (isDark
-                                          ? Colors.grey[800]
-                                          : Colors.white),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : (isDark
-                                            ? Colors.grey[700]!
-                                            : Colors.grey.shade300),
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                catName,
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : (isDark
-                                            ? Colors.grey[300]
-                                            : Colors.grey.shade600),
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-
-              _buildSectionHeader("อัปโหลดรูป *"),
+              // --- 1. Media Section ---
+              _buildSectionHeader("รูปภาพ (3-5 รูป) *"),
               const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: _pickImages,
-                      child: Container(
-                        width: 100,
-                        height: 100,
-                        margin: const EdgeInsets.only(right: 10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.add_circle_outline,
-                            color: AppTheme.primaryColor,
-                            size: 30,
+                    DottedBorder(
+                      color: AppTheme.primaryColor.withOpacity(0.5),
+                      strokeWidth: 1,
+                      dashPattern: const [6, 3], // [ความยาวเส้นประ, ระยะห่าง]
+                      borderType: BorderType.RRect,
+                      radius: const Radius.circular(10),
+                      child: GestureDetector(
+                        onTap: _showImageSourceOptions,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          // ลบ border ออกจาก BoxDecoration เดิม
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.add_a_photo,
+                                color: AppTheme.primaryColor,
+                                size: 28,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                "เพิ่มรูป",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -418,7 +503,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             height: 100,
                             margin: const EdgeInsets.only(right: 10),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                               image: DecorationImage(
                                 image: FileImage(file),
                                 fit: BoxFit.cover,
@@ -450,55 +535,216 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 20),
 
-              _buildSectionHeader("คำอธิบาย"),
+              _buildSectionHeader("วิดีโอ (1 คลิป / 15 วิ) *"),
               const SizedBox(height: 10),
+              GestureDetector(
+                onTap: _showVideoSourceOptions,
+                child: Container(
+                  width: double.infinity,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: _selectedVideo == null
+                      ? Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.video_call,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              "แตะเพื่อเพิ่มวิดีโอ",
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (_videoController != null &&
+                                _videoController!.value.isInitialized)
+                              AspectRatio(
+                                aspectRatio:
+                                    _videoController!.value.aspectRatio,
+                                child: VideoPlayer(_videoController!),
+                              )
+                            else
+                              const Center(child: Text("วิดีโอพร้อม")),
+
+                            Positioned(
+                              top: 5,
+                              right: 5,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedVideo = null;
+                                    _videoController?.dispose();
+                                    _videoController = null;
+                                  });
+                                },
+                                child: const CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: Colors.red,
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Icon(
+                              Icons.play_circle_fill,
+                              size: 50,
+                              color: Colors.white70,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              // --- 2. Details Section ---
+              _buildSectionHeader("รายละเอียดสินค้า"),
+              const SizedBox(height: 15),
+
               _buildTextField(
-                controller: _descController,
-                hint: "รายละเอียดสินค้า...",
-                maxLines: 4,
+                label: "ชื่อสินค้า *",
+                controller: _nameController,
+                validator: (v) => v!.isEmpty ? "กรุณาระบุชื่อสินค้า" : null,
+              ),
+
+              _buildClickableField(
+                label: _selectedType ?? "ประเภทสินค้า *",
+                onTap: () => _showDynamicSelectionSheet(
+                  "ประเภทสินค้า",
+                  "types",
+                  (val) => setState(() => _selectedType = val),
+                ),
+              ),
+
+              _buildSectionHeader("หมวดหมู่ *"),
+              const SizedBox(height: 10),
+              // Category (Horizontal List)
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('categories')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox();
+                  final categories = snapshot.data!.docs;
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: categories.map((doc) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        String catName = data['name'] ?? '';
+                        final isSelected = _selectedCategory == catName;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _selectedCategory = catName),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.primaryColor.withOpacity(0.1)
+                                    : theme.cardColor,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.primaryColor
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: Text(
+                                catName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isSelected
+                                      ? AppTheme.primaryColor
+                                      : (isDark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[700]),
+                                  fontWeight: isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 20),
 
-              _buildLabelWithStar("ราคา (บาท)"),
               _buildTextField(
+                label: "รายละเอียดเพิ่มเติม", // Optional
+                controller: _descController,
+                maxLines: 4,
+              ),
+
+              _buildTextField(
+                label: "ราคา (บาท) *",
                 controller: _priceController,
-                hint: "ระบุราคา",
                 isNumber: true,
-                validator: (v) => v!.isEmpty ? "ระบุราคา" : null,
+                validator: (v) => v!.isEmpty ? "กรุณาระบุราคา" : null,
               ),
-              const SizedBox(height: 15),
 
-              _buildLabelWithStar("แบรนด์", isRequired: false),
-              _buildTextField(controller: _brandController, hint: "ระบุแบรนด์"),
-              const SizedBox(height: 15),
-
-              _buildClickableField(
-                label: _selectedSize ?? "ไซส์",
-                onTap: () => _showSelectionSheet(
-                  "ไซส์",
-                  _sizeList,
-                  (val) => setState(() => _selectedSize = val),
-                ),
-              ),
-              const SizedBox(height: 15),
-              _buildClickableField(
-                label: _selectedCondition ?? "สภาพสินค้า",
-                onTap: () => _showSelectionSheet(
-                  "สภาพสินค้า",
-                  _conditionList,
-                  (val) => setState(() => _selectedCondition = val),
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              _buildLabelWithStar("น้ำหนัก (กรัม)", isRequired: false),
               _buildTextField(
-                controller: _weightController,
-                hint: "กรัม",
-                isNumber: true,
+                label: "แบรนด์", // Optional
+                controller: _brandController,
               ),
-              const SizedBox(height: 40),
 
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildClickableField(
+                      label: _selectedSize ?? "ไซส์ *",
+                      onTap: () => _showSelectionSheet(
+                        "ไซส์",
+                        _sizeList,
+                        (val) => setState(() => _selectedSize = val),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: _buildClickableField(
+                      label: _selectedCondition ?? "สภาพ *",
+                      onTap: () => _showSelectionSheet(
+                        "สภาพสินค้า",
+                        _conditionList,
+                        (val) => setState(() => _selectedCondition = val),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              _buildTextField(
+                label: "น้ำหนัก (กรัม) *",
+                controller: _weightController,
+                isNumber: true,
+                validator: (v) => v!.isEmpty ? "ระบุน้ำหนัก" : null,
+              ),
+
+              const SizedBox(height: 30),
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -507,13 +753,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    elevation: 5,
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
-                          "โพสต์สินค้า",
+                          "ลงขายทันที",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -522,7 +769,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -530,171 +777,141 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  // --- Header Style (บังคับใช้ Theme Font) ---
   Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).colorScheme.onSurface,
+    bool isRequired = title.contains('*');
+    // ดึง Style หลักจาก Theme
+    final baseStyle = Theme.of(
+      context,
+    ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold);
+
+    return RichText(
+      text: TextSpan(
+        text: title.replaceAll('*', '').trim(),
+        style: baseStyle, // ใช้ฟอนต์ Theme
+        children: isRequired
+            ? [
+                const TextSpan(
+                  text: " *",
+                  style: TextStyle(color: Colors.red),
+                ),
+              ]
+            : [],
       ),
     );
   }
 
-  // --- แก้ไข 1: ปรับ Font และ Style ให้เหมือน _buildSectionHeader ---
-  Widget _buildLabelWithStar(String text, {bool isRequired = true}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: RichText(
-        text: TextSpan(
-          text: text,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600, // เพิ่มความหนาให้เหมือน Header
-            color: Theme.of(context).colorScheme.onSurface,
-            // ลบ fontFamily เฉพาะออก เพื่อให้ใช้ Theme หลัก หรือถ้าจำเป็นให้ใส่กลับ
-          ),
-          children: isRequired
-              ? [
-                  const TextSpan(
-                    text: " *",
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ]
-              : [],
-        ),
-      ),
-    );
-  }
-
-  // --- แก้ไข 2: ย้ายการแจ้งเตือน (Error Message) ให้ออกมาอยู่นอกขอบขาว ---
+  // --- TextField Style (บังคับใช้ Theme Font) ---
   Widget _buildTextField({
+    required String label,
     required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
     bool isNumber = false,
+    int maxLines = 1,
     String? Function(String?)? validator,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    bool isRequired = label.contains('*');
 
-    // ใช้ FormField เพื่อจัดการ state การตรวจสอบข้อมูล (Validation) แยกต่างหาก
-    return FormField<String>(
-      validator: (value) {
-        if (validator != null) {
-          return validator(controller.text);
-        }
-        return null;
-      },
-      builder: (FormFieldState<String> state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-                border: Border.all(
-                  // เปลี่ยนสีขอบเป็นสีแดงถ้ามี error
-                  color: state.hasError
-                      ? Colors.red
-                      : (isDark ? Colors.grey[700]! : Colors.grey.shade200),
-                ),
-              ),
-              child: TextField(
-                controller: controller,
-                maxLines: maxLines,
-                keyboardType: isNumber
-                    ? TextInputType.number
-                    : TextInputType.text,
-                style: TextStyle(color: theme.colorScheme.onSurface),
-                onChanged: (text) {
-                  // เคลียร์ error เมื่อผู้ใช้เริ่มพิมพ์ใหม่
-                  if (state.hasError) {
-                    state.didChange(text);
-                  }
-                },
-                decoration: InputDecoration(
-                  hintText: hint,
-                  hintStyle: TextStyle(
-                    color: isDark ? Colors.grey[400] : Colors.grey.shade400,
-                    fontSize: 14,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
+    // Style สำหรับ Label
+    final labelStyle = theme.textTheme.bodyMedium!.copyWith(
+      color: isDark ? Colors.grey[400] : Colors.grey[600],
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        maxLines: maxLines,
+        // ข้อความ input ใช้ฟอนต์ Theme
+        style: theme.textTheme.bodyLarge,
+        decoration: InputDecoration(
+          // ใช้ RichText ใน label เพื่อบังคับฟอนต์
+          label: RichText(
+            text: TextSpan(
+              text: label.replaceAll('*', '').trim(),
+              style: labelStyle,
+              children: isRequired
+                  ? [
+                      const TextSpan(
+                        text: " *",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ]
+                  : [],
             ),
-            // ส่วนแสดงผล Error Text อยู่นอก Container (นอกขอบขาว)
-            if (state.hasError)
-              Padding(
-                padding: const EdgeInsets.only(top: 6.0, left: 10.0),
-                child: Text(
-                  state.errorText!,
-                  style: const TextStyle(color: Colors.red, fontSize: 12),
-                ),
-              ),
-          ],
-        );
-      },
+          ),
+          filled: true,
+          fillColor: theme.cardColor,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 15,
+          ),
+          isDense: true,
+        ),
+        validator: validator,
+      ),
     );
   }
 
+  // --- Clickable Field Style (บังคับใช้ Theme Font) ---
   Widget _buildClickableField({
     required String label,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    bool isRequired = label.contains('*');
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(
-            color: isDark ? Colors.grey[700]! : Colors.grey.shade200,
+    // Style ของข้อความ
+    final textStyle = theme.textTheme.bodyMedium!.copyWith(
+      fontSize: 16,
+      color:
+          (label.contains("เลือก") ||
+              label.contains("ไซส์") ||
+              label.contains("สภาพ"))
+          ? (isDark ? Colors.grey[400] : Colors.grey[600])
+          : theme.colorScheme.onSurface,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(10),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color:
-                    (label.startsWith("เลือก") ||
-                        label == "ไซส์" ||
-                        label == "สภาพสินค้า")
-                    ? (isDark ? Colors.grey[400] : Colors.grey.shade400)
-                    : theme.colorScheme.onSurface,
-                fontSize: 14,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: label.replaceAll('*', '').trim(),
+                  style: textStyle,
+                  children: isRequired
+                      ? [
+                          const TextSpan(
+                            text: " *",
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ]
+                      : [],
+                ),
               ),
-            ),
-            Icon(
-              Icons.keyboard_arrow_right,
-              color: isDark ? Colors.grey[400] : Colors.grey,
-            ),
-          ],
+              Icon(
+                Icons.keyboard_arrow_down,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ],
+          ),
         ),
       ),
     );

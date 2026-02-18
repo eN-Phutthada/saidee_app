@@ -43,16 +43,100 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-    );
-    if (pickedFile != null) {
-      setState(() {
-        _newImageFile = File(pickedFile.path);
-      });
+  // 1. แก้ไขฟังก์ชันนี้ให้รับ parameter source
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 80, // ปรับคุณภาพรูปไม่ให้ไฟล์ใหญ่เกินไป
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _newImageFile = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      print("Error picking image: $e");
     }
+  }
+
+  // 2. เพิ่มฟังก์ชันแสดงตัวเลือก (Bottom Sheet)
+  void _showImageSourceOptions() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "เปลี่ยนรูปโปรไฟล์",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildOptionBtn(
+                    icon: Icons.camera_alt,
+                    label: "กล้อง",
+                    color: Colors.blueAccent,
+                    onTap: () {
+                      Get.back(); // ปิด Bottom Sheet ก่อน
+                      _pickImage(ImageSource.camera); // เรียกกล้อง
+                    },
+                  ),
+                  _buildOptionBtn(
+                    icon: Icons.photo_library,
+                    label: "คลังภาพ",
+                    color: Colors.purpleAccent,
+                    onTap: () {
+                      Get.back();
+                      _pickImage(ImageSource.gallery); // เรียกแกลเลอรี
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget ปุ่มตัวเลือกย่อย
+  Widget _buildOptionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -144,7 +228,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               // --- Profile Image Section ---
               Center(
                 child: GestureDetector(
-                  onTap: _pickImage,
+                  onTap: _showImageSourceOptions,
                   child: Stack(
                     children: [
                       Container(

@@ -94,9 +94,8 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             if (_nameController.text.isEmpty) {
               _nameController.text = data['name'] ?? '';
             }
-            if (_phoneController.text.isEmpty) {
+            if (_phoneController.text.isEmpty)
               _phoneController.text = data['phone'] ?? '';
-            }
           });
         }
       } catch (e) {
