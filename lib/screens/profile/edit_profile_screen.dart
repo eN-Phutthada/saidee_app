@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
+// อย่าลืม Import หน้า AddAddressScreen
+import 'package:saidee_app/screens/profile/add_address_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -22,6 +24,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _newImageFile;
   bool _isLoading = false;
   String? _currentImageUrl;
+  final User? currentUser = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
@@ -45,7 +48,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final XFile? pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
     );
-
     if (pickedFile != null) {
       setState(() {
         _newImageFile = File(pickedFile.path);
@@ -55,8 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     setState(() => _isLoading = true);
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (currentUser == null) return;
 
     try {
       String? imageUrl = _currentImageUrl;
@@ -65,15 +66,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('user_images')
-            .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg');
-
+            .child(
+              '${currentUser!.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
         await storageRef.putFile(_newImageFile!);
         imageUrl = await storageRef.getDownloadURL();
       }
 
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(currentUser!.uid)
           .update({
             'name': _nameController.text.trim(),
             'bio': _bioController.text.trim(),
@@ -139,6 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // --- Profile Image Section ---
               Center(
                 child: GestureDetector(
                   onTap: _pickImage,
@@ -206,10 +209,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
 
+              // --- Name & Bio ---
               _buildLabel(context, "ชื่อ - สกุล"),
               _buildTextField(context, _nameController),
               const SizedBox(height: 20),
-
               _buildLabel(context, "คำอธิบายเกี่ยวกับฉัน"),
               Container(
                 height: 120,
@@ -236,6 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
 
+              // --- Contact Info ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -248,7 +252,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   Text(
-                    "( จะแสดงเฉพาะเจ้าของบัญชีเท่านั้น )",
+                    "( เฉพาะเจ้าของบัญชี )",
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? Colors.grey[400] : Colors.grey,
@@ -257,23 +261,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ],
               ),
               const SizedBox(height: 15),
-
               _buildReadOnlyRow(
                 context,
                 "เบอร์โทร",
                 widget.userData['phone'] ?? '',
               ),
-
               const SizedBox(height: 15),
-
               _buildReadOnlyRow(
                 context,
                 "อีเมล*",
                 widget.userData['email'] ?? '',
               ),
-
               const SizedBox(height: 30),
 
+              // --- Address Section (แก้ไขใหม่) ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -285,57 +286,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                  Text(
-                    "เพิ่มที่อยู่",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onTap: () {
+                      // ส่งค่าว่างไป เพื่อบอกว่าเป็นโหมด "เพิ่มใหม่"
+                      Get.to(() => const AddAddressScreen());
+                    },
+                    child: const Text(
+                      "เพิ่มที่อยู่",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.grey[700]! : Colors.grey.shade300,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "ที่อยู่ปัจจุบัน",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "กรุณาเพิ่มที่อยู่จัดส่ง...",
-                            style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey,
-                            ),
-                          ),
-                        ],
+
+              // StreamBuilder เพื่อแสดงรายการที่อยู่
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('addresses')
+                    .orderBy(
+                      'is_default',
+                      descending: true,
+                    ) // เอาค่า Default ขึ้นก่อน
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError)
+                    return const Text("เกิดข้อผิดพลาดในการโหลดที่อยู่");
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    return const Center(child: CircularProgressIndicator());
+
+                  final addresses = snapshot.data!.docs;
+
+                  if (addresses.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.grey[700]!
+                              : Colors.grey.shade300,
+                        ),
                       ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: isDark ? Colors.grey[400] : Colors.grey,
-                    ),
-                  ],
-                ),
+                      child: const Center(
+                        child: Text(
+                          "ยังไม่มีที่อยู่จัดส่ง",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: addresses.map((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      return _buildAddressCard(context, doc.id, data);
+                    }).toList(),
+                  );
+                },
               ),
+
               const SizedBox(height: 30),
             ],
           ),
@@ -344,6 +362,100 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  // --- Widget การ์ดแสดงที่อยู่ ---
+  Widget _buildAddressCard(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    bool isDefault = data['is_default'] ?? false;
+
+    return GestureDetector(
+      onTap: () {
+        // กดเพื่อแก้ไข: ส่ง docId และ data ไปด้วย
+        Get.to(() => AddAddressScreen(docId: docId, existingData: data));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDefault
+                ? AppTheme.primaryColor
+                : (isDark ? Colors.grey[700]! : Colors.grey.shade300),
+            width: isDefault ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.location_on,
+              color: isDefault ? AppTheme.primaryColor : Colors.grey,
+              size: 24,
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        "${data['receiver_name']} (${data['phone']})",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (isDefault) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            "Default",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "${data['address_detail']} ${data['sub_district']} ${data['district']} ${data['province']} ${data['postcode']}",
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[700],
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.edit, size: 18, color: Colors.grey[400]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ... (Widget _buildLabel, _buildTextField, _buildReadOnlyRow เดิม ไม่ต้องแก้)
   Widget _buildLabel(BuildContext context, String label) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
@@ -383,7 +495,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildReadOnlyRow(BuildContext context, String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       children: [
         SizedBox(

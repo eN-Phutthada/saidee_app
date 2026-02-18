@@ -69,6 +69,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _uploadAndSave() async {
+    // Validate FormField ด้วย
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedType == null || _selectedCategory == null) {
@@ -540,6 +541,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  // --- แก้ไข 1: ปรับ Font และ Style ให้เหมือน _buildSectionHeader ---
   Widget _buildLabelWithStar(String text, {bool isRequired = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -548,8 +550,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           text: text,
           style: TextStyle(
             fontSize: 16,
+            fontWeight: FontWeight.w600, // เพิ่มความหนาให้เหมือน Header
             color: Theme.of(context).colorScheme.onSurface,
-            fontFamily: 'Kanit',
+            // ลบ fontFamily เฉพาะออก เพื่อให้ใช้ Theme หลัก หรือถ้าจำเป็นให้ใส่กลับ
           ),
           children: isRequired
               ? [
@@ -564,6 +567,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  // --- แก้ไข 2: ย้ายการแจ้งเตือน (Error Message) ให้ออกมาอยู่นอกขอบขาว ---
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -574,40 +578,75 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor, // ใช้สีตาม Theme (ขาว หรือ เทาเข้ม)
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-        border: Border.all(
-          color: isDark ? Colors.grey[700]! : Colors.grey.shade200,
-        ),
-      ),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: TextStyle(color: theme.colorScheme.onSurface), // สีตัวอักษร
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey.shade400,
-            fontSize: 14,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 14,
-          ),
-        ),
-        validator: validator,
-      ),
+    // ใช้ FormField เพื่อจัดการ state การตรวจสอบข้อมูล (Validation) แยกต่างหาก
+    return FormField<String>(
+      validator: (value) {
+        if (validator != null) {
+          return validator(controller.text);
+        }
+        return null;
+      },
+      builder: (FormFieldState<String> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(
+                  // เปลี่ยนสีขอบเป็นสีแดงถ้ามี error
+                  color: state.hasError
+                      ? Colors.red
+                      : (isDark ? Colors.grey[700]! : Colors.grey.shade200),
+                ),
+              ),
+              child: TextField(
+                controller: controller,
+                maxLines: maxLines,
+                keyboardType: isNumber
+                    ? TextInputType.number
+                    : TextInputType.text,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+                onChanged: (text) {
+                  // เคลียร์ error เมื่อผู้ใช้เริ่มพิมพ์ใหม่
+                  if (state.hasError) {
+                    state.didChange(text);
+                  }
+                },
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey.shade400,
+                    fontSize: 14,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+            // ส่วนแสดงผล Error Text อยู่นอก Container (นอกขอบขาว)
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6.0, left: 10.0),
+                child: Text(
+                  state.errorText!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
