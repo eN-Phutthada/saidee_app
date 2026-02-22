@@ -27,3 +27,10 @@ Future<void> _setupFirstAdmin() async {
     Get.snackbar("Error", e.toString());
   }
 }
+
+// Image.network(
+//  'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=1000',
+//  height: 220,
+//  width: double.infinity,
+//  fit: BoxFit.cover,
+//  ),

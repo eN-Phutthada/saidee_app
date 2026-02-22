@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,7 +7,6 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
-import '../../widgets/common_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
     try {
@@ -58,9 +56,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (adminDoc.exists) {
           Get.snackbar(
-            "ยินดีต้อนรับผู้ดูแลระบบ",
+            "ยินดีต้อนรับ",
             "เข้าสู่ระบบ Admin เรียบร้อยแล้ว",
-            backgroundColor: Colors.blueAccent.withOpacity(0.9),
+            backgroundColor: Colors.blueAccent,
             colorText: Colors.white,
           );
           Get.offAll(() => const AdminDashboard());
@@ -68,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Get.snackbar(
             "สำเร็จ",
             "เข้าสู่ระบบเรียบร้อยแล้ว",
-            backgroundColor: AppTheme.primaryColor.withOpacity(0.9),
+            backgroundColor: AppTheme.primaryColor,
             colorText: Colors.white,
           );
           Get.offAll(() => const HomeScreen());
@@ -76,15 +74,14 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } on FirebaseAuthException catch (e) {
       String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
-      if (e.code == 'user-not-found') {
+      if (e.code == 'user-not-found')
         message = 'ไม่พบผู้ใช้งานนี้ กรุณาลงทะเบียน';
-      } else if (e.code == 'wrong-password') {
+      else if (e.code == 'wrong-password')
         message = 'รหัสผ่านไม่ถูกต้อง';
-      } else if (e.code == 'invalid-email') {
+      else if (e.code == 'invalid-email')
         message = 'รูปแบบอีเมลไม่ถูกต้อง';
-      } else {
+      else
         message = e.message ?? message;
-      }
 
       Get.snackbar(
         "เข้าสู่ระบบไม่สำเร็จ",
@@ -95,9 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       Get.snackbar("Error", e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -109,168 +104,290 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          const TopGreenShape(),
-          SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 80),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: AppLogo(size: 100),
-                    ),
-                    const SizedBox(height: 20),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [Colors.black, Colors.grey[900]!]
+                    : [AppTheme.primaryColor.withOpacity(0.1), Colors.white],
+              ),
+            ),
+          ),
 
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        "เข้าสู่ระบบ",
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    CustomTextField(
-                      label: "อีเมล",
-                      inputType: TextInputType.emailAddress,
-                      controller: _emailController,
-                      validator: (value) => (value == null || value.isEmpty)
-                          ? 'กรุณากรอกอีเมล'
-                          : null,
-                    ),
-
-                    CustomTextField(
-                      label: "รหัสผ่าน",
-                      isPassword: true,
-                      controller: _passwordController,
-                      obscureText: _hidePassword,
-                      onToggleVisibility: _togglePasswordVisibility,
-                      validator: (value) => (value == null || value.isEmpty)
-                          ? 'กรุณากรอกรหัสผ่าน'
-                          : null,
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text("เข้าสู่ระบบ"),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    Row(
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          "คุณยังไม่มีบัญชี? ",
-                          style: TextStyle(
-                            color: isDark ? Colors.grey[400] : Colors.grey,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterScreen(),
-                            ),
-                          ),
-                          child: const Text(
-                            "ลงทะเบียน",
-                            style: TextStyle(
+                        Image.asset(
+                          'assets/images/logo.png',
+                          height: 120,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              CupertinoIcons.cube_box_fill,
+                              size: 100,
                               color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 20),
+
+                        Text(
+                          "ยินดีต้อนรับกลับมา!",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
+                        const SizedBox(height: 5),
+                        Text(
+                          "เข้าสู่ระบบเพื่อเริ่มช็อปและขายเสื้อผ้าของคุณ",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              _buildInputField(
+                                controller: _emailController,
+                                label: "อีเมล",
+                                icon: CupertinoIcons.mail_solid,
+                                keyboardType: TextInputType.emailAddress,
+                                isDark: isDark,
+                                validator: (val) => (val == null || val.isEmpty)
+                                    ? 'กรุณากรอกอีเมล'
+                                    : null,
+                              ),
+                              const SizedBox(height: 15),
+                              _buildInputField(
+                                controller: _passwordController,
+                                label: "รหัสผ่าน",
+                                icon: CupertinoIcons.lock_fill,
+                                isPassword: true,
+                                isDark: isDark,
+                                obscureText: _hidePassword,
+                                onToggleVisibility: _togglePasswordVisibility,
+                                validator: (val) => (val == null || val.isEmpty)
+                                    ? 'กรุณากรอกรหัสผ่าน'
+                                    : null,
+                              ),
+
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () {}, // TODO: ลืมรหัสผ่าน
+                                  child: Text(
+                                    "ลืมรหัสผ่าน?",
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 55,
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _login,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    elevation: 2,
+                                  ),
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.white,
+                                        )
+                                      : const Text(
+                                          "เข้าสู่ระบบ",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "คุณยังไม่มีบัญชีใช่ไหม? ",
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Get.to(() => const RegisterScreen()),
+                              child: const Text(
+                                "ลงทะเบียนเลย",
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // --- DEBUG SECTION ---
+                        const Divider(),
+                        const Text(
+                          "DEBUG MODE (Login ด่วน)",
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            _buildDebugBtn(
+                              "Admin",
+                              CupertinoIcons.at_badge_minus,
+                              Colors.black87,
+                              () {
+                                _emailController.text = "admin@saidee.com";
+                                _passwordController.text = "password1234";
+                                _login();
+                              },
+                            ),
+                            _buildDebugBtn(
+                              "User 1",
+                              CupertinoIcons.person,
+                              Colors.blueGrey,
+                              () {
+                                _emailController.text = "saidee@gmail.com";
+                                _passwordController.text = "123456";
+                                _login();
+                              },
+                            ),
+                            _buildDebugBtn(
+                              "User 2",
+                              CupertinoIcons.person,
+                              Colors.blueGrey,
+                              () {
+                                _emailController.text = "saidee2@gmail.com";
+                                _passwordController.text = "12345678";
+                                _login();
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
-                    const SizedBox(height: 20),
-
-                    // --- DEBUG SECTION (ลบออกเมื่อขึ้น Production) ---
-                    const Divider(),
-                    const Text(
-                      "DEBUG MODE (Login ด่วน)",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // ปุ่ม Login Admin
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            _emailController.text =
-                                "admin@saidee.com"; // อีเมล Admin ที่สร้างไว้
-                            _passwordController.text = "password1234";
-                            _login(); // เรียกฟังก์ชัน Login เดิม
-                          },
-                          icon: const Icon(
-                            CupertinoIcons.at_badge_minus,
-                            size: 18,
-                          ),
-                          label: const Text("Admin"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black87,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            _emailController.text =
-                                "saidee@gmail.com"; // อีเมล User ตามตัวอย่างในเอกสาร
-                            _passwordController.text = "123456";
-                            _login();
-                          },
-                          icon: const Icon(CupertinoIcons.person, size: 18),
-                          label: const Text("User"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueGrey,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 15,
-                              vertical: 8,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-          if (_isLoading)
-            Container(
-              color: Colors.black.withOpacity(0.3),
-              child: const Center(child: CircularProgressIndicator()),
-            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: isDark ? Colors.grey[400] : Colors.grey[600],
+        ),
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText
+                      ? CupertinoIcons.eye_slash_fill
+                      : CupertinoIcons.eye_fill,
+                  color: Colors.grey,
+                ),
+                onPressed: onToggleVisibility,
+              )
+            : null,
+        filled: true,
+        fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+      ),
+      validator: validator,
+    );
+  }
+
+  Widget _buildDebugBtn(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return ElevatedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
       ),
     );
   }

@@ -7,6 +7,8 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
+// นำเข้าหน้า StoreProfileScreen
+import 'package:saidee_app/screens/store/store_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -169,6 +171,9 @@ class ProfileScreen extends StatelessWidget {
                           context,
                           CupertinoIcons.cube_box,
                           "การสั่งซื้อ\nของฉัน",
+                          onTap: () {
+                            // TODO: ไปหน้าการสั่งซื้อ
+                          },
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -177,6 +182,12 @@ class ProfileScreen extends StatelessWidget {
                           context,
                           CupertinoIcons.bag,
                           "การขาย\nของฉัน",
+                          onTap: () {
+                            // ส่ง user.uid ไปให้ StoreProfileScreen เพื่อยืนยันว่าเป็นเจ้าของร้าน
+                            Get.to(
+                              () => StoreProfileScreen(sellerId: user.uid),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -264,42 +275,53 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBigButton(BuildContext context, IconData icon, String label) {
+  // ปรับให้รับค่า onTap ได้
+  Widget _buildBigButton(
+    BuildContext context,
+    IconData icon,
+    String label, {
+    VoidCallback? onTap,
+  }) {
     final theme = Theme.of(context);
-    return Container(
-      height: 100,
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 40, color: theme.iconTheme.color),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: theme.iconTheme.color),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // ปรับให้รับค่า onTap ได้เช่นกัน (เผื่อใช้ในอนาคต)
   Widget _buildMenuTile(
     BuildContext context, {
     required String title,
     bool isBold = false,
     bool hasBorder = false,
     bool useContainer = true,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -317,7 +339,7 @@ class ProfileScreen extends StatelessWidget {
         size: 16,
         color: theme.iconTheme.color?.withOpacity(0.5),
       ),
-      onTap: () {},
+      onTap: onTap ?? () {},
     );
 
     if (!useContainer) {

@@ -9,10 +9,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
+import '../../models/product_model.dart';
 import '../../widgets/guest_view.dart';
 
 class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({super.key});
+  final ProductModel? product;
+
+  const AddProductScreen({super.key, this.product});
 
   @override
   State<AddProductScreen> createState() => _AddProductScreenState();
@@ -56,8 +59,46 @@ class _AddProductScreenState extends State<AddProductScreen> {
   File? _selectedVideo;
   VideoPlayerController? _videoController;
 
+  List<String> _existingImages = [];
+  String? _existingVideoUrl;
+
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+
+  bool get _isEditing => widget.product != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) {
+      _loadExistingData();
+    }
+  }
+
+  void _loadExistingData() {
+    final p = widget.product!;
+    _nameController.text = p.name;
+    _descController.text = p.description;
+    _priceController.text = p.price.toStringAsFixed(0);
+    _brandController.text = p.brand;
+    _weightController.text = p.weight.toStringAsFixed(0);
+
+    _selectedType = p.type;
+    _selectedCategory = p.category;
+    _selectedSize = p.size;
+    _selectedCondition = p.condition;
+
+    _existingImages = List.from(p.images);
+    _existingVideoUrl = p.video;
+
+    if (_existingVideoUrl != null && _existingVideoUrl!.isNotEmpty) {
+      _videoController =
+          VideoPlayerController.networkUrl(Uri.parse(_existingVideoUrl!))
+            ..initialize().then((_) {
+              setState(() {});
+            });
+    }
+  }
 
   @override
   void dispose() {
@@ -104,11 +145,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         source: ImageSource.camera,
         imageQuality: 80,
       );
-      if (photo != null) {
-        setState(() {
-          _selectedImages.add(File(photo.path));
-        });
-      }
+      if (photo != null) setState(() => _selectedImages.add(File(photo.path)));
     } else {
       final List<XFile> photos = await _picker.pickMultiImage(imageQuality: 80);
       if (photos.isNotEmpty) {
@@ -127,9 +164,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
             colorText: Colors.white,
           );
         }
-        setState(() {
-          _selectedImages.addAll(validFiles.map((e) => File(e.path)).toList());
-        });
+        setState(
+          () => _selectedImages.addAll(
+            validFiles.map((e) => File(e.path)).toList(),
+          ),
+        );
       }
     }
   }
@@ -187,6 +226,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       setState(() {
         _selectedVideo = videoFile;
         _videoController = controller;
+        _existingVideoUrl = null;
       });
     }
   }
@@ -195,7 +235,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (!_formKey.currentState!.validate()) {
       Get.snackbar(
         "ข้อมูลไม่ครบ",
-        "กรุณากรอกข้อมูลที่มีดอกจันสีแดงให้ครบถ้วน",
+        "กรุณากรอกข้อมูลให้ครบถ้วน",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -215,20 +255,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
       return;
     }
 
-    if (_selectedImages.length < 3 || _selectedImages.length > 5) {
+    int totalImages = _existingImages.length + _selectedImages.length;
+    if (totalImages < 3 || totalImages > 5) {
       Get.snackbar(
         "รูปภาพไม่ถูกต้อง",
-        "กรุณาอัปโหลดรูปภาพ 3 ถึง 5 รูป",
+        "กรุณาอัปโหลดรูปภาพ 3 ถึง 5 รูป (รวมรูปเดิม)",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
       return;
     }
 
-    if (_selectedVideo == null) {
+    if (_selectedVideo == null &&
+        (_existingVideoUrl == null || _existingVideoUrl!.isEmpty)) {
       Get.snackbar(
         "ขาดวิดีโอ",
-        "กรุณาอัปโหลดวิดีโอสินค้า (ไม่เกิน 15 วินาที)",
+        "กรุณาอัปโหลดวิดีโอสินค้า",
         backgroundColor: Colors.red.withOpacity(0.5),
         colorText: Colors.white,
       );
@@ -239,10 +281,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     try {
-      List<String> imageUrls = [];
-      String? videoUrl;
+      List<String> finalImageUrls = List.from(_existingImages);
+      String? finalVideoUrl = _existingVideoUrl;
 
-      // Upload Images
       for (var imageFile in _selectedImages) {
         String fileName =
             'img_${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
@@ -250,19 +291,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'products/images/$fileName',
         );
         await ref.putFile(imageFile);
-        imageUrls.add(await ref.getDownloadURL());
+        finalImageUrls.add(await ref.getDownloadURL());
       }
 
-      // Upload Video
-      String videoName = 'vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
-      Reference videoRef = FirebaseStorage.instance.ref().child(
-        'products/videos/$videoName',
-      );
-      await videoRef.putFile(_selectedVideo!);
-      videoUrl = await videoRef.getDownloadURL();
+      if (_selectedVideo != null) {
+        String videoName = 'vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
+        Reference videoRef = FirebaseStorage.instance.ref().child(
+          'products/videos/$videoName',
+        );
+        await videoRef.putFile(_selectedVideo!);
+        finalVideoUrl = await videoRef.getDownloadURL();
+      }
 
-      // Save Firestore
-      await FirebaseFirestore.instance.collection('products').add({
+      Map<String, dynamic> productData = {
         'sellerId': user!.uid,
         'name': _nameController.text.trim(),
         'type': _selectedType,
@@ -273,19 +314,36 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'size': _selectedSize,
         'condition': _selectedCondition,
         'weight': double.tryParse(_weightController.text.trim()) ?? 0.0,
-        'images': imageUrls,
-        'video': videoUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-        'status': 'active',
-      });
+        'images': finalImageUrls,
+        'video': finalVideoUrl ?? '',
+      };
 
-      Get.back();
-      Get.snackbar(
-        "สำเร็จ",
-        "ลงขายสินค้าเรียบร้อยแล้ว",
-        backgroundColor: AppTheme.primaryColor,
-        colorText: Colors.white,
-      );
+      if (_isEditing) {
+        await FirebaseFirestore.instance
+            .collection('products')
+            .doc(widget.product!.id)
+            .update(productData);
+        Get.back();
+        Get.snackbar(
+          "สำเร็จ",
+          "แก้ไขสินค้าเรียบร้อยแล้ว",
+          backgroundColor: AppTheme.primaryColor,
+          colorText: Colors.white,
+        );
+      } else {
+        productData['createdAt'] = FieldValue.serverTimestamp();
+        productData['status'] = 'active';
+        await FirebaseFirestore.instance
+            .collection('products')
+            .add(productData);
+        Get.back();
+        Get.snackbar(
+          "สำเร็จ",
+          "ลงขายสินค้าเรียบร้อยแล้ว",
+          backgroundColor: AppTheme.primaryColor,
+          colorText: Colors.white,
+        );
+      }
     } catch (e) {
       Get.snackbar(
         "เกิดข้อผิดพลาด",
@@ -328,6 +386,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 child: StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
                       .collection(collectionName)
+                      .orderBy('name')
                       .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
@@ -433,9 +492,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "ลงขายสินค้า",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        title: Text(
+          _isEditing ? "แก้ไขสินค้า" : "ลงขายสินค้า",
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
@@ -488,6 +547,41 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ],
                           ),
                         ),
+                      ),
+                    ),
+                    ..._existingImages.map(
+                      (url) => Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            margin: const EdgeInsets.only(left: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              image: DecorationImage(
+                                image: NetworkImage(url),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () =>
+                                  setState(() => _existingImages.remove(url)),
+                              child: const CircleAvatar(
+                                radius: 10,
+                                backgroundColor: Colors.red,
+                                child: Icon(
+                                  CupertinoIcons.xmark,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     ..._selectedImages.map(
@@ -544,7 +638,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
                     ),
                   ),
-                  child: _selectedVideo == null
+                  child:
+                      (_selectedVideo == null &&
+                          (_existingVideoUrl == null ||
+                              _existingVideoUrl!.isEmpty))
                       ? Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -582,6 +679,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedVideo = null;
+                                    _existingVideoUrl = null;
                                     _videoController?.dispose();
                                     _videoController = null;
                                   });
@@ -616,7 +714,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 controller: _nameController,
                 validator: (v) => v!.isEmpty ? "กรุณาระบุชื่อสินค้า" : null,
               ),
-
               _buildClickableField(
                 label: _selectedType ?? "ประเภทสินค้า *",
                 onTap: () => _showDynamicSelectionSheet(
@@ -628,60 +725,60 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
               _buildSectionHeader("หมวดหมู่ *"),
               const SizedBox(height: 10),
-
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
                     .collection('categories')
+                    .orderBy('name')
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) return const SizedBox();
                   final categories = snapshot.data!.docs;
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: categories.map((doc) {
-                        var data = doc.data() as Map<String, dynamic>;
-                        String catName = data['name'] ?? '';
-                        final isSelected = _selectedCategory == catName;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedCategory = catName),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? AppTheme.primaryColor.withOpacity(0.1)
-                                    : theme.cardColor,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : Colors.transparent,
-                                ),
-                              ),
-                              child: Text(
-                                catName,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : (isDark
-                                            ? Colors.grey[400]
-                                            : Colors.grey[700]),
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                ),
-                              ),
+
+                  // --- แก้ไขใช้ Wrap แทน SingleChildScrollView เพื่อให้ตัดขึ้นบรรทัดใหม่ได้อัตโนมัติ ---
+                  return Wrap(
+                    spacing: 10, // ระยะห่างแนวนอน
+                    runSpacing: 10, // ระยะห่างแนวตั้ง (บรรทัดใหม่)
+                    children: categories.map((doc) {
+                      var data = doc.data() as Map<String, dynamic>;
+                      String catName = data['name'] ?? '';
+                      final isSelected = _selectedCategory == catName;
+                      return GestureDetector(
+                        onTap: () =>
+                            setState(() => _selectedCategory = catName),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.primaryColor.withOpacity(0.1)
+                                : theme.cardColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : (isDark
+                                        ? Colors.grey[800]!
+                                        : Colors.grey[300]!),
+                            ), // ปรับสีขอบให้สวยขึ้น
+                          ),
+                          child: Text(
+                            catName,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : (isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[700]),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      );
+                    }).toList(),
                   );
                 },
               ),
@@ -692,14 +789,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 controller: _descController,
                 maxLines: 4,
               ),
-
               _buildTextField(
                 label: "ราคา (บาท) *",
                 controller: _priceController,
                 isNumber: true,
                 validator: (v) => v!.isEmpty ? "กรุณาระบุราคา" : null,
               ),
-
               _buildTextField(label: "แบรนด์", controller: _brandController),
 
               Row(
@@ -746,13 +841,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 5,
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "ลงขายทันที",
-                          style: TextStyle(
+                      : Text(
+                          _isEditing ? "บันทึกการแก้ไข" : "ลงขายทันที",
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -773,7 +867,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final baseStyle = Theme.of(
       context,
     ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold);
-
     return RichText(
       text: TextSpan(
         text: title.replaceAll('*', '').trim(),
@@ -800,7 +893,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     bool isRequired = label.contains('*');
-
     final labelStyle = theme.textTheme.bodyMedium!.copyWith(
       color: isDark ? Colors.grey[400] : Colors.grey[600],
     );
@@ -851,7 +943,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     bool isRequired = label.contains('*');
-
     final textStyle = theme.textTheme.bodyMedium!.copyWith(
       fontSize: 16,
       color:
@@ -875,20 +966,26 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              RichText(
-                text: TextSpan(
-                  text: label.replaceAll('*', '').trim(),
-                  style: textStyle,
-                  children: isRequired
-                      ? [
-                          const TextSpan(
-                            text: " *",
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ]
-                      : [],
+              // --- แก้ไข: นำ Expanded มาครอบ RichText กันตัวอักษรล้น และใส่ overflow: ellipsis ---
+              Expanded(
+                child: RichText(
+                  maxLines: 1, // บังคับให้อยู่บรรทัดเดียว
+                  overflow: TextOverflow.ellipsis, // ใส่จุด ... เมื่อล้น
+                  text: TextSpan(
+                    text: label.replaceAll('*', '').trim(),
+                    style: textStyle,
+                    children: isRequired
+                        ? [
+                            const TextSpan(
+                              text: " *",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ]
+                        : [],
+                  ),
                 ),
               ),
+              const SizedBox(width: 8), // เว้นระยะห่างไอคอนเล็กน้อย
               Icon(
                 CupertinoIcons.chevron_down,
                 size: 20,

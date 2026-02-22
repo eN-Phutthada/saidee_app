@@ -6,10 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-
+import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
-import '../../widgets/common_widgets.dart';
-import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -19,11 +17,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final PageController _pageController = PageController();
-  int _currentStep = 0;
-
-  final GlobalKey<FormState> _formKeyStep1 = GlobalKey<FormState>();
-  final GlobalKey<FormState> _formKeyStep3 = GlobalKey<FormState>();
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -43,26 +37,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _pageController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  void _showImageSourceOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(CupertinoIcons.camera_fill),
+              title: const Text('ถ่ายรูป'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(CupertinoIcons.photo_on_rectangle),
+              title: const Text('เลือกจากอัลบั้ม'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
+      source: source,
+      imageQuality: 80,
     );
-
     if (pickedFile != null) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+      setState(() => _imageFile = File(pickedFile.path));
     }
   }
 
-  Future<void> _registerUser() async {
-    if (!_formKeyStep3.currentState!.validate()) return;
+  void _togglePasswordVisibility() {
+    setState(() => _hidePassword = !_hidePassword);
+  }
 
+  Future<void> _registerUser() async {
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
@@ -79,7 +104,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             .ref()
             .child('user_images')
             .child('${userCredential.user!.uid}.jpg');
-
         await storageRef.putFile(_imageFile!);
         imageUrl = await storageRef.getDownloadURL();
       }
@@ -100,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Get.snackbar(
         "สำเร็จ",
         "ลงทะเบียนเรียบร้อยแล้ว",
-        backgroundColor: Colors.green.withOpacity(0.5),
+        backgroundColor: AppTheme.primaryColor,
         colorText: Colors.white,
       );
     } on FirebaseAuthException catch (e) {
@@ -113,273 +137,337 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Get.snackbar(
         "แจ้งเตือน",
         message,
-        backgroundColor: Colors.red.withOpacity(0.5),
+        backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
     } catch (e) {
       Get.snackbar("Error", e.toString());
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _togglePasswordVisibility() {
-    setState(() {
-      _hidePassword = !_hidePassword;
-    });
-  }
-
-  void _nextPage() {
-    if (_currentStep == 0) {
-      if (!_formKeyStep1.currentState!.validate()) return;
-    }
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-    setState(() => _currentStep++);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          const TopGreenShape(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 100),
-                const AppLogo(size: 90),
-                const SizedBox(height: 10),
-                const Text(
-                  "สร้างบัญชี",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B8022),
-                  ),
-                ),
-                const SizedBox(height: 30),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? [Colors.grey[900]!, Colors.black]
+                    : [AppTheme.primaryColor.withOpacity(0.05), Colors.white],
+              ),
+            ),
+          ),
 
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [_buildStep1(), _buildStep2(), _buildStep3()],
-                  ),
-                ),
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 10,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "สร้างบัญชีใหม่",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      "กรอกข้อมูลเพื่อเข้าร่วมเป็นส่วนหนึ่งกับ SAIDEE",
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 30),
 
-                if (!_isLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 30),
-                    child: Row(
+                    Center(
+                      child: GestureDetector(
+                        onTap: _showImageSourceOptions,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[200],
+                                border: Border.all(
+                                  color: AppTheme.primaryColor.withOpacity(0.5),
+                                  width: 2,
+                                ),
+                                image: _imageFile != null
+                                    ? DecorationImage(
+                                        image: FileImage(_imageFile!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
+                              ),
+                              child: _imageFile == null
+                                  ? const Icon(
+                                      CupertinoIcons.person_solid,
+                                      size: 60,
+                                      color: Colors.grey,
+                                    )
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: const BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.camera_fill,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildInputField(
+                            controller: _nameController,
+                            label: "ชื่อ - สกุล",
+                            icon: CupertinoIcons.person_fill,
+                            isDark: isDark,
+                            validator: (val) =>
+                                (val == null || val.trim().isEmpty)
+                                ? 'กรุณากรอกชื่อ-สกุล'
+                                : null,
+                          ),
+                          const SizedBox(height: 15),
+                          _buildInputField(
+                            controller: _emailController,
+                            label: "อีเมล",
+                            icon: CupertinoIcons.mail_solid,
+                            keyboardType: TextInputType.emailAddress,
+                            isDark: isDark,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) {
+                                return 'กรุณากรอกอีเมล';
+                              }
+                              if (!GetUtils.isEmail(val)) {
+                                return 'รูปแบบอีเมลไม่ถูกต้อง';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 15),
+                          _buildInputField(
+                            controller: _phoneController,
+                            label: "เบอร์โทรศัพท์",
+                            icon: CupertinoIcons.phone_fill,
+                            keyboardType: TextInputType.phone,
+                            isDark: isDark,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) {
+                                return 'กรุณากรอกเบอร์โทร';
+                              }
+                              if (val.length < 10) {
+                                return 'เบอร์โทรต้องมีอย่างน้อย 10 หลัก';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 15),
+                          _buildInputField(
+                            controller: _passwordController,
+                            label: "รหัสผ่าน",
+                            icon: CupertinoIcons.lock_fill,
+                            isPassword: true,
+                            obscureText: _hidePassword,
+                            onToggleVisibility: _togglePasswordVisibility,
+                            isDark: isDark,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) {
+                                return 'กรุณากรอกรหัสผ่าน';
+                              }
+                              if (val.length < 6) {
+                                return 'ต้องมีอย่างน้อย 6 ตัวอักษร';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 15),
+                          _buildInputField(
+                            controller: _confirmPasswordController,
+                            label: "ยืนยันรหัสผ่าน",
+                            icon: CupertinoIcons.lock_shield_fill,
+                            isPassword: true,
+                            obscureText: _hidePassword,
+                            onToggleVisibility: _togglePasswordVisibility,
+                            isDark: isDark,
+                            validator: (val) {
+                              if (val == null || val.isEmpty) {
+                                return 'กรุณายืนยันรหัสผ่าน';
+                              }
+                              if (val != _passwordController.text) {
+                                return 'รหัสผ่านไม่ตรงกัน';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _registerUser,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: _isLoading
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                            : const Text(
+                                "สมัครสมาชิก",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           "คุณมีบัญชีอยู่แล้ว? ",
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[700],
+                          ),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
-                          },
+                          onTap: () => Get.back(),
                           child: const Text(
                             "เข้าสู่ระบบ",
                             style: TextStyle(
-                              color: Color(0xFF2CB834),
+                              color: AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
             ),
           ),
-
-          if (_isLoading)
-            Container(
-              color: Colors.black45,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildStep1() {
-    return SingleChildScrollView(
-      child: Form(
-        key: _formKeyStep1,
-        child: Column(
-          children: [
-            CustomTextField(
-              label: "ชื่อ - สกุล",
-              controller: _nameController,
-              validator: (value) => (value == null || value.trim().isEmpty)
-                  ? 'กรุณากรอกชื่อ-สกุล'
-                  : null,
-            ),
-            CustomTextField(
-              label: "อีเมล",
-              inputType: TextInputType.emailAddress,
-              controller: _emailController,
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'กรุณากรอกอีเมล';
-                if (!GetUtils.isEmail(value)) return 'รูปแบบอีเมลไม่ถูกต้อง';
-                return null;
-              },
-            ),
-            CustomTextField(
-              label: "เบอร์โทร",
-              inputType: TextInputType.phone,
-              controller: _phoneController,
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'กรุณากรอกเบอร์โทร';
-                if (value.length < 9) return 'เบอร์โทรต้องมีอย่างน้อย 9 หลัก';
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _nextPage,
-                child: const Text("ถัดไป"),
-              ),
-            ),
-          ],
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required bool isDark,
+    bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: isDark ? Colors.grey[400] : Colors.grey[600],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStep2() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "รูปโปรไฟล์",
-              style: TextStyle(color: Color(0xFF2CB834), fontSize: 16),
-            ),
-          ),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.black12),
-                color: Colors.white,
-                image: _imageFile != null
-                    ? DecorationImage(
-                        image: FileImage(_imageFile!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: _imageFile == null
-                  ? const Icon(
-                      CupertinoIcons.camera,
-                      size: 50,
-                      color: Colors.grey,
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (_imageFile == null)
-            const Text(
-              "แตะเพื่อเลือกรูปภาพ",
-              style: TextStyle(color: Colors.grey),
-            ),
-
-          const SizedBox(height: 40),
-
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _nextPage,
-              child: const Text("ถัดไป"),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStep3() {
-    return SingleChildScrollView(
-      child: Form(
-        key: _formKeyStep3,
-        child: Column(
-          children: [
-            CustomTextField(
-              label: "รหัสผ่าน",
-              isPassword: true,
-              controller: _passwordController,
-              obscureText: _hidePassword,
-              onToggleVisibility: _togglePasswordVisibility,
-              validator: (value) {
-                if (value == null || value.isEmpty) return 'กรุณากรอกรหัสผ่าน';
-                if (value.length < 6) {
-                  return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-                }
-                return null;
-              },
-            ),
-            CustomTextField(
-              label: "ยืนยันรหัสผ่าน",
-              isPassword: true,
-              controller: _confirmPasswordController,
-              obscureText: _hidePassword,
-              onToggleVisibility: _togglePasswordVisibility,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'กรุณายืนยันรหัสผ่าน';
-                }
-                if (value != _passwordController.text) {
-                  return 'รหัสผ่านไม่ตรงกัน';
-                }
-                return null;
-              },
-            ),
-
-            const SizedBox(height: 40),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _registerUser,
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text("ลงทะเบียน"),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+        prefixIcon: Icon(icon, color: AppTheme.primaryColor),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText
+                      ? CupertinoIcons.eye_slash_fill
+                      : CupertinoIcons.eye_fill,
+                  color: Colors.grey,
+                ),
+                onPressed: onToggleVisibility,
+              )
+            : null,
+        filled: true,
+        fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
         ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 18),
       ),
+      validator: validator,
     );
   }
 }
