@@ -37,7 +37,6 @@ dependencies:
   cloud_firestore: ^6.1.2
   firebase_storage: ^13.0.6
   provider: ^6.1.5+1
-  http: ^1.6.0
   google_maps_flutter: ^2.14.0
   qr_flutter: ^4.1.0
   image_picker: ^1.2.1
@@ -48,6 +47,7 @@ dependencies:
   geocoding: ^3.0.0
   video_player: ^2.10.1
   flutter_launcher_icons: ^0.14.4
+  cloud_functions: ^6.0.6
 
 flutter_launcher_icons:
   android: "launcher_icon"
