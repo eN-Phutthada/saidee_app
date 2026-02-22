@@ -48,6 +48,8 @@ dependencies:
   video_player: ^2.10.1
   flutter_launcher_icons: ^0.14.4
   cloud_functions: ^6.0.6
+  http: ^1.6.0
+  flutter_dotenv: ^6.0.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
@@ -80,6 +82,7 @@ flutter:
   assets:
     - assets/images/
     # - assets/config/
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

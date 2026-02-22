@@ -121,11 +121,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           });
 
       Get.offAll(() => const HomeScreen());
-      Get.snackbar(
-        "สำเร็จ",
-        "ลงทะเบียนเรียบร้อยแล้ว",
+
+      _showCustomSnackbar(
+        title: "สำเร็จ",
+        message: "ลงทะเบียนเรียบร้อยแล้ว",
+        icon: CupertinoIcons.checkmark_alt_circle_fill,
         backgroundColor: AppTheme.primaryColor,
-        colorText: Colors.white,
       );
     } on FirebaseAuthException catch (e) {
       String message = "เกิดข้อผิดพลาด";
@@ -134,23 +135,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else if (e.code == 'email-already-in-use') {
         message = 'อีเมลนี้มีผู้ใช้งานแล้ว';
       }
-      Get.snackbar(
-        "แจ้งเตือน",
-        message,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
+
+      _showCustomSnackbar(
+        title: "แจ้งเตือน",
+        message: message,
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        backgroundColor: Colors.orange[800]!,
       );
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      _showCustomSnackbar(
+        title: "Error",
+        message: e.toString(),
+        icon: CupertinoIcons.xmark_circle_fill,
+        backgroundColor: Colors.red[800]!,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showCustomSnackbar({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color backgroundColor,
+  }) {
+    Get.snackbar(
+      title,
+      message,
+      icon: Icon(icon, color: Colors.white, size: 28),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: backgroundColor.withOpacity(0.9),
+      colorText: Colors.white,
+      borderRadius: 16,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      duration: const Duration(seconds: 3),
+      isDismissible: true,
+      dismissDirection: DismissDirection.horizontal,
+      forwardAnimationCurve: Curves.easeOutBack,
+      barBlur: 20,
+      boxShadows: [
+        BoxShadow(
+          color: backgroundColor.withOpacity(0.4),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       appBar: AppBar(
@@ -167,16 +206,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? [Colors.grey[900]!, Colors.black]
-                    : [AppTheme.primaryColor.withOpacity(0.05), Colors.white],
-              ),
-            ),
+          _buildBgCircle(isDark, top: -100, right: -100, size: 300),
+
+          _buildBgCircle(
+            isDark,
+            bottom: -100,
+            left: -100,
+            size: 280,
+            opacityFactor: 0.7,
+          ),
+
+          _buildBgCircle(
+            isDark,
+            top: size.height * 0.3,
+            right: -80,
+            size: 180,
+            opacityFactor: 0.5,
           ),
 
           SafeArea(
@@ -269,7 +314,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withOpacity(
+                              isDark ? 0.2 : 0.05,
+                            ),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),
@@ -372,10 +419,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onPressed: _isLoading ? null : _registerUser,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          elevation: 2,
+                          elevation: 5,
+                          shadowColor: AppTheme.primaryColor.withOpacity(0.4),
                         ),
                         child: _isLoading
                             ? const CircularProgressIndicator(
@@ -386,7 +435,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
                                 ),
                               ),
                       ),
@@ -422,6 +470,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBgCircle(
+    bool isDark, {
+    double? top,
+    double? bottom,
+    double? left,
+    double? right,
+    required double size,
+    double opacityFactor = 1.0,
+  }) {
+    final baseOpacity = isDark ? 0.05 : 0.08;
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
@@ -462,7 +536,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         filled: true,
         fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),

@@ -55,65 +55,109 @@ class _LoginScreenState extends State<LoginScreen> {
             .get();
 
         if (adminDoc.exists) {
-          Get.snackbar(
-            "ยินดีต้อนรับ",
-            "เข้าสู่ระบบ Admin เรียบร้อยแล้ว",
+          _showCustomSnackbar(
+            title: "ยินดีต้อนรับ",
+            message: "เข้าสู่ระบบ Admin เรียบร้อยแล้ว",
+            icon: CupertinoIcons.shield_lefthalf_fill,
             backgroundColor: Colors.blueAccent,
-            colorText: Colors.white,
           );
           Get.offAll(() => const AdminDashboard());
         } else {
-          Get.snackbar(
-            "สำเร็จ",
-            "เข้าสู่ระบบเรียบร้อยแล้ว",
+          _showCustomSnackbar(
+            title: "สำเร็จ",
+            message: "เข้าสู่ระบบเรียบร้อยแล้ว",
+            icon: CupertinoIcons.checkmark_alt_circle_fill,
             backgroundColor: AppTheme.primaryColor,
-            colorText: Colors.white,
           );
           Get.offAll(() => const HomeScreen());
         }
       }
     } on FirebaseAuthException catch (e) {
       String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
-      if (e.code == 'user-not-found')
+      if (e.code == 'user-not-found') {
         message = 'ไม่พบผู้ใช้งานนี้ กรุณาลงทะเบียน';
-      else if (e.code == 'wrong-password')
+      } else if (e.code == 'wrong-password') {
         message = 'รหัสผ่านไม่ถูกต้อง';
-      else if (e.code == 'invalid-email')
+      } else if (e.code == 'invalid-email') {
         message = 'รูปแบบอีเมลไม่ถูกต้อง';
-      else
+      } else {
         message = e.message ?? message;
+      }
 
-      Get.snackbar(
-        "เข้าสู่ระบบไม่สำเร็จ",
-        message,
-        backgroundColor: AppTheme.errorColor.withOpacity(0.8),
-        colorText: Colors.white,
+      _showCustomSnackbar(
+        title: "เข้าสู่ระบบไม่สำเร็จ",
+        message: message,
+        icon: CupertinoIcons.exclamationmark_circle_fill,
+        backgroundColor: AppTheme.errorColor,
       );
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      _showCustomSnackbar(
+        title: "Error",
+        message: e.toString(),
+        icon: CupertinoIcons.xmark_circle_fill,
+        backgroundColor: Colors.red[800]!,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showCustomSnackbar({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color backgroundColor,
+  }) {
+    Get.snackbar(
+      title,
+      message,
+      icon: Icon(icon, color: Colors.white, size: 28),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: backgroundColor.withOpacity(0.9),
+      colorText: Colors.white,
+      borderRadius: 16,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      duration: const Duration(seconds: 3),
+      isDismissible: true,
+      dismissDirection: DismissDirection.horizontal,
+      forwardAnimationCurve: Curves.easeOutBack,
+      barBlur: 20,
+      boxShadows: [
+        BoxShadow(
+          color: backgroundColor.withOpacity(0.4),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [Colors.black, Colors.grey[900]!]
-                    : [AppTheme.primaryColor.withOpacity(0.1), Colors.white],
-              ),
-            ),
+          _buildBgCircle(isDark, top: -100, right: -100, size: 300),
+
+          _buildBgCircle(
+            isDark,
+            bottom: -80,
+            left: -80,
+            size: 250,
+            opacityFactor: 0.8,
+          ),
+
+          _buildBgCircle(
+            isDark,
+            top: size.height * 0.15,
+            left: -100,
+            size: 200,
+            opacityFactor: 0.6,
           ),
 
           SafeArea(
@@ -121,29 +165,39 @@ class _LoginScreenState extends State<LoginScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 20,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/images/logo.png',
-                          height: 120,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                              CupertinoIcons.cube_box_fill,
-                              size: 100,
-                              color: AppTheme.primaryColor,
-                            );
-                          },
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 80,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                CupertinoIcons.cube_box_fill,
+                                size: 80,
+                                color: AppTheme.primaryColor,
+                              );
+                            },
+                          ),
                         ),
                         const SizedBox(height: 20),
 
                         Text(
                           "ยินดีต้อนรับกลับมา!",
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
@@ -165,7 +219,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withOpacity(
+                                  isDark ? 0.2 : 0.05,
+                                ),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -221,10 +277,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   onPressed: _isLoading ? null : _login,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppTheme.primaryColor,
+                                    foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    elevation: 2,
+                                    elevation: 5,
+                                    shadowColor: AppTheme.primaryColor
+                                        .withOpacity(0.4),
                                   ),
                                   child: _isLoading
                                       ? const CircularProgressIndicator(
@@ -235,7 +294,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                           style: TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
                                           ),
                                         ),
                                 ),
@@ -329,6 +387,32 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Widget _buildBgCircle(
+    bool isDark, {
+    double? top,
+    double? bottom,
+    double? left,
+    double? right,
+    required double size,
+    double opacityFactor = 1.0,
+  }) {
+    final baseOpacity = isDark ? 0.05 : 0.08;
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputField({
     required TextEditingController controller,
     required String label,
@@ -365,7 +449,7 @@ class _LoginScreenState extends State<LoginScreen> {
         filled: true,
         fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
@@ -388,6 +472,7 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
@@ -192,7 +193,6 @@ class ProfileScreen extends StatelessWidget {
                           CupertinoIcons.bag,
                           "การขาย\nของฉัน",
                           onTap: () {
-                            // ส่ง user.uid ไปให้ StoreProfileScreen เพื่อยืนยันว่าเป็นเจ้าของร้าน
                             Get.to(
                               () => StoreProfileScreen(sellerId: user.uid),
                             );
@@ -203,7 +203,12 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 25),
 
-                  _buildMenuTile(context, title: "เติมวอลเล็ท", isBold: true),
+                  _buildMenuTile(
+                    context,
+                    title: "เติมวอลเล็ท",
+                    isBold: true,
+                    onTap: () => Get.to(() => const WalletTopUpScreen()),
+                  ),
                   const SizedBox(height: 25),
 
                   Container(
@@ -254,13 +259,37 @@ class ProfileScreen extends StatelessWidget {
                         Get.snackbar(
                           "สำเร็จ",
                           "ออกจากระบบเรียบร้อยแล้ว",
+                          icon: const Icon(
+                            CupertinoIcons.checkmark_alt_circle_fill,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          snackPosition: SnackPosition.TOP,
                           backgroundColor: AppTheme.primaryColor.withOpacity(
                             0.9,
                           ),
                           colorText: Colors.white,
-                          snackPosition: SnackPosition.TOP,
-                          margin: const EdgeInsets.all(10),
-                          duration: const Duration(seconds: 2),
+                          borderRadius: 16,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 20,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          duration: const Duration(seconds: 3),
+                          isDismissible: true,
+                          dismissDirection: DismissDirection.horizontal,
+                          forwardAnimationCurve: Curves.easeOutBack,
+                          barBlur: 20,
+                          boxShadows: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
                         );
 
                         Get.offAll(() => const HomeScreen());
@@ -284,7 +313,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ปรับให้รับค่า onTap ได้
   Widget _buildBigButton(
     BuildContext context,
     IconData icon,
@@ -323,7 +351,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ปรับให้รับค่า onTap ได้เช่นกัน (เผื่อใช้ในอนาคต)
   Widget _buildMenuTile(
     BuildContext context, {
     required String title,

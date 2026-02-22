@@ -23,99 +23,374 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
     _minWeightController.text = data?['weight_min']?.toString() ?? '';
     _maxWeightController.text = data?['weight_max']?.toString() ?? '';
     bool isActive = (data?['status'] ?? 'active') == 'active';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    Get.defaultDialog(
-      title: docId == null ? "เพิ่มขนส่ง" : "แก้ไขขนส่ง",
-      content: Column(
-        children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: "ชื่อบริษัทขนส่ง"),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _minWeightController,
-                  decoration: const InputDecoration(labelText: "นน.ต่ำสุด (g)"),
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.cube_box_fill,
+                    color: Colors.blue,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  docId == null ? "เพิ่มบริษัทขนส่ง" : "แก้ไขบริษัทขนส่ง",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 25),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: "ชื่อบริษัทขนส่ง",
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _minWeightController,
+                        decoration: InputDecoration(
+                          labelText: "นน.ต่ำสุด (g)",
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _maxWeightController,
+                        decoration: InputDecoration(
+                          labelText: "นน.สูงสุด (g)",
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                TextField(
+                  controller: _priceController,
+                  decoration: InputDecoration(
+                    labelText: "ค่าจัดส่ง (บาท)",
+                    filled: true,
+                    fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                   keyboardType: TextInputType.number,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _maxWeightController,
-                  decoration: const InputDecoration(labelText: "นน.สูงสุด (g)"),
-                  keyboardType: TextInputType.number,
+                const SizedBox(height: 15),
+                StatefulBuilder(
+                  builder: (context, setState) => Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SwitchListTile(
+                      title: const Text(
+                        "เปิดใช้งาน",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      value: isActive,
+                      activeColor: AppTheme.primaryColor,
+                      onChanged: (val) => setState(() => isActive = val),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          TextField(
-            controller: _priceController,
-            decoration: const InputDecoration(labelText: "ค่าส่ง (บาท)"),
-            keyboardType: TextInputType.number,
-          ),
-          StatefulBuilder(
-            builder: (context, setState) => SwitchListTile(
-              title: const Text("เปิดใช้งาน"),
-              value: isActive,
-              onChanged: (val) => setState(() => isActive = val),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[300]!,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          "ยกเลิก",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (_nameController.text.isEmpty) return;
+                          final newData = {
+                            'name': _nameController.text,
+                            'weight_min':
+                                double.tryParse(_minWeightController.text) ?? 0,
+                            'weight_max':
+                                double.tryParse(_maxWeightController.text) ?? 0,
+                            'price':
+                                double.tryParse(_priceController.text) ?? 0,
+                            'status': isActive ? 'active' : 'inactive',
+                          };
+                          if (docId == null)
+                            await FirebaseFirestore.instance
+                                .collection('shipping')
+                                .add(newData);
+                          else
+                            await FirebaseFirestore.instance
+                                .collection('shipping')
+                                .doc(docId)
+                                .update(newData);
+                          Get.back();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "บันทึก",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-      textConfirm: "บันทึก",
-      onConfirm: () async {
-        final newData = {
-          'name': _nameController.text,
-          'weight_min': double.tryParse(_minWeightController.text) ?? 0,
-          'weight_max': double.tryParse(_maxWeightController.text) ?? 0,
-          'price': double.tryParse(_priceController.text) ?? 0,
-          'status': isActive ? 'active' : 'inactive',
-        };
-
-        if (docId == null) {
-          await FirebaseFirestore.instance.collection('shipping').add(newData);
-        } else {
-          await FirebaseFirestore.instance
-              .collection('shipping')
-              .doc(docId)
-              .update(newData);
-        }
-        Get.back();
-      },
+      barrierDismissible: false,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("จัดการบริษัทขนส่ง")),
-      floatingActionButton: FloatingActionButton(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text(
+          "จัดการบริษัทขนส่ง",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.onSurface),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppTheme.primaryColor,
-        child: const Icon(CupertinoIcons.add, color: Colors.white),
+        icon: const Icon(CupertinoIcons.add, color: Colors.white),
+        label: const Text(
+          "เพิ่มขนส่ง",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         onPressed: () => _showEditDialog(),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('shipping').snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());
-          }
+          if (snapshot.data!.docs.isEmpty)
+            return Center(
+              child: Text(
+                "ไม่มีข้อมูลบริษัทขนส่ง",
+                style: TextStyle(color: Colors.grey[500]),
+              ),
+            );
+
           return ListView.builder(
+            // แก้บัคปุ่มบัง: เพิ่ม bottom: 100
+            padding: const EdgeInsets.only(
+              left: 15,
+              right: 15,
+              top: 15,
+              bottom: 100,
+            ),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
-              return ListTile(
-                title: Text(data['name']),
-                subtitle: Text(
-                  "น้ำหนัก: ${data['weight_min']} - ${data['weight_max']} g | ราคา: ${data['price']} บาท",
+              bool isActive = data['status'] == 'active';
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                trailing: IconButton(
-                  icon: const Icon(CupertinoIcons.pencil),
-                  onPressed: () => _showEditDialog(docId: doc.id, data: data),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? Colors.blue.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        CupertinoIcons.cube_box_fill,
+                        color: isActive ? Colors.blue : Colors.grey,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            data['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            "น้ำหนัก: ${data['weight_min']} - ${data['weight_max']} g",
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "ค่าจัดส่ง: ${data['price']} ฿",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? Colors.green.withOpacity(0.1)
+                                : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isActive ? "เปิดใช้งาน" : "ปิดใช้งาน",
+                            style: TextStyle(
+                              color: isActive ? Colors.green : Colors.red,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                CupertinoIcons.pencil,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () =>
+                                  _showEditDialog(docId: doc.id, data: data),
+                            ),
+                            const SizedBox(width: 15),
+                            IconButton(
+                              icon: const Icon(
+                                CupertinoIcons.delete,
+                                color: Colors.red,
+                                size: 20,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => doc.reference.delete(),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               );
             },

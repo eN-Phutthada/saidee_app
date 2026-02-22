@@ -671,7 +671,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   _buildDetailRow(
                     "น้ำหนัก (กรัม)",
-                    "${widget.product.weight.toStringAsFixed(0)}",
+                    widget.product.weight.toStringAsFixed(0),
                     context,
                     showArrow: false,
                     subtitle: "เพื่อคำนวณค่าจัดส่งต่อไป",
