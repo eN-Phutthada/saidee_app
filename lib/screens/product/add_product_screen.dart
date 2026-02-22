@@ -494,7 +494,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       appBar: AppBar(
         title: Text(
           _isEditing ? "แก้ไขสินค้า" : "ลงขายสินค้า",
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24),
         ),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,

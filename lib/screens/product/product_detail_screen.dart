@@ -7,6 +7,8 @@ import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
+import '../cart/cart_screen.dart';
+import '../auth/login_screen.dart'; // เพิ่ม Import หน้า Login
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -42,54 +44,209 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
+  // --- สร้างฟังก์ชัน Helper สำหรับเรียก Popup สวยๆ ---
+  void _showCustomDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color iconColor,
+    required String confirmText,
+    required VoidCallback onConfirm,
+    bool showCancel = false,
+    String cancelText = "ยกเลิก",
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 60),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  if (showCancel) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[300]!,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          cancelText,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                  ],
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        confirmText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true, // ให้กดพื้นที่ว่างรอบๆ เพื่อปิดได้
+    );
+  }
+
   Future<void> _addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
+
+    // 1. กรณียังไม่ล็อกอิน -> แสดง Popup ให้ไปหน้า Login
     if (user == null) {
-      Get.snackbar(
-        "แจ้งเตือน",
-        "กรุณาเข้าสู่ระบบก่อนสั่งซื้อ",
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
+      _showCustomDialog(
+        title: "กรุณาเข้าสู่ระบบ",
+        message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถสั่งซื้อสินค้าได้",
+        icon: CupertinoIcons.person_crop_circle_badge_exclam,
+        iconColor: Colors.orange,
+        confirmText: "เข้าสู่ระบบ",
+        onConfirm: () {
+          Get.back(); // ปิด Popup
+          Get.to(() => const LoginScreen()); // ไปหน้า Login
+        },
+        showCancel: true,
       );
       return;
     }
 
+    // 2. กรณีซื้อสินค้าตัวเอง -> แสดง Popup แจ้งเตือน
     if (user.uid == widget.product.sellerId) {
-      Get.snackbar(
-        "แจ้งเตือน",
-        "คุณไม่สามารถซื้อสินค้าของตัวเองได้",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      _showCustomDialog(
+        title: "ไม่สามารถทำรายการได้",
+        message: "คุณไม่สามารถเพิ่มสินค้าของตัวเองลงในตะกร้าได้",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     try {
-      await FirebaseFirestore.instance
+      final cartRef = FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
-          .collection('cart')
-          .add({
-            'productId': widget.product.id,
-            'name': widget.product.name,
-            'price': widget.product.price,
-            'image': widget.product.images.isNotEmpty
-                ? widget.product.images[0]
-                : '',
-            'sellerId': widget.product.sellerId,
-            'weight': widget.product.weight,
-            'quantity': 1,
-            'addedAt': Timestamp.now(),
-          });
+          .collection('cart');
+      final existingItem = await cartRef
+          .where('productId', isEqualTo: widget.product.id)
+          .get();
 
-      Get.snackbar(
-        "สำเร็จ",
-        "เพิ่มสินค้าลงตะกร้าแล้ว",
-        backgroundColor: AppTheme.primaryColor,
-        colorText: Colors.white,
+      // 3. กรณีมีสินค้าในตะกร้าอยู่แล้ว -> แสดง Popup ถามว่าจะไปตะกร้าไหม
+      if (existingItem.docs.isNotEmpty) {
+        _showCustomDialog(
+          title: "สินค้าอยู่ในตะกร้าแล้ว",
+          message:
+              "สินค้านี้ถูกเพิ่มลงในตะกร้าของคุณไปแล้ว คุณต้องการไปยังตะกร้าสินค้าหรือไม่?",
+          icon: CupertinoIcons.cart_badge_plus,
+          iconColor: Colors.orange,
+          confirmText: "ดูตะกร้า",
+          cancelText: "ช้อปต่อ",
+          showCancel: true,
+          onConfirm: () {
+            Get.back();
+            Get.to(() => const CartScreen(showBackButton: true));
+          },
+        );
+        return;
+      }
+
+      await cartRef.add({
+        'productId': widget.product.id,
+        'name': widget.product.name,
+        'brand': widget.product.brand,
+        'size': widget.product.size,
+        'price': widget.product.price,
+        'image': widget.product.images.isNotEmpty
+            ? widget.product.images[0]
+            : '',
+        'sellerId': widget.product.sellerId,
+        'weight': widget.product.weight,
+        'quantity': 1,
+        'addedAt': Timestamp.now(),
+      });
+
+      // 4. กรณีสำเร็จ -> แสดง Popup สีเขียว
+      _showCustomDialog(
+        title: "เพิ่มลงตะกร้าสำเร็จ!",
+        message: "สินค้าถูกเพิ่มลงในตะกร้าของคุณเรียบร้อยแล้ว",
+        icon: CupertinoIcons.checkmark_alt_circle_fill,
+        iconColor: Colors.green,
+        confirmText: "ดูตะกร้า",
+        cancelText: "ช้อปต่อ",
+        showCancel: true,
+        onConfirm: () {
+          Get.back();
+          Get.to(() => const CartScreen(showBackButton: true));
+        },
       );
     } catch (e) {
-      Get.snackbar("Error", e.toString());
+      // Error จากระบบ ให้ใช้ Snackbar ปกติไปก่อน เพราะไม่ได้ต้องการให้ User เลือกปุ่ม
+      Get.snackbar(
+        "Error",
+        "เกิดข้อผิดพลาด: ${e.toString()}",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -105,6 +262,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     List<Widget> mediaPages = [];
 
+    // จัดการวิดีโอ (FittedBox)
     if (_isVideoInitialized && _videoController != null) {
       mediaPages.add(
         GestureDetector(
@@ -179,9 +337,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             setState(() => _currentImageIndex = index);
                             if (_isVideoInitialized &&
                                 _videoController != null &&
-                                index != 0) {
+                                index != 0)
                               _videoController!.pause();
-                            }
                           },
                           itemBuilder: (context, index) => mediaPages[index],
                         )
@@ -290,7 +447,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-
                   Text(
                     widget.product.name,
                     style: theme.textTheme.headlineSmall?.copyWith(
@@ -298,7 +454,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 5),
-
                   Text(
                     widget.product.size,
                     style: theme.textTheme.bodyLarge?.copyWith(
@@ -306,14 +461,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-
                   Text(
                     "${widget.product.price.toStringAsFixed(0)} ฿",
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 15.0),
                     child: Divider(

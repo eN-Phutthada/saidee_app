@@ -34,25 +34,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: _selectedIndex == 0
           ? AppBar(
-              leading: IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
+              toolbarHeight: 80,
+              leadingWidth: 70,
+              leading: Padding(
+                padding: const EdgeInsets.only(left: 12.0),
+                child: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.search,
+                      color: AppTheme.primaryColor,
+                      size: 26,
+                    ),
                   ),
-                  child: const Icon(
-                    CupertinoIcons.search,
-                    color: AppTheme.primaryColor,
-                    size: 20,
-                  ),
+                  onPressed: () => Get.to(() => const SearchScreen()),
                 ),
-                onPressed: () => Get.to(() => const SearchScreen()),
               ),
               title: Stack(
                 alignment: Alignment.center,
@@ -108,16 +112,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               actions: [
-                IconButton(
-                  icon: Icon(
-                    isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon_stars,
-                  ),
-                  onPressed: () {
-                    Get.changeThemeMode(
-                      isDark ? ThemeMode.light : ThemeMode.dark,
-                    );
-                  },
-                ),
                 if (user == null)
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
@@ -136,20 +130,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   )
                 else
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.heart,
+                          color: AppTheme.primaryColor,
+                          size: 26,
+                        ),
                       ),
-                      child: const Icon(
-                        CupertinoIcons.heart,
-                        color: AppTheme.primaryColor,
-                        size: 20,
-                      ),
+                      onPressed: () {},
                     ),
-                    onPressed: () {},
                   ),
               ],
             )
@@ -217,10 +214,13 @@ class _HomeContentState extends State<HomeContent> {
 
       for (var doc in snapshot.docs) {
         var data = doc.data();
-        if (data['type'] != null && data['type'].toString().isNotEmpty)
+        if (data['type'] != null && data['type'].toString().isNotEmpty) {
           typesSet.add(data['type']);
-        if (data['category'] != null && data['category'].toString().isNotEmpty)
+        }
+        if (data['category'] != null &&
+            data['category'].toString().isNotEmpty) {
           categoriesSet.add(data['category']);
+        }
       }
 
       List<String> types = typesSet.toList()..shuffle();
@@ -309,7 +309,6 @@ class _HomeContentState extends State<HomeContent> {
                       color: Colors.white,
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
-                      fontFamily: 'Kanit',
                     ),
                   ),
                   const SizedBox(height: 15),

@@ -7,7 +7,6 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
-// นำเข้าหน้า StoreProfileScreen
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -72,6 +71,16 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             actions: [
+              IconButton(
+                icon: Icon(
+                  isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon_stars,
+                ),
+                onPressed: () {
+                  Get.changeThemeMode(
+                    isDark ? ThemeMode.light : ThemeMode.dark,
+                  );
+                },
+              ),
               IconButton(
                 icon: Icon(
                   CupertinoIcons.settings,
