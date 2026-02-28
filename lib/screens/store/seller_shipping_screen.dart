@@ -17,10 +17,8 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  // เก็บข้อมูลบริษัทขนส่งและเรทราคา จัดกลุ่มตามชื่อบริษัท
   Map<String, List<Map<String, dynamic>>> _shippingGroups = {};
 
-  // เก็บรายชื่อบริษัทขนส่งที่ร้านค้านี้เลือกเปิดใช้งาน
   Set<String> _selectedShipping = {};
 
   @override
@@ -31,7 +29,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
 
   Future<void> _loadShippingData() async {
     try {
-      // 1. ดึงข้อมูลบริษัทขนส่งที่เปิดใช้งานจาก Admin
       var shippingSnap = await FirebaseFirestore.instance
           .collection('shipping')
           .where('status', isEqualTo: 'active')
@@ -50,7 +47,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
         }
       }
 
-      // เรียงลำดับเรทราคาตามน้ำหนักเริ่มต้น (weight_min) ในแต่ละบริษัท
       for (var key in tempGroups.keys) {
         tempGroups[key]!.sort((a, b) {
           double weightA = double.tryParse(a['weight_min'].toString()) ?? 0;
@@ -59,7 +55,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
         });
       }
 
-      // 2. ดึงข้อมูลการตั้งค่าขนส่งของร้านค้านี้
       var userSnap = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.sellerId)
@@ -121,7 +116,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // ดึงชื่อบริษัทมาเรียงตามตัวอักษร
     List<String> companyNames = _shippingGroups.keys.toList()..sort();
 
     return Scaffold(
@@ -172,7 +166,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                   ),
                   const SizedBox(height: 25),
 
-                  // ลิสต์บริษัทขนส่งพร้อมรายละเอียด
                   ...companyNames.map((company) {
                     bool isEnabled = _selectedShipping.contains(company);
                     List<Map<String, dynamic>> rates =
@@ -201,7 +194,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // --- ส่วนหัว: สวิตช์และชื่อบริษัท ---
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 15,
@@ -270,7 +262,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                             ),
                           ),
 
-                          // --- ส่วนรายละเอียด: เรทราคา ---
                           Container(
                             decoration: BoxDecoration(
                               color: isDark
@@ -331,7 +322,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
               ),
             ),
 
-      // ปุ่มบันทึกด้านล่าง
       bottomNavigationBar: _isLoading || companyNames.isEmpty
           ? null
           : Container(

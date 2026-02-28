@@ -193,8 +193,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void _calculateGrandTotal() {
     _shippingTotalAll = 0.0;
     for (var group in _shopGroups) {
-      if (group.selectedShipping != null)
+      if (group.selectedShipping != null) {
         _shippingTotalAll += (group.selectedShipping!['price'] ?? 0).toDouble();
+      }
     }
 
     _discountAmount = 0.0;
@@ -323,14 +324,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     .orderBy('is_default', descending: true)
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData)
+                  if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
-                  if (snapshot.data!.docs.isEmpty)
+                  }
+                  if (snapshot.data!.docs.isEmpty) {
                     return const Center(
                       child: Text(
                         "คุณยังไม่มีที่อยู่จัดส่ง กรุณาเพิ่มที่อยู่ใหม่",
                       ),
                     );
+                  }
 
                   return ListView.builder(
                     itemCount: snapshot.data!.docs.length,
@@ -589,11 +592,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    if (_isLoading)
+    if (_isLoading) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -1147,10 +1151,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       Text(
                         "${_grandTotal.toStringAsFixed(0)} ฿",
                         style: const TextStyle(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.bold,
                           fontSize: 24,
                           color: AppTheme.primaryColor,
-                          fontFamily: 'Kanit',
                         ),
                       ),
                     ],

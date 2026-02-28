@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // <-- เพิ่มบรรทัดนี้สำหรับ SystemUiOverlayStyle
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -38,7 +38,6 @@ class AppTheme {
       foregroundColor: Colors.black,
       elevation: 0,
       centerTitle: true,
-      // 👇 บังคับให้ไอคอน Status Bar (นาฬิกา, แบต) เป็น "สีดำ" ในโหมดสว่าง
       systemOverlayStyle: SystemUiOverlayStyle.dark,
     ),
 
@@ -93,7 +92,6 @@ class AppTheme {
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
-      // 👇 บังคับให้ไอคอน Status Bar (นาฬิกา, แบต) เป็น "สีขาว" ในโหมดมืด
       systemOverlayStyle: SystemUiOverlayStyle.light,
     ),
 

@@ -22,7 +22,6 @@ class AddAddressScreen extends StatefulWidget {
 class _AddAddressScreenState extends State<AddAddressScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressDetailController = TextEditingController();

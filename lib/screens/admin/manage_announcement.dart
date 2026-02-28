@@ -194,18 +194,19 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
-          if (snapshot.data!.docs.isEmpty)
+          }
+          if (snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
                 "ไม่มีประกาศข่าวสาร",
                 style: TextStyle(color: Colors.grey[500]),
               ),
             );
+          }
 
           return ListView.builder(
-            // แก้บัคปุ่มบัง: เพิ่ม bottom: 100
             padding: const EdgeInsets.only(
               left: 15,
               right: 15,

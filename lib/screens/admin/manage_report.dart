@@ -159,16 +159,16 @@ class ManageReportScreen extends StatelessWidget {
             uniqueReporters[reportedId]!.add(reporterId);
           }
 
-          if (groupedReports.isEmpty)
+          if (groupedReports.isEmpty) {
             return Center(
               child: Text(
                 "ไม่มีรายงานปัญหา",
                 style: TextStyle(color: Colors.grey[500]),
               ),
             );
+          }
 
           return ListView.builder(
-            // หน้านี้ไม่มี FAB แต่ใส่ไว้เผื่อการแสดงผลชิดขอบจอสวยงามขึ้น
             padding: const EdgeInsets.only(
               left: 15,
               right: 15,

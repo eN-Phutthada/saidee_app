@@ -23,11 +23,9 @@ class _CartScreenState extends State<CartScreen> {
   final Set<String> _selectedCartIds = {};
   bool _isEditing = false;
 
-  // --- 1. ตัวแปรสำหรับแก้หน้าจอกระตุกและระบบเลือกสินค้า ---
   Stream<QuerySnapshot>? _cartStream;
   final Map<String, Stream<DocumentSnapshot>> _productStreams = {};
-  final Map<String, bool> _availabilityCache =
-      {}; // เก็บสถานะสินค้าว่าพร้อมขายไหม
+  final Map<String, bool> _availabilityCache = {};
 
   @override
   void initState() {
@@ -35,7 +33,6 @@ class _CartScreenState extends State<CartScreen> {
     _initCartStream();
   }
 
-  // เรียก Stream แค่ครั้งเดียวตอนเปิดหน้าจอ เพื่อไม่ให้หน้ารีเฟรชเวลากด Checkbox
   void _initCartStream() {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -100,7 +97,7 @@ class _CartScreenState extends State<CartScreen> {
     if (_cartStream == null) _initCartStream();
 
     return StreamBuilder<QuerySnapshot>(
-      stream: _cartStream, // ใช้ตัวแปร Stream ที่ Cache ไว้
+      stream: _cartStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -185,7 +182,6 @@ class _CartScreenState extends State<CartScreen> {
                           List<QueryDocumentSnapshot> shopItems =
                               groupedCart[sellerId]!;
 
-                          // เช็คเฉพาะสินค้าที่เลือกได้ในร้านนั้นๆ
                           var selectableShopItems = shopItems
                               .where(
                                 (doc) =>
@@ -292,7 +288,6 @@ class _CartScreenState extends State<CartScreen> {
                                     setState(() {
                                       if (val == true) {
                                         for (var e in cartItems) {
-                                          // เลือกเฉพาะอันที่พร้อมขาย หรือกำลังจะลบ
                                           if (_isEditing ||
                                               _availabilityCache[e.id] ==
                                                   true) {
@@ -389,7 +384,6 @@ class _CartScreenState extends State<CartScreen> {
                   setState(() {
                     for (var doc in items) {
                       if (val == true) {
-                        // เลือกร้าน จะติ๊กเฉพาะชิ้นที่ขายได้
                         if (_isEditing || _availabilityCache[doc.id] == true) {
                           _selectedCartIds.add(doc.id);
                         }
@@ -509,14 +503,13 @@ class _CartScreenState extends State<CartScreen> {
     var data = doc.data() as Map<String, dynamic>;
     String productId = data['productId'] ?? '';
 
-    // --- 3. Cache Stream ย่อย ไม่ให้สร้างใหม่ทุกครั้งที่ SetState ---
     _productStreams[productId] ??= FirebaseFirestore.instance
         .collection('products')
         .doc(productId)
         .snapshots();
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: _productStreams[productId], // ดึงจากที่ Cache ไว้
+      stream: _productStreams[productId],
       builder: (context, prodSnapshot) {
         bool isAvailable = true;
 
@@ -528,7 +521,6 @@ class _CartScreenState extends State<CartScreen> {
             if (pData['status'] != 'active') isAvailable = false;
           }
 
-          // บันทึกสถานะลง Map (เพื่อให้ตัวเลือกทั้งหมด นำไปใช้กรองได้)
           _availabilityCache[doc.id] = isAvailable;
         }
 

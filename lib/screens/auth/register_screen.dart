@@ -8,7 +8,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
-// import 'package:saidee_app/screens/home/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

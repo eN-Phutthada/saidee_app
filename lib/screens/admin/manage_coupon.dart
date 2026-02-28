@@ -19,7 +19,6 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
   final _descController = TextEditingController();
   String _discountType = 'percent';
 
-  // --- 1. Custom Dialog สำหรับการเพิ่ม/แก้ไข ---
   void _showEditDialog({String? docId, Map<String, dynamic>? data}) {
     _codeController.text = data?['code'] ?? '';
     _valueController.text = data?['value']?.toString() ?? '';
@@ -198,12 +197,10 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
     );
   }
 
-  // --- 2. Custom Dialog สำหรับการลบ (เหมือนหน้า Shipping) ---
   Future<void> _deleteCoupon(String docId, String code) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // ตรวจสอบว่าคูปองถูกใช้ใน Orders หรือยัง
     final usageCheck = await FirebaseFirestore.instance
         .collection('orders')
         .where('couponCode', isEqualTo: code)
@@ -373,7 +370,6 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Header ส่วนสีเขียว (สไตล์เดียวกับ Shipping)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 15,
@@ -408,7 +404,6 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                         ],
                       ),
                     ),
-                    // Body ของ Card
                     Padding(
                       padding: const EdgeInsets.all(15),
                       child: Row(
@@ -453,8 +448,6 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
       ),
     );
   }
-
-  // --- Helper Widgets ---
 
   Widget _buildTextField(
     String label,

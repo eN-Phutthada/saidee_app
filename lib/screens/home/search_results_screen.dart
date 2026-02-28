@@ -118,7 +118,6 @@ class SearchResultsScreen extends StatelessWidget {
     );
   }
 
-  // ใช้การ์ดหน้าตาเหมือนหน้า Home
   Widget _buildProductCard(
     BuildContext context,
     Map<String, dynamic> data,

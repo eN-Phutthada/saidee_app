@@ -24,20 +24,17 @@ class AddProductScreen extends StatefulWidget {
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   final _priceController = TextEditingController();
   final _brandController = TextEditingController();
   final _weightController = TextEditingController();
 
-  // Dropdown Values
   String? _selectedType;
   String? _selectedCategory;
   String? _selectedSize;
   String? _selectedCondition;
 
-  // Static Data
   final List<String> _sizeList = [
     'XS',
     'S',
@@ -54,7 +51,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'มีตำหนิ (Defect)',
   ];
 
-  // Media
   final List<File> _selectedImages = [];
   File? _selectedVideo;
   VideoPlayerController? _videoController;
@@ -734,10 +730,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   if (!snapshot.hasData) return const SizedBox();
                   final categories = snapshot.data!.docs;
 
-                  // --- แก้ไขใช้ Wrap แทน SingleChildScrollView เพื่อให้ตัดขึ้นบรรทัดใหม่ได้อัตโนมัติ ---
                   return Wrap(
-                    spacing: 10, // ระยะห่างแนวนอน
-                    runSpacing: 10, // ระยะห่างแนวตั้ง (บรรทัดใหม่)
+                    spacing: 10,
+                    runSpacing: 10,
                     children: categories.map((doc) {
                       var data = doc.data() as Map<String, dynamic>;
                       String catName = data['name'] ?? '';
@@ -761,7 +756,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                                   : (isDark
                                         ? Colors.grey[800]!
                                         : Colors.grey[300]!),
-                            ), // ปรับสีขอบให้สวยขึ้น
+                            ),
                           ),
                           child: Text(
                             catName,
@@ -966,11 +961,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // --- แก้ไข: นำ Expanded มาครอบ RichText กันตัวอักษรล้น และใส่ overflow: ellipsis ---
               Expanded(
                 child: RichText(
-                  maxLines: 1, // บังคับให้อยู่บรรทัดเดียว
-                  overflow: TextOverflow.ellipsis, // ใส่จุด ... เมื่อล้น
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   text: TextSpan(
                     text: label.replaceAll('*', '').trim(),
                     style: textStyle,
@@ -985,7 +979,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8), // เว้นระยะห่างไอคอนเล็กน้อย
+              const SizedBox(width: 8),
               Icon(
                 CupertinoIcons.chevron_down,
                 size: 20,

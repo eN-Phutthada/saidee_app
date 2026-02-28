@@ -8,7 +8,7 @@ import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
 import '../cart/cart_screen.dart';
-import '../auth/login_screen.dart'; // เพิ่ม Import หน้า Login
+import '../auth/login_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -44,7 +44,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     super.dispose();
   }
 
-  // --- สร้างฟังก์ชัน Helper สำหรับเรียก Popup สวยๆ ---
   void _showCustomDialog({
     required String title,
     required String message,
@@ -145,14 +144,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       ),
-      barrierDismissible: true, // ให้กดพื้นที่ว่างรอบๆ เพื่อปิดได้
+      barrierDismissible: true,
     );
   }
 
   Future<void> _addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
 
-    // 1. กรณียังไม่ล็อกอิน -> แสดง Popup ให้ไปหน้า Login
     if (user == null) {
       _showCustomDialog(
         title: "กรุณาเข้าสู่ระบบ",
@@ -161,15 +159,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         iconColor: Colors.orange,
         confirmText: "เข้าสู่ระบบ",
         onConfirm: () {
-          Get.back(); // ปิด Popup
-          Get.to(() => const LoginScreen()); // ไปหน้า Login
+          Get.back();
+          Get.to(() => const LoginScreen());
         },
         showCancel: true,
       );
       return;
     }
 
-    // 2. กรณีซื้อสินค้าตัวเอง -> แสดง Popup แจ้งเตือน
     if (user.uid == widget.product.sellerId) {
       _showCustomDialog(
         title: "ไม่สามารถทำรายการได้",
@@ -191,7 +188,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .where('productId', isEqualTo: widget.product.id)
           .get();
 
-      // 3. กรณีมีสินค้าในตะกร้าอยู่แล้ว -> แสดง Popup ถามว่าจะไปตะกร้าไหม
       if (existingItem.docs.isNotEmpty) {
         _showCustomDialog(
           title: "สินค้าอยู่ในตะกร้าแล้ว",
@@ -225,7 +221,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'addedAt': Timestamp.now(),
       });
 
-      // 4. กรณีสำเร็จ -> แสดง Popup สีเขียว
       _showCustomDialog(
         title: "เพิ่มลงตะกร้าสำเร็จ!",
         message: "สินค้าถูกเพิ่มลงในตะกร้าของคุณเรียบร้อยแล้ว",
@@ -240,7 +235,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         },
       );
     } catch (e) {
-      // Error จากระบบ ให้ใช้ Snackbar ปกติไปก่อน เพราะไม่ได้ต้องการให้ User เลือกปุ่ม
       Get.snackbar(
         "Error",
         "เกิดข้อผิดพลาด: ${e.toString()}",
@@ -262,7 +256,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     List<Widget> mediaPages = [];
 
-    // จัดการวิดีโอ (FittedBox)
     if (_isVideoInitialized && _videoController != null) {
       mediaPages.add(
         GestureDetector(

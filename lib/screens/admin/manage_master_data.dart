@@ -31,7 +31,6 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // --- แยกไอคอนให้ตรงกับ หมวดหมู่ หรือ ประเภท ---
     IconData dialogIcon = widget.collection == 'categories'
         ? CupertinoIcons.square_grid_2x2_fill
         : CupertinoIcons.tag_fill;
@@ -185,7 +184,6 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // --- ตรวจสอบการถูกใช้งาน ถ้ามีสินค้าใช้อยู่ ให้โชว์ Popup เตือนแทน Snackbar ---
     if (productCheck.docs.isNotEmpty) {
       Get.dialog(
         Dialog(
@@ -250,7 +248,6 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
       return;
     }
 
-    // --- ถ้ายืนยันลบได้ ให้โชว์ Popup ยืนยันการลบ ---
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
