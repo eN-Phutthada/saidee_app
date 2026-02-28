@@ -455,7 +455,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    widget.product.size,
+                    "ไซส์: ${widget.product.size}",
                     style: theme.textTheme.bodyLarge?.copyWith(
                       color: isDark ? Colors.grey[400] : Colors.grey[700],
                     ),

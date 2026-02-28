@@ -5,8 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
-import 'package:saidee_app/services/dummy_data_helper.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
@@ -183,7 +183,7 @@ class ProfileScreen extends StatelessWidget {
                           CupertinoIcons.cube_box,
                           "การสั่งซื้อ\nของฉัน",
                           onTap: () {
-                            // TODO: ไปหน้าการสั่งซื้อ
+                            Get.to(() => BuyerOrdersScreen());
                           },
                         ),
                       ),

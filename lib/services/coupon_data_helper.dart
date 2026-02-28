@@ -1,0 +1,64 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class CouponDataHelper {
+  static Future<void> setupSampleCoupons() async {
+    final db = FirebaseFirestore.instance;
+    final couponCollection = db.collection('coupons');
+
+    // รายการคูปองจำลองที่เหมาะกับร้านเสื้อผ้ามือสอง
+    final List<Map<String, dynamic>> coupons = [
+      {
+        'code': 'WELCOME50',
+        'type': 'flat',
+        'value': 50.0,
+        'min_order': 300.0,
+        'desc': 'ส่วนลดต้อนรับลูกค้าใหม่',
+      },
+      {
+        'code': 'SAIDEE10',
+        'type': 'percent',
+        'value': 10.0,
+        'min_order': 500.0,
+        'desc': 'ส่วนลดพิเศษสำหรับแฟนเพจ Saidee',
+      },
+      {
+        'code': 'LUCKY20',
+        'type': 'percent',
+        'value': 20.0,
+        'min_order': 1000.0,
+        'desc': 'คูปองลดหนักจัดเต็มเมื่อช้อปครบพัน',
+      },
+      {
+        'code': 'SAVE20',
+        'type': 'flat',
+        'value': 20.0,
+        'min_order': 150.0,
+        'desc': 'ลดเล็กน้อยสำหรับคำสั่งซื้อขนาดเล็ก',
+      },
+      {
+        'code': 'FASHION100',
+        'type': 'flat',
+        'value': 100.0,
+        'min_order': 800.0,
+        'desc': 'คุ้มสุดๆ ลดทันที 100 บาท',
+      },
+    ];
+
+    try {
+      print("⏳ กำลังรีเซ็ตข้อมูลคูปอง...");
+      // ล้างข้อมูลเก่า (Optional)
+      var oldDocs = await couponCollection.get();
+      for (var doc in oldDocs.docs) {
+        await doc.reference.delete();
+      }
+
+      print("⏳ กำลังเพิ่มคูปองจำลอง...");
+      for (var coupon in coupons) {
+        await couponCollection.add(coupon);
+      }
+      print("✅ เพิ่มข้อมูลคูปองสำเร็จ!");
+    } catch (e) {
+      print("❌ เกิดข้อผิดพลาด: $e");
+    }
+  }
+}

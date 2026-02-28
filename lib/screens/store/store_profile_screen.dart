@@ -3,8 +3,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
+import 'package:saidee_app/screens/store/seller_shipping_screen.dart';
 import '../../models/product_model.dart';
 
 class StoreProfileScreen extends StatefulWidget {
@@ -76,8 +78,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                     unselectedLabelColor: Colors.grey,
                     indicatorColor: theme.colorScheme.onSurface,
                     indicatorWeight: 3,
-                    dividerColor: Colors
-                        .transparent, // *** จุดสำคัญ: ลบเส้นยาวแนวนอนใต้ TabBar ***
+                    dividerColor: Colors.transparent,
                     labelStyle: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -242,7 +243,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               Icons.arrow_forward_ios,
               theme,
               isDark,
-              () {},
+              () {
+                Get.to(() => SellerShippingScreen(sellerId: widget.sellerId));
+              },
             ),
           ),
           const SizedBox(width: 15),
@@ -252,7 +255,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               Icons.arrow_forward_ios,
               theme,
               isDark,
-              () {},
+              () {
+                Get.to(() => SellerOrdersScreen());
+              },
             ),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/coupon_data_helper.dart';
 
 class ManageCouponScreen extends StatefulWidget {
   const ManageCouponScreen({super.key});
@@ -15,12 +16,15 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
   final _codeController = TextEditingController();
   final _valueController = TextEditingController();
   final _minOrderController = TextEditingController();
+  final _descController = TextEditingController();
   String _discountType = 'percent';
 
+  // --- 1. Custom Dialog สำหรับการเพิ่ม/แก้ไข ---
   void _showEditDialog({String? docId, Map<String, dynamic>? data}) {
     _codeController.text = data?['code'] ?? '';
     _valueController.text = data?['value']?.toString() ?? '';
     _minOrderController.text = data?['min_order']?.toString() ?? '';
+    _descController.text = data?['desc'] ?? '';
     _discountType = data?['type'] ?? 'percent';
 
     final theme = Theme.of(context);
@@ -58,18 +62,13 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     ),
                   ),
                   const SizedBox(height: 25),
-                  TextField(
-                    controller: _codeController,
-                    decoration: InputDecoration(
-                      labelText: "โค้ด (เช่น SUMMER10)",
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                  _buildTextField(
+                    "โค้ดคูปอง (เช่น WELCOME50)",
+                    _codeController,
+                    isDark,
                   ),
+                  const SizedBox(height: 15),
+                  _buildTextField("คำอธิบายคูปอง", _descController, isDark),
                   const SizedBox(height: 15),
                   Container(
                     decoration: BoxDecoration(
@@ -80,7 +79,10 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                       children: [
                         Expanded(
                           child: RadioListTile<String>(
-                            title: const Text("ลด %"),
+                            title: const Text(
+                              "ลด %",
+                              style: TextStyle(fontSize: 14),
+                            ),
                             value: 'percent',
                             groupValue: _discountType,
                             activeColor: AppTheme.primaryColor,
@@ -90,7 +92,10 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                         ),
                         Expanded(
                           child: RadioListTile<String>(
-                            title: const Text("ลด บาท"),
+                            title: const Text(
+                              "ลด บาท",
+                              style: TextStyle(fontSize: 14),
+                            ),
                             value: 'flat',
                             groupValue: _discountType,
                             activeColor: AppTheme.primaryColor,
@@ -102,34 +107,26 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  TextField(
-                    controller: _valueController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: _discountType == 'percent'
-                          ? "จำนวน % (เช่น 10)"
-                          : "จำนวนบาท (เช่น 100)",
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          "จำนวนลด",
+                          _valueController,
+                          isDark,
+                          isNumber: true,
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  TextField(
-                    controller: _minOrderController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: "ซื้อขั้นต่ำ (บาท)",
-                      filled: true,
-                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildTextField(
+                          "ขั้นต่ำ (฿)",
+                          _minOrderController,
+                          isDark,
+                          isNumber: true,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 30),
                   Row(
@@ -139,22 +136,11 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                           onPressed: () => Get.back(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: BorderSide(
-                              color: isDark
-                                  ? Colors.grey[700]!
-                                  : Colors.grey[300]!,
-                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: Text(
-                            "ยกเลิก",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
+                          child: const Text("ยกเลิก"),
                         ),
                       ),
                       const SizedBox(width: 15),
@@ -164,6 +150,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                             if (_codeController.text.isEmpty) return;
                             final newData = {
                               'code': _codeController.text.trim().toUpperCase(),
+                              'desc': _descController.text.trim(),
                               'type': _discountType,
                               'value':
                                   double.tryParse(_valueController.text) ?? 0,
@@ -171,15 +158,16 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                                   double.tryParse(_minOrderController.text) ??
                                   0,
                             };
-                            if (docId == null)
+                            if (docId == null) {
                               await FirebaseFirestore.instance
                                   .collection('coupons')
                                   .add(newData);
-                            else
+                            } else {
                               await FirebaseFirestore.instance
                                   .collection('coupons')
                                   .doc(docId)
                                   .update(newData);
+                            }
                             Get.back();
                           },
                           style: ElevatedButton.styleFrom(
@@ -210,6 +198,107 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
     );
   }
 
+  // --- 2. Custom Dialog สำหรับการลบ (เหมือนหน้า Shipping) ---
+  Future<void> _deleteCoupon(String docId, String code) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // ตรวจสอบว่าคูปองถูกใช้ใน Orders หรือยัง
+    final usageCheck = await FirebaseFirestore.instance
+        .collection('orders')
+        .where('couponCode', isEqualTo: code)
+        .limit(1)
+        .get();
+
+    if (usageCheck.docs.isNotEmpty) {
+      _showWarningDialog(
+        theme,
+        "ไม่สามารถลบได้",
+        "มีการใช้คูปอง '$code' ในระบบคำสั่งซื้อแล้ว\nกรุณาปิดการใช้งานแทนการลบ",
+      );
+      return;
+    }
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildIconCircle(Colors.red, CupertinoIcons.trash_fill),
+              const SizedBox(height: 20),
+              const Text(
+                "ยืนยันการลบ",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "คุณแน่ใจหรือไม่ที่จะลบคูปอง '$code' ?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500]),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        FirebaseFirestore.instance
+                            .collection('coupons')
+                            .doc(docId)
+                            .delete();
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ลบ",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -222,6 +311,13 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
           "จัดการคูปองส่วนลด",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => CouponDataHelper.setupSampleCoupons(),
+            tooltip: "รีเซ็ตเป็นข้อมูลจริง",
+          ),
+        ],
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -243,32 +339,27 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());
-          if (snapshot.data!.docs.isEmpty)
+          if (snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
-                "ไม่มีคูปองส่วนลด",
+                "ไม่มีข้อมูลคูปอง",
                 style: TextStyle(color: Colors.grey[500]),
               ),
             );
+          }
 
           return ListView.builder(
-            // แก้บัคปุ่มบัง: เพิ่ม bottom: 100
-            padding: const EdgeInsets.only(
-              left: 15,
-              right: 15,
-              top: 15,
-              bottom: 100,
-            ),
+            padding: const EdgeInsets.fromLTRB(15, 15, 15, 100),
             itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
               String discountLabel = data['type'] == 'percent'
-                  ? "ลด ${data['value']} %"
-                  : "ลด ${data['value']} บาท";
+                  ? "ลด ${data['value']}%"
+                  : "ลด ${data['value']} ฿";
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 15),
+                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(15),
@@ -279,78 +370,199 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                       offset: const Offset(0, 4),
                     ),
                   ],
-                  border: Border.all(
-                    color: Colors.orange.withOpacity(0.3),
-                    width: 1,
-                  ),
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(15),
-                  leading: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.ticket_fill,
-                      color: Colors.orange,
-                      size: 28,
-                    ),
-                  ),
-                  title: Text(
-                    data['code'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                      color: Colors.orange,
-                    ),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          discountLabel,
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                child: Column(
+                  children: [
+                    // Header ส่วนสีเขียว (สไตล์เดียวกับ Shipping)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF1E3A2F)
+                            : const Color(0xFFE8F5E9),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.ticket_fill,
+                            color: AppTheme.primaryColor,
+                            size: 20,
                           ),
-                        ),
-                        Text(
-                          "เมื่อซื้อขั้นต่ำ ${data['min_order']} ฿",
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Text(
+                            data['code'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                          const Spacer(),
+                          _buildSmallActionButtons(doc.id, data),
+                        ],
+                      ),
                     ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          CupertinoIcons.pencil,
-                          color: Colors.blue,
-                        ),
-                        onPressed: () =>
-                            _showEditDialog(docId: doc.id, data: data),
+                    // Body ของ Card
+                    Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['desc'] ?? 'ไม่มีคำอธิบาย',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    _buildInfoBadge(
+                                      discountLabel,
+                                      Colors.orange,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    _buildInfoBadge(
+                                      "ขั้นต่ำ ${data['min_order']} ฿",
+                                      Colors.blue,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          CupertinoIcons.delete,
-                          color: Colors.red,
-                        ),
-                        onPressed: () => doc.reference.delete(),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  // --- Helper Widgets ---
+
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    bool isDark, {
+    bool isNumber = false,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmallActionButtons(String docId, Map<String, dynamic> data) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: const Icon(CupertinoIcons.pencil, color: Colors.blue, size: 20),
+          constraints: const BoxConstraints(),
+          onPressed: () => _showEditDialog(docId: docId, data: data),
+        ),
+        const SizedBox(width: 10),
+        IconButton(
+          icon: const Icon(CupertinoIcons.delete, color: Colors.red, size: 20),
+          constraints: const BoxConstraints(),
+          onPressed: () => _deleteCoupon(docId, data['code']),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIconCircle(Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: color, size: 50),
+    );
+  }
+
+  void _showWarningDialog(ThemeData theme, String title, String msg) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(25),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildIconCircle(
+                Colors.orange,
+                CupertinoIcons.exclamationmark_triangle_fill,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                msg,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500], height: 1.5),
+              ),
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  child: const Text("ตกลง"),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
