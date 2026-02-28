@@ -548,9 +548,9 @@ class _HomeContentState extends State<HomeContent> {
                     children: [
                       Expanded(
                         child: Text(
-                          data['brand']?.isNotEmpty == true
-                              ? data['brand']
-                              : (data['name'] ?? ''),
+                          data['name']?.isNotEmpty == true
+                              ? data['name']
+                              : (data['brand'] ?? ''),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(

@@ -5,25 +5,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 class DummyDataHelper {
   static final Random _random = Random();
 
-  // ข้อมูลพื้นฐานตามโจทย์
   static final List<String> _categories = ['เสื้อผ้าผู้ชาย', 'เสื้อผ้าผู้หญิง'];
-
   static final List<String> _types = ['กางเกงขายาว', 'เสื้อยืด', 'กระโปรง'];
-
-  // ส่วนประกอบสำหรับสุ่มชื่อสินค้า
-  static final List<String> _brands = [
-    'Saidee',
-    'Minimal',
-    'StreetWear',
-    'Vintage Co.',
-    'Urban',
-  ];
+  static final List<String> _brands = ['Saidee'];
   static final List<String> _adjectives = [
     'คุณภาพดี',
     'รุ่นยอดฮิต',
     'เนื้อผ้าพรีเมียม',
     'ราคาถูก',
     'สภาพนางฟ้า',
+  ];
+
+  static final List<String> _fashionVideos = [
+    'https://assets.mixkit.co/videos/preview/mixkit-girl-in-neon-clothing-in-a-dark-space-34534-large.mp4',
+    'https://assets.mixkit.co/videos/preview/mixkit-young-woman-modelling-a-red-dress-41006-large.mp4',
+    'https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-person-in-a-denim-jacket-41014-large.mp4',
   ];
 
   static Future<void> setupDummyData({int count = 10}) async {
@@ -36,35 +32,23 @@ class DummyDataHelper {
     }
 
     try {
-      print("⏳ กำลังเริ่มเตรียมข้อมูลพื้นฐาน...");
+      print("⏳ กำลังเตรียมข้อมูลและสุ่มสร้างสินค้าแฟชั่น $count รายการ...");
 
-      // 1. เพิ่มหมวดหมู่ (Categories) ลง Firestore
-      for (var cat in _categories) {
-        await db.collection('categories').doc(cat).set({'name': cat});
-      }
-
-      // 2. เพิ่มประเภทสินค้า (Types) ลง Firestore
-      for (var type in _types) {
-        await db.collection('types').doc(type).set({'name': type});
-      }
-
-      print("⏳ กำลังสุ่มสร้างสินค้าจำนวน $count รายการ...");
-
-      // 3. สุ่มสร้างสินค้า
       for (int i = 0; i < count; i++) {
         String randomType = _types[_random.nextInt(_types.length)];
         String randomCat = _categories[_random.nextInt(_categories.length)];
         String randomBrand = _brands[_random.nextInt(_brands.length)];
         String randomAdj = _adjectives[_random.nextInt(_adjectives.length)];
 
-        // สุ่มชื่อสินค้า เช่น "Saidee เสื้อยืด รุ่นยอดฮิต"
-        String randomName = "$randomBrand $randomType $randomAdj";
-
-        // สุ่มราคา 99 - 1500 บาท
+        String randomName = "$randomType $randomAdj";
         double randomPrice = (_random.nextInt(140) * 10) + 99.0;
-
-        // สุ่มน้ำหนัก 100 - 800 กรัม
         double randomWeight = (_random.nextInt(70) * 10) + 100.0;
+
+        // ดึง Keyword ตามประเภทสินค้าเพื่อให้รูปภาพตรงกับชื่อ
+        String imgKeyword = _getImgKeyword(randomType);
+        int uniqueLock = _random.nextInt(1000);
+        String identicalImageUrl =
+            'https://loremflickr.com/500/500/$imgKeyword,fashion?lock=$uniqueLock';
 
         await db.collection('products').add({
           'sellerId': user.uid,
@@ -72,7 +56,7 @@ class DummyDataHelper {
           'type': randomType,
           'category': randomCat,
           'description':
-              'สินค้าคุณภาพดีจากโปรเจกต์ Saidee รายการที่ ${i + 1} รายละเอียดสินค้าเบื้องต้นสวมใส่สบาย ทนทาน เหมาะกับทุกโอกาส',
+              'เสื้อผ้ามือสองคัดเกรด รายการที่ ${i + 1} เนื้อผ้าดี ซักสะอาดพร้อมใช้งาน สภาพเหมือนใหม่ ไร้ตำหนิหนัก เหมาะสำหรับใส่เที่ยวหรือใส่ทำงาน',
           'price': randomPrice,
           'brand': randomBrand,
           'size': ['S', 'M', 'L', 'XL', 'Freesize'][_random.nextInt(5)],
@@ -82,21 +66,29 @@ class DummyDataHelper {
             'มีตำหนิ (Defect)',
           ][_random.nextInt(3)],
           'weight': randomWeight,
-          'images': [
-            'https://picsum.photos/seed/${_random.nextInt(1000)}/500/500',
-            'https://picsum.photos/seed/${_random.nextInt(1000)}/500/500',
-            'https://picsum.photos/seed/${_random.nextInt(1000)}/500/500',
-          ],
-          'video':
-              'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+          'images': [identicalImageUrl, identicalImageUrl, identicalImageUrl],
+          'video': _fashionVideos[_random.nextInt(_fashionVideos.length)],
           'status': 'active',
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
 
-      print("✅ เพิ่มข้อมูลจำลองสำเร็จเรียบร้อยแล้ว!");
+      print("✅ เพิ่มข้อมูลสินค้าแฟชั่นมือสองสำเร็จแล้ว!");
     } catch (e) {
       print("❌ เกิดข้อผิดพลาด: $e");
+    }
+  }
+
+  static String _getImgKeyword(String type) {
+    switch (type) {
+      case 'กางเกงขายาว':
+        return 'jeans,trousers';
+      case 'เสื้อยืด':
+        return 'tshirt,shirt';
+      case 'กระโปรง':
+        return 'skirt,dress';
+      default:
+        return 'clothing';
     }
   }
 }

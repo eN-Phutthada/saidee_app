@@ -18,7 +18,7 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  Set<String> _selectedCartIds = {};
+  final Set<String> _selectedCartIds = {};
   bool _isEditing = false;
 
   void _toggleItemSelection(String docId) {

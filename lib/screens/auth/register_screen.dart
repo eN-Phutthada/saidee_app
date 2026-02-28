@@ -7,7 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/auth/login_screen.dart';
+// import 'package:saidee_app/screens/home/home_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -120,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-      Get.offAll(() => const HomeScreen());
+      Get.offAll(() => const LoginScreen());
 
       _showCustomSnackbar(
         title: "สำเร็จ",
@@ -426,17 +427,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           elevation: 5,
                           shadowColor: AppTheme.primaryColor.withOpacity(0.4),
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                "สมัครสมาชิก",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  key: ValueKey('loading'),
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : const Text(
+                                  "สมัครสมาชิก",
+                                  key: ValueKey('text'),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
+                        ),
                       ),
                     ),
 

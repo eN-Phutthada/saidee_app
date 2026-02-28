@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
-// import 'package:saidee_app/services/dummy_data_helper.dart';
+import 'package:saidee_app/services/dummy_data_helper.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';

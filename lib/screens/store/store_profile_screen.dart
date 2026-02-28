@@ -309,12 +309,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .where('sellerId', isEqualTo: widget.sellerId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(
             child: Text("ยังไม่มีสินค้า", style: TextStyle(color: Colors.grey)),
           );
+        }
 
         var products = snapshot.data!.docs;
         products.sort((a, b) {
@@ -390,9 +392,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  product.brand.isNotEmpty
-                                      ? product.brand
-                                      : product.name,
+                                  product.name.isNotEmpty
+                                      ? product.name
+                                      : product.brand,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
                                   ),
