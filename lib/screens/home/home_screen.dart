@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
@@ -23,6 +24,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  StreamSubscription<DocumentSnapshot>? _userStatusSubscription;
+  bool _isBannedAlertShown = false;
 
   final List<Widget> _pages = [
     const HomeContent(),
@@ -34,41 +37,119 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkUserStatus();
+    _listenToUserStatus();
   }
 
-  Future<void> _checkUserStatus() async {
+  @override
+  void dispose() {
+    _userStatusSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenToUserStatus() {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+      _userStatusSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .listen(
+            (userDoc) async {
+              if (userDoc.exists) {
+                var userData = userDoc.data() as Map<String, dynamic>;
+                String status = userData['status'] ?? 'active';
 
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-          if (userData['status'] == 'suspended' ||
-              userData['status'] == 'banned') {
-            await FirebaseAuth.instance.signOut();
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Get.offAll(() => const LoginScreen());
-              Get.snackbar(
-                "บัญชีถูกระงับ",
-                "บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
-                backgroundColor: Colors.red[800]!,
-                colorText: Colors.white,
-                icon: const Icon(CupertinoIcons.nosign, color: Colors.white),
-                snackPosition: SnackPosition.TOP,
-                duration: const Duration(seconds: 5),
-              );
-            });
-          }
-        }
-      } catch (e) {
-        debugPrint("Error checking user status: $e");
-      }
+                if ((status == 'suspended' || status == 'banned') &&
+                    !_isBannedAlertShown) {
+                  _isBannedAlertShown = true;
+                  _userStatusSubscription?.cancel();
+
+                  await FirebaseAuth.instance.signOut();
+
+                  _showBannedPopup();
+                }
+              }
+            },
+            onError: (e) {
+              debugPrint("Error listening to user status: $e");
+            },
+          );
     }
+  }
+
+  void _showBannedPopup() {
+    Get.dialog(
+      PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Theme.of(context).cardColor,
+          child: Padding(
+            padding: const EdgeInsets.all(30.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.nosign,
+                    color: Colors.red,
+                    size: 60,
+                  ),
+                ),
+                const SizedBox(height: 25),
+                const Text(
+                  "บัญชีถูกระงับการใช้งาน",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 15),
+                Text(
+                  "บัญชีของคุณถูกระงับเนื่องจากละเมิดนโยบายของแอปพลิเคชัน หรือถูกรายงานจากผู้ใช้ท่านอื่น\n\nระบบได้ทำการออกจากระบบอัตโนมัติ กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[600], height: 1.5),
+                ),
+                const SizedBox(height: 30),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Get.offAll(() => const LoginScreen());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "ตกลง",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
   }
 
   @override
