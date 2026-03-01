@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/account_security_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
 
@@ -480,113 +481,31 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _confirmLogout(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.power,
-                  color: Colors.redAccent,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                "ออกจากระบบ",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "คุณแน่ใจหรือไม่ที่จะออกจากระบบ Saidee App?",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.grey[400] : Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        Get.dialog(
-                          const Center(child: CircularProgressIndicator()),
-                          barrierDismissible: false,
-                        );
-                        await FirebaseAuth.instance.signOut();
-                        Get.back();
-                        Get.offAll(() => const HomeScreen());
-                        _showCustomSnackbar(
-                          "สำเร็จ",
-                          "ออกจากระบบเรียบร้อยแล้ว",
-                          CupertinoIcons.checkmark_alt_circle_fill,
-                          AppTheme.primaryColor,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ออกจากระบบ",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: "ออกจากระบบ",
+      message: "คุณแน่ใจหรือไม่ที่จะออกจากระบบ Saidee App?",
+      icon: CupertinoIcons.power,
+      iconColor: Colors.redAccent,
+      confirmText: "ออกจากระบบ",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
+        await FirebaseAuth.instance.signOut();
+        Get.back();
+        Get.offAll(() => const HomeScreen());
+        _showCustomSnackbar(
+          "สำเร็จ",
+          "ออกจากระบบเรียบร้อยแล้ว",
+          CupertinoIcons.checkmark_alt_circle_fill,
+          AppTheme.primaryColor,
+        );
+      },
     );
   }
 

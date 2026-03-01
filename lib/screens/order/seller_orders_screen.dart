@@ -509,7 +509,6 @@ class SellerOrdersScreen extends StatelessWidget {
                                     color: currentStatus == 'cancelled'
                                         ? Colors.grey
                                         : AppTheme.primaryColor,
-                                    fontFamily: 'Kanit',
                                     decoration: currentStatus == 'cancelled'
                                         ? TextDecoration.lineThrough
                                         : null,

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class BuyerOrderDetailScreen extends StatelessWidget {
   final String orderId;
@@ -18,94 +19,21 @@ class BuyerOrderDetailScreen extends StatelessWidget {
   Future<void> _cancelOrder(BuildContext context, double totalAmount) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.xmark_circle_fill,
-                  color: Colors.red,
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ยกเลิกคำสั่งซื้อ",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "คุณแน่ใจหรือไม่ที่จะยกเลิกคำสั่งซื้อนี้?\nเงินจะถูกคืนเข้าวอลเล็ททันที",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ปิด",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        _performCancel(user.uid, totalAmount);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ยืนยัน",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: "ยกเลิกคำสั่งซื้อ",
+      message:
+          "คุณแน่ใจหรือไม่ที่จะยกเลิกคำสั่งซื้อนี้?\nเงินจะถูกคืนเข้าวอลเล็ททันที",
+      icon: CupertinoIcons.xmark_circle_fill,
+      iconColor: Colors.red,
+      confirmText: "ยืนยัน",
+      cancelText: "ปิด",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
+        _performCancel(user.uid, totalAmount);
+      },
     );
   }
 

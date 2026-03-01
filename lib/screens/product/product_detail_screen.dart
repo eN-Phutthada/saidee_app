@@ -3,12 +3,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
 import '../cart/cart_screen.dart';
 import '../auth/login_screen.dart';
+import 'add_product_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -22,10 +24,13 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentImageIndex = 0;
   VideoPlayerController? _videoController;
+
   bool _isVideoInitialized = false;
+  bool _isVideoError = false;
 
   bool _isSellerValid = true;
   bool _isCheckingSeller = true;
+  bool _isFavorite = false;
 
   @override
   void initState() {
@@ -33,11 +38,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (widget.product.video.isNotEmpty) {
       _videoController =
           VideoPlayerController.networkUrl(Uri.parse(widget.product.video))
-            ..initialize().then((_) {
-              setState(() {
-                _isVideoInitialized = true;
-              });
-            });
+            ..initialize()
+                .then((_) {
+                  if (mounted) {
+                    setState(() {
+                      _isVideoInitialized = true;
+                    });
+                  }
+                })
+                .catchError((error) {
+                  if (mounted) {
+                    setState(() {
+                      _isVideoError = true;
+                    });
+                  }
+                  debugPrint("Video Load Error: $error");
+                });
     }
     _checkSellerStatus();
   }
@@ -80,107 +96,237 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  void _showCustomDialog({
-    required String title,
-    required String message,
-    required IconData icon,
-    required Color iconColor,
-    required String confirmText,
-    required VoidCallback onConfirm,
-    bool showCancel = false,
-    String cancelText = "ยกเลิก",
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void _showNotImplementedSnackbar(String featureName) {
+    Get.snackbar(
+      "แจ้งเตือนระบบจำลอง",
+      "ฟังก์ชัน '$featureName' เป็นเพียงการจำลองระบบ ยังไม่สามารถใช้งานได้จริงในขณะนี้",
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.orange.withOpacity(0.9),
+      colorText: Colors.white,
+      icon: const Icon(CupertinoIcons.info_circle_fill, color: Colors.white),
+      duration: const Duration(seconds: 3),
+    );
+  }
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
+  void _showInfoSheet(String title, String description) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 60),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              const SizedBox(height: 30),
-              Row(
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.grey[400] : Colors.grey[700],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "เข้าใจแล้ว",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showConditionInfoSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String condition = widget.product.condition.split('(')[0].trim();
+    String description =
+        "สภาพสินค้าประเมินโดยผู้ขาย โปรดพิจารณาจากรูปภาพและรายละเอียดเพิ่มเติมประกอบ";
+
+    if (condition.contains("ของใหม่ป้ายห้อย")) {
+      description =
+          "ไม่เคยผ่านการใช้งาน ป้ายหรือบรรจุภัณฑ์ยังอยู่ครบถ้วนเหมือนซื้อจากร้าน";
+    } else if (condition.contains("เหมือนใหม่")) {
+      description =
+          "ใส่หรือใช้งานแค่ 1-2 ครั้ง ไม่มีตำหนิใดๆ สภาพใกล้เคียงของใหม่มาก";
+    } else if (condition.contains("สภาพดีมาก")) {
+      description =
+          "ใช้งานน้อย สีไม่ซีด ไม่มีรอยขาดหรือเปื้อนที่สังเกตเห็นได้ชัดเจน";
+    } else if (condition.contains("สภาพดี")) {
+      description =
+          "มีร่องรอยการใช้งานทั่วไป สีอาจดรอปลงเล็กน้อย แต่โดยรวมยังดูดีและใช้งานได้ปกติ";
+    } else if (condition.contains("มีตำหนิเล็กน้อย")) {
+      description =
+          "มีจุดเปื้อนจางๆ ขุยผ้า รอยสะกิด หรือตำหนิเล็กน้อย (ควรตรวจสอบรูปภาพหรือสอบถามผู้ขายเพิ่มเติม)";
+    } else if (condition.contains("มีตำหนิชัดเจน")) {
+      description =
+          "มีรอยเปื้อนชัด ซิปแตก ขาด หรือมีผลต่อการใช้งานบางส่วน (ควรสอบถามผู้ขายถึงรายละเอียดตำหนิ)";
+    }
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(CupertinoIcons.info_circle_fill, color: Colors.blue),
+                const SizedBox(width: 10),
+                const Text(
+                  "ความหมายของสภาพสินค้า",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.grey[800]
+                    : Colors.blue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (showCancel) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Get.back(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(
-                            color: isDark
-                                ? Colors.grey[700]!
-                                : Colors.grey[300]!,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          cancelText,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
+                  Text(
+                    widget.product.condition,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.blue,
                     ),
-                    const SizedBox(width: 15),
-                  ],
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onConfirm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        confirmText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[300] : Colors.grey[800],
+                      height: 1.5,
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "ปิด",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      barrierDismissible: true,
+    );
+  }
+
+  void _confirmDeleteProduct() {
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการลบ",
+      message:
+          "คุณแน่ใจหรือไม่ที่จะลบสินค้ารายการนี้ออกจากการขาย?\nการกระทำนี้ไม่สามารถกู้คืนได้",
+      icon: CupertinoIcons.trash_fill,
+      iconColor: Colors.red,
+      confirmText: "ลบสินค้า",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
+        try {
+          await FirebaseFirestore.instance
+              .collection('products')
+              .doc(widget.product.id)
+              .delete();
+          Get.back();
+          Get.back();
+          Get.snackbar(
+            "สำเร็จ",
+            "ลบสินค้าออกจากระบบเรียบร้อยแล้ว",
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } catch (e) {
+          Get.back();
+          Get.snackbar(
+            "ข้อผิดพลาด",
+            "ไม่สามารถลบสินค้าได้: $e",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      },
     );
   }
 
@@ -188,7 +334,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "กรุณาเข้าสู่ระบบ",
         message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถสั่งซื้อสินค้าได้",
         icon: CupertinoIcons.person_crop_circle_badge_exclam,
@@ -204,7 +350,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     if (user.uid == widget.product.sellerId) {
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "ไม่สามารถทำรายการได้",
         message: "คุณไม่สามารถเพิ่มสินค้าของตัวเองลงในตะกร้าได้",
         icon: CupertinoIcons.xmark_circle_fill,
@@ -235,7 +381,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       if (existingItem.docs.isNotEmpty) {
-        _showCustomDialog(
+        AppDialog.showCustomDialog(
           title: "สินค้าอยู่ในตะกร้าแล้ว",
           message:
               "สินค้านี้ถูกเพิ่มลงในตะกร้าของคุณไปแล้ว คุณต้องการไปยังตะกร้าสินค้าหรือไม่?",
@@ -267,7 +413,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'addedAt': Timestamp.now(),
       });
 
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "เพิ่มลงตะกร้าสำเร็จ!",
         message: "สินค้าถูกเพิ่มลงในตะกร้าของคุณเรียบร้อยแล้ว",
         icon: CupertinoIcons.checkmark_alt_circle_fill,
@@ -316,60 +462,142 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     List<Widget> mediaPages = [];
 
-    if (_isVideoInitialized && _videoController != null) {
-      mediaPages.add(
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _videoController!.value.isPlaying
-                  ? _videoController!.pause()
-                  : _videoController!.play();
-            });
-          },
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  clipBehavior: Clip.hardEdge,
-                  child: SizedBox(
-                    width: _videoController!.value.size.width,
-                    height: _videoController!.value.size.height,
-                    child: VideoPlayer(_videoController!),
+    if (widget.product.video.isNotEmpty) {
+      if (_isVideoError) {
+        mediaPages.add(
+          Container(
+            color: isDark ? Colors.grey[900] : Colors.grey[200],
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    CupertinoIcons.video_camera_solid,
+                    color: Colors.grey,
+                    size: 40,
                   ),
-                ),
+                  const SizedBox(height: 15),
+                  Text(
+                    "ไม่สามารถโหลดวิดีโอได้",
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
-              if (!_videoController!.value.isPlaying)
-                const CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  radius: 30,
-                  child: Icon(
-                    CupertinoIcons.play_fill,
-                    color: Colors.white,
-                    size: 30,
+            ),
+          ),
+        );
+      } else if (!_isVideoInitialized || _videoController == null) {
+        mediaPages.add(
+          Container(
+            color: isDark ? Colors.grey[900] : Colors.grey[200],
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: AppTheme.primaryColor),
+                  const SizedBox(height: 15),
+                  Text(
+                    "กำลังโหลดวิดีโอ...",
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      } else {
+        mediaPages.add(
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _videoController!.value.isPlaying
+                    ? _videoController!.pause()
+                    : _videoController!.play();
+              });
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: SizedBox(
+                      width: _videoController!.value.size.width,
+                      height: _videoController!.value.size.height,
+                      child: VideoPlayer(_videoController!),
+                    ),
                   ),
                 ),
-            ],
+                if (!_videoController!.value.isPlaying)
+                  const CircleAvatar(
+                    backgroundColor: Colors.black54,
+                    radius: 30,
+                    child: Icon(
+                      CupertinoIcons.play_fill,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+                Positioned(
+                  bottom: 15,
+                  right: 15,
+                  child: GestureDetector(
+                    onTap: () => Get.to(
+                      () =>
+                          FullScreenVideoScreen(controller: _videoController!),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.fullscreen,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     mediaPages.addAll(
-      widget.product.images
-          .map(
-            (img) => Image.network(
-              img,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: isDark ? Colors.grey[800] : Colors.grey[200],
-                child: const Icon(CupertinoIcons.exclamationmark_triangle),
+      widget.product.images.asMap().entries.map((entry) {
+        int index = entry.key;
+        String imgUrl = entry.value;
+        return GestureDetector(
+          onTap: () {
+            Get.to(
+              () => FullScreenImageGallery(
+                images: widget.product.images,
+                initialIndex: index,
               ),
+            );
+          },
+          child: Image.network(
+            imgUrl,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            errorBuilder: (context, error, stackTrace) => Container(
+              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              child: const Icon(CupertinoIcons.exclamationmark_triangle),
             ),
-          )
-          .toList(),
+          ),
+        );
+      }).toList(),
     );
 
     return Scaffold(
@@ -426,13 +654,79 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         backgroundColor: isDark
                             ? Colors.black54
                             : Colors.white70,
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: currentUser != null
+                              ? FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(currentUser.uid)
+                                    .collection('cart')
+                                    .snapshots()
+                              : null,
+                          builder: (context, snapshot) {
+                            int cartCount = snapshot.hasData
+                                ? snapshot.data!.docs.length
+                                : 0;
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    CupertinoIcons.cart,
+                                    color: theme.colorScheme.onSurface,
+                                    size: 22,
+                                  ),
+                                  onPressed: () => Get.to(
+                                    () =>
+                                        const CartScreen(showBackButton: true),
+                                  ),
+                                ),
+                                if (cartCount > 0)
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Text(
+                                        cartCount > 9
+                                            ? '9+'
+                                            : cartCount.toString(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      CircleAvatar(
+                        backgroundColor: isDark
+                            ? Colors.black54
+                            : Colors.white70,
                         child: IconButton(
                           icon: Icon(
-                            CupertinoIcons.heart,
-                            color: theme.colorScheme.onSurface,
+                            _isFavorite
+                                ? CupertinoIcons.heart_fill
+                                : CupertinoIcons.heart,
+                            color: _isFavorite
+                                ? Colors.red
+                                : theme.colorScheme.onSurface,
                             size: 24,
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            setState(() => _isFavorite = !_isFavorite);
+                            _showNotImplementedSnackbar("รายการโปรด");
+                          },
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -446,7 +740,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             color: theme.colorScheme.onSurface,
                             size: 24,
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            _showNotImplementedSnackbar("แชร์สินค้า");
+                          },
                         ),
                       ),
                     ],
@@ -736,18 +1032,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     widget.product.category,
                     context,
                     showArrow: true,
+                    onTap: () => _showInfoSheet(
+                      "หมวดหมู่สินค้า",
+                      "สินค้านี้จัดอยู่ในหมวดหมู่ผู้สวมใส่ประเภท '${widget.product.category}' ช่วยให้คุณหาเสื้อผ้าที่เข้ากับคุณได้ง่ายขึ้น",
+                    ),
                   ),
                   _buildDetailRow(
                     "ประเภท",
                     widget.product.type,
                     context,
                     showArrow: true,
+                    onTap: () => _showInfoSheet(
+                      "ประเภทสินค้า",
+                      "สินค้านี้จัดอยู่ในประเภท '${widget.product.type}'",
+                    ),
                   ),
                   _buildDetailRow(
                     "สภาพสินค้า",
                     widget.product.condition,
                     context,
                     showArrow: true,
+                    onTap: _showConditionInfoSheet,
                   ),
                   _buildDetailRow(
                     "น้ำหนัก (กรัม)",
@@ -765,74 +1070,147 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ),
       ),
       bottomNavigationBar: isOwner
-          ? null
-          : Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
+          ? _buildOwnerBottomBar(theme, isDark)
+          : _buildBuyerBottomBar(theme, isDark, canAddToCart, buttonText),
+    );
+  }
+
+  Widget _buildBuyerBottomBar(
+    ThemeData theme,
+    bool isDark,
+    bool canAddToCart,
+    String buttonText,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: !_isSellerValid
+                  ? null
+                  : () {
+                      _showNotImplementedSnackbar("แชทกับร้านค้า");
+                    },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                side: BorderSide(
+                  color: _isSellerValid ? AppTheme.primaryColor : Colors.grey,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: !_isSellerValid ? null : () {},
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        side: BorderSide(
-                          color: _isSellerValid
-                              ? AppTheme.primaryColor
-                              : Colors.grey,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: Text(
-                        "แชทเลย",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _isSellerValid
-                              ? AppTheme.primaryColor
-                              : Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: canAddToCart ? _addToCart : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        disabledBackgroundColor: isDark
-                            ? Colors.grey[800]
-                            : Colors.grey[400],
-                      ),
-                      child: Text(
-                        buttonText,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                "แชทเลย",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _isSellerValid ? AppTheme.primaryColor : Colors.grey,
+                ),
               ),
             ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: canAddToCart ? _addToCart : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                disabledBackgroundColor: isDark
+                    ? Colors.grey[800]
+                    : Colors.grey[400],
+              ),
+              child: Text(
+                buttonText,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnerBottomBar(ThemeData theme, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () {
+                Get.to(() => AddProductScreen(product: widget.product));
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                side: BorderSide(
+                  color: isDark ? Colors.grey[500]! : Colors.grey,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                "แก้ไขสินค้า",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _confirmDeleteProduct,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                "ลบสินค้า",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -842,61 +1220,248 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     BuildContext context, {
     bool showArrow = false,
     String? subtitle,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
+        InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.grey[500] : Colors.grey[600],
+                      label,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark ? Colors.grey[500] : Colors.grey[600],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-              Row(
-                children: [
-                  Text(
-                    value,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isDark ? Colors.grey[400] : Colors.grey[800],
+                ),
+                Row(
+                  children: [
+                    Text(
+                      value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDark ? Colors.grey[400] : Colors.grey[800],
+                      ),
                     ),
-                  ),
-                  if (showArrow) ...[
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      size: 14,
-                      color: AppTheme.primaryColor,
-                    ),
+                    if (showArrow) ...[
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 14,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
         Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[300]),
       ],
+    );
+  }
+}
+
+class FullScreenVideoScreen extends StatefulWidget {
+  final VideoPlayerController controller;
+
+  const FullScreenVideoScreen({super.key, required this.controller});
+
+  @override
+  State<FullScreenVideoScreen> createState() => _FullScreenVideoScreenState();
+}
+
+class _FullScreenVideoScreenState extends State<FullScreenVideoScreen> {
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPlaying = widget.controller.value.isPlaying;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (widget.controller.value.isPlaying) {
+                  widget.controller.pause();
+                  _isPlaying = false;
+                } else {
+                  widget.controller.play();
+                  _isPlaying = true;
+                }
+              });
+            },
+            child: SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: SizedBox(
+                  width: widget.controller.value.size.width,
+                  height: widget.controller.value.size.height,
+                  child: VideoPlayer(widget.controller),
+                ),
+              ),
+            ),
+          ),
+          if (!_isPlaying)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  widget.controller.play();
+                  _isPlaying = true;
+                });
+              },
+              child: const CircleAvatar(
+                backgroundColor: Colors.black54,
+                radius: 40,
+                child: Icon(
+                  CupertinoIcons.play_fill,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+            ),
+          Positioned(
+            top: 50,
+            right: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Get.back(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FullScreenImageGallery extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+
+  const FullScreenImageGallery({
+    super.key,
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<FullScreenImageGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Image.network(
+                    widget.images[index],
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: 50,
+            right: 20,
+            child: CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => Get.back(),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 30,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  "${_currentIndex + 1} / ${widget.images.length}",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

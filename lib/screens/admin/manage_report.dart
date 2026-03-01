@@ -3,115 +3,43 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class ManageReportScreen extends StatelessWidget {
   const ManageReportScreen({super.key});
 
-  void _banUser(String userId, BuildContext context) async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void _banUser(String userId) {
+    AppDialog.showCustomDialog(
+      title: "ระงับบัญชี (Ban)",
+      message:
+          "คุณยืนยันที่จะแบนบัญชีนี้อย่างถาวรหรือไม่?\nการกระทำนี้จะถูกบันทึกลงระบบ",
+      icon: CupertinoIcons.nosign,
+      iconColor: Colors.red,
+      confirmText: "แบนทันที",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        String currentAdminUid =
+            FirebaseAuth.instance.currentUser?.uid ?? 'Unknown Admin';
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.nosign,
-                  color: Colors.red,
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ระงับบัญชี (Ban)",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "คุณยืนยันที่จะแบนบัญชีนี้อย่างถาวรหรือไม่?\nการกระทำนี้จะถูกบันทึกลงระบบ",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[500]),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        String currentAdminUid =
-                            FirebaseAuth.instance.currentUser?.uid ??
-                            'Unknown Admin';
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(userId)
-                            .update({
-                              'status': 'banned',
-                              'bannedAt': FieldValue.serverTimestamp(),
-                              'bannedBy': currentAdminUid,
-                            });
-                        Get.back();
-                        Get.snackbar(
-                          "สำเร็จ",
-                          "ระงับการใช้งานบัญชีเรียบร้อยแล้ว",
-                          backgroundColor: Colors.green,
-                          colorText: Colors.white,
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "แบนทันที",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .update({
+              'status': 'banned',
+              'bannedAt': FieldValue.serverTimestamp(),
+              'bannedBy': currentAdminUid,
+            });
+
+        Get.back();
+        Get.snackbar(
+          "สำเร็จ",
+          "ระงับการใช้งานบัญชีเรียบร้อยแล้ว",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      },
     );
   }
 
@@ -140,8 +68,9 @@ class ManageReportScreen extends StatelessWidget {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           Map<String, List<Map<String, dynamic>>> groupedReports = {};
           Map<String, Set<String>> uniqueReporters = {};
@@ -323,8 +252,7 @@ class ManageReportScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                onPressed: () =>
-                                    _banUser(targetUserId, context),
+                                onPressed: () => _banUser(targetUserId),
                                 icon: const Icon(
                                   CupertinoIcons.nosign,
                                   color: Colors.white,

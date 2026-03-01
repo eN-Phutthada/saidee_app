@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 // import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class AccountSecurityScreen extends StatefulWidget {
   final String email;
@@ -53,13 +54,13 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     icon: CupertinoIcons.lock_shield,
                     title: "เปลี่ยนรหัสผ่าน",
                     subtitle: "ส่งลิงก์รีเซ็ตไปที่อีเมลของคุณ",
-                    onTap: () => _showPasswordResetDialog(context),
+                    onTap: () => _showPasswordResetDialog(),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 25),
+
             _buildSectionHeader("ความปลอดภัยกระเป๋าเงิน (Wallet)"),
             Container(
               decoration: BoxDecoration(
@@ -72,8 +73,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     icon: CupertinoIcons.number_square,
                     title: "รหัส PIN การชำระเงิน",
                     subtitle: "ตั้งค่าหรือเปลี่ยนรหัส 6 หลัก",
+                    hasBorder: true,
                     onTap: () {
-                      // TODO: ทำหน้าตั้งรหัส PIN ทีหลัง
                       _showCustomSnackbar(
                         "เร็วๆ นี้",
                         "ระบบรหัส PIN กำลังพัฒนา",
@@ -81,7 +82,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         Colors.blue,
                       );
                     },
-                    hasBorder: true,
                   ),
                   ListTile(
                     leading: const Icon(
@@ -106,8 +106,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                 ],
               ),
             ),
-
             const SizedBox(height: 25),
+
             _buildSectionHeader("การจัดการบัญชี"),
             Container(
               decoration: BoxDecoration(
@@ -121,7 +121,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     iconColor: Colors.red,
                     title: "ลบบัญชีผู้ใช้",
                     titleColor: Colors.red,
-                    onTap: () => _showDeleteAccountDialog(context),
+                    onTap: () => _showDeleteAccountDialog(),
                   ),
                 ],
               ),
@@ -132,241 +132,76 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     );
   }
 
-  void _showPasswordResetDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void _showPasswordResetDialog() {
+    AppDialog.showCustomDialog(
+      title: "รีเซ็ตรหัสผ่าน",
+      message: "เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่:\n${widget.email}",
+      icon: CupertinoIcons.lock_shield_fill,
+      iconColor: Colors.orange,
+      confirmText: "ส่งลิงก์",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      onConfirm: () async {
+        Get.back();
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.lock_shield_fill,
-                  color: Colors.orange,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                "รีเซ็ตรหัสผ่าน",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "เราจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปที่:\n${widget.email}",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        if (widget.email.isEmpty) {
-                          _showCustomSnackbar(
-                            "เกิดข้อผิดพลาด",
-                            "ไม่พบอีเมลผู้ใช้",
-                            CupertinoIcons.xmark_circle_fill,
-                            Colors.red,
-                          );
-                          return;
-                        }
-                        try {
-                          await FirebaseAuth.instance.sendPasswordResetEmail(
-                            email: widget.email,
-                          );
-                          _showCustomSnackbar(
-                            "สำเร็จ",
-                            "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว",
-                            CupertinoIcons.check_mark_circled_solid,
-                            AppTheme.primaryColor,
-                          );
-                        } catch (e) {
-                          _showCustomSnackbar(
-                            "ผิดพลาด",
-                            "ไม่สามารถส่งอีเมลได้",
-                            CupertinoIcons.xmark_circle_fill,
-                            Colors.red,
-                          );
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ส่งลิงก์",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+        // --- ส่วนที่ปิดการทำงานไว้ ---
+        /*
+        if (widget.email.isEmpty) {
+          _showCustomSnackbar("เกิดข้อผิดพลาด", "ไม่พบอีเมลผู้ใช้", CupertinoIcons.xmark_circle_fill, Colors.red);
+          return;
+        }
+        try {
+          await FirebaseAuth.instance.sendPasswordResetEmail(email: widget.email);
+          _showCustomSnackbar("สำเร็จ", "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว", CupertinoIcons.check_mark_circled_solid, AppTheme.primaryColor);
+        } catch (e) {
+          _showCustomSnackbar("ผิดพลาด", "ไม่สามารถส่งอีเมลได้", CupertinoIcons.xmark_circle_fill, Colors.red);
+        }
+        */
+
+        // แจ้งเตือนจำลองการทำงาน
+        _showCustomSnackbar(
+          "ระบบจำลอง",
+          "ฟังก์ชันส่งอีเมลรีเซ็ตรหัสผ่านถูกปิดการทำงานไว้ชั่วคราว",
+          CupertinoIcons.info_circle_fill,
+          Colors.orange,
+        );
+      },
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  void _showDeleteAccountDialog() {
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการลบบัญชี",
+      message:
+          "การกระทำนี้ไม่สามารถย้อนกลับได้ ข้อมูลร้านค้า สินค้า และยอดเงินในวอลเล็ทของคุณจะถูกลบทั้งหมด",
+      icon: CupertinoIcons.exclamationmark_triangle_fill,
+      iconColor: Colors.red,
+      confirmText: "ลบถาวร",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.exclamationmark_triangle_fill,
-                  color: Colors.red,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ยืนยันการลบบัญชี",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "การกระทำนี้ไม่สามารถย้อนกลับได้ ข้อมูลร้านค้า สินค้า และยอดเงินในวอลเล็ทของคุณจะถูกลบทั้งหมด",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // TODO: ใส่ Logic ลบข้อมูลใน Firestore ก่อนลบ Auth ในภายหลัง
-                        // try {
-                        //   await FirebaseAuth.instance.currentUser?.delete();
-                        //   Get.offAll(() => const HomeScreen());
-                        //   _showCustomSnackbar(
-                        //     "สำเร็จ",
-                        //     "ลบบัญชีเรียบร้อยแล้ว",
-                        //     CupertinoIcons.check_mark_circled_solid,
-                        //     Colors.black87,
-                        //   );
-                        // } catch (e) {
-                        //   Get.back();
-                        //   _showCustomSnackbar(
-                        //     "ข้อผิดพลาด",
-                        //     "กรุณาเข้าสู่ระบบใหม่อีกครั้งก่อนทำการลบบัญชี",
-                        //     CupertinoIcons.info_circle_fill,
-                        //     Colors.orange,
-                        //   );
-                        // }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ลบถาวร",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+        // --- ส่วนที่ปิดการทำงานไว้ ---
+        /*
+        try {
+          // TODO: ใส่ Logic ลบข้อมูลใน Firestore ก่อนลบ Auth ในภายหลัง
+          // await FirebaseAuth.instance.currentUser?.delete();
+          // Get.offAll(() => const HomeScreen());
+          // _showCustomSnackbar("สำเร็จ", "ลบบัญชีเรียบร้อยแล้ว", CupertinoIcons.check_mark_circled_solid, Colors.black87);
+        } catch (e) {
+          _showCustomSnackbar("ข้อผิดพลาด", "กรุณาเข้าสู่ระบบใหม่อีกครั้งก่อนทำการลบบัญชี", CupertinoIcons.info_circle_fill, Colors.orange);
+        }
+        */
+
+        _showCustomSnackbar(
+          "ระบบจำลอง",
+          "ฟังก์ชันลบบัญชีถูกปิดการทำงานไว้ชั่วคราว",
+          CupertinoIcons.info_circle_fill,
+          Colors.orange,
+        );
+      },
     );
   }
 

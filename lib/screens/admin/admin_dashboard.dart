@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 import 'manage_master_data.dart';
 import 'manage_shipping.dart';
@@ -73,107 +74,20 @@ class AdminDashboardContent extends StatelessWidget {
   const AdminDashboardContent({super.key});
 
   void _handleLogout(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        elevation: 5,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.power,
-                  color: Colors.redAccent,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Text(
-                "ออกจากระบบ",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Text(
-                "คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.grey[400] : Colors.grey[700],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        await FirebaseAuth.instance.signOut();
-                        Get.offAll(() => const LoginScreen());
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ออกจากระบบ",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: true,
+    AppDialog.showCustomDialog(
+      title: "ออกจากระบบ",
+      message: "คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?",
+      icon: CupertinoIcons.power,
+      iconColor: Colors.redAccent,
+      confirmText: "ออกจากระบบ",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
+        await FirebaseAuth.instance.signOut();
+        Get.offAll(() => const LoginScreen());
+      },
     );
   }
 

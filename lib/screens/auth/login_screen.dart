@@ -427,6 +427,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _login();
                               },
                             ),
+                            _buildDebugBtn(
+                              "User 3",
+                              CupertinoIcons.person,
+                              Colors.blueGrey,
+                              () {
+                                _emailController.text = "test02@gmail.com";
+                                _passwordController.text = "123456";
+                                _login();
+                              },
+                            ),
+                            _buildDebugBtn(
+                              "User 4",
+                              CupertinoIcons.person,
+                              Colors.blueGrey,
+                              () {
+                                _emailController.text = "test03@gmail.com";
+                                _passwordController.text = "123456";
+                                _login();
+                              },
+                            ),
                           ],
                         ),
                         const SizedBox(height: 20),

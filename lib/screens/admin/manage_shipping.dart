@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/shipping_data_helper.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class ManageShippingScreen extends StatefulWidget {
   const ManageShippingScreen({super.key});
@@ -228,9 +229,6 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
     dynamic weightMin,
     dynamic weightMax,
   ) async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     final String weightRange = "($weightMin - $weightMax g)";
 
     final orderCheck = await FirebaseFirestore.instance
@@ -240,157 +238,32 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
         .get();
 
     if (orderCheck.docs.isNotEmpty) {
-      Get.dialog(
-        Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: theme.cardColor,
-          child: Padding(
-            padding: const EdgeInsets.all(25.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    CupertinoIcons.exclamationmark_triangle_fill,
-                    color: Colors.orange,
-                    size: 50,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "ไม่สามารถลบได้",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "มีการใช้งานเรทราคาของ '$shippingName' $weightRange ในระบบคำสั่งซื้ออยู่\nไม่สามารถลบรายการนี้ได้",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[500], height: 1.5),
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Get.back(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      "ตกลง",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      AppDialog.showCustomDialog(
+        title: "ไม่สามารถลบได้",
+        message:
+            "มีการใช้งานเรทราคาของ '$shippingName' $weightRange ในระบบคำสั่งซื้ออยู่\nไม่สามารถลบรายการนี้ได้",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.trash_fill,
-                  color: Colors.red,
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ยืนยันการลบ",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "คุณแน่ใจหรือไม่ที่จะลบเรทราคา \n'$shippingName' \nช่วงน้ำหนัก $weightRange ?",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[500], height: 1.4),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        FirebaseFirestore.instance
-                            .collection('shipping')
-                            .doc(docId)
-                            .delete();
-                        Get.back();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ลบ",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการลบ",
+      message:
+          "คุณแน่ใจหรือไม่ที่จะลบเรทราคา \n'$shippingName' \nช่วงน้ำหนัก $weightRange ?",
+      icon: CupertinoIcons.trash_fill,
+      iconColor: Colors.red,
+      confirmText: "ลบรายการนี้",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () {
+        FirebaseFirestore.instance.collection('shipping').doc(docId).delete();
+        Get.back();
+      },
     );
   }
 

@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class AddAddressScreen extends StatefulWidget {
   final String? docId;
@@ -83,17 +84,14 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             .collection('users')
             .doc(user.uid)
             .get();
-
         if (userDoc.exists) {
           final data = userDoc.data() as Map<String, dynamic>;
           if (!mounted) return;
           setState(() {
-            if (_nameController.text.isEmpty) {
+            if (_nameController.text.isEmpty)
               _nameController.text = data['name'] ?? '';
-            }
-            if (_phoneController.text.isEmpty) {
+            if (_phoneController.text.isEmpty)
               _phoneController.text = data['phone'] ?? '';
-            }
           });
         }
       } catch (e) {
@@ -173,7 +171,15 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 
   Future<void> _saveAddress() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      Get.snackbar(
+        "ข้อมูลไม่ครบถ้วน",
+        "กรุณากรอกข้อมูลที่จำเป็นให้ครบ",
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     final user = FirebaseAuth.instance.currentUser;
@@ -224,12 +230,17 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             .collection('addresses')
             .add(addressData);
       }
-      Get.back();
-      Get.snackbar(
-        "สำเร็จ",
-        "บันทึกที่อยู่เรียบร้อยแล้ว",
-        backgroundColor: AppTheme.primaryColor,
-        colorText: Colors.white,
+
+      AppDialog.showCustomDialog(
+        title: "บันทึกสำเร็จ",
+        message: "ข้อมูลที่อยู่ถูกบันทึกเรียบร้อยแล้ว",
+        icon: CupertinoIcons.checkmark_seal_fill,
+        iconColor: Colors.green,
+        confirmText: "ตกลง",
+        onConfirm: () {
+          Get.back();
+          Get.back();
+        },
       );
     } catch (e) {
       Get.snackbar(
@@ -244,111 +255,40 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 
   Future<void> _deleteAddress() async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.trash_fill,
-                  color: Colors.red,
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ลบที่อยู่จัดส่ง",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "คุณแน่ใจหรือไม่ที่จะลบที่อยู่นี้?",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Get.back();
-                        setState(() => _isLoading = true);
-                        final user = FirebaseAuth.instance.currentUser;
-                        if (user != null && widget.docId != null) {
-                          await FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('addresses')
-                              .doc(widget.docId)
-                              .delete();
-                          Get.back();
-                        }
-                        setState(() => _isLoading = false);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "ลบที่อยู่",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: "ลบที่อยู่จัดส่ง",
+      message: "คุณแน่ใจหรือไม่ที่จะลบที่อยู่นี้ออกจากระบบ?",
+      icon: CupertinoIcons.trash_fill,
+      iconColor: Colors.red,
+      confirmText: "ลบที่อยู่",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () async {
+        Get.back();
+        setState(() => _isLoading = true);
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && widget.docId != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('addresses')
+              .doc(widget.docId)
+              .delete();
+          Get.back();
+        }
+        setState(() => _isLoading = false);
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           _isEditing ? "แก้ไขที่อยู่" : "เพิ่มที่อยู่ใหม่",
@@ -356,26 +296,17 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(CupertinoIcons.back),
+          icon: const Icon(Icons.arrow_back_ios),
           onPressed: () => Get.back(),
         ),
         actions: [
           if (_isEditing)
             IconButton(
               onPressed: _isLoading ? null : _deleteAddress,
-              icon: const Icon(CupertinoIcons.delete),
+              icon: const Icon(CupertinoIcons.trash),
             ),
-          TextButton(
-            onPressed: _isLoading ? null : _saveAddress,
-            child: const Text(
-              "บันทึก",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
         ],
       ),
       body: !_isMapReady
@@ -383,15 +314,52 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           : Column(
               children: [
                 _buildMapSection(),
-                Expanded(child: _buildFormSection()),
+                Expanded(child: _buildFormSection(theme, isDark)),
               ],
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: SizedBox(
+            height: 55,
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : _saveAddress,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      "บันทึกที่อยู่",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildMapSection() {
     return SizedBox(
-      height: 320,
+      height: 250,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -436,71 +404,172 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     );
   }
 
-  Widget _buildFormSection() {
+  Widget _buildFormSection(ThemeData theme, bool isDark) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLabel("ข้อมูลผู้รับ"),
-            _buildTextField("ชื่อ-นามสกุล", _nameController),
-            _buildTextField("เบอร์โทรศัพท์", _phoneController, isNumber: true),
-            const SizedBox(height: 10),
-            _buildLabel("รายละเอียดที่อยู่"),
-            _buildTextField("บ้านเลขที่, ซอย, ถนน", _addressDetailController),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField("จังหวัด", _provinceController),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTextField("เขต/อำเภอ", _districtController),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTextField("แขวง/ตำบล", _subDistrictController),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTextField(
-                    "รหัสไปรษณีย์",
-                    _postcodeController,
-                    isNumber: true,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-              ],
-            ),
-            SwitchListTile(
-              title: const Text(
-                "ตั้งเป็นที่อยู่หลัก",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                ],
               ),
-              value: _isDefault,
-              activeColor: AppTheme.primaryColor,
-              onChanged: (val) => setState(() => _isDefault = val),
-              contentPadding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.person_solid,
+                        color: AppTheme.primaryColor,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "ข้อมูลผู้ติดต่อ",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(
+                    "ชื่อ-นามสกุล",
+                    _nameController,
+                    isDark: isDark,
+                  ),
+                  _buildTextField(
+                    "เบอร์โทรศัพท์",
+                    _phoneController,
+                    isNumber: true,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
+            const SizedBox(height: 20),
 
-  Widget _buildLabel(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: AppTheme.primaryColor,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.map_pin_ellipse,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "รายละเอียดที่อยู่",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  _buildTextField(
+                    "บ้านเลขที่, หมู่, ซอย, ถนน",
+                    _addressDetailController,
+                    isDark: isDark,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          "แขวง/ตำบล",
+                          _subDistrictController,
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildTextField(
+                          "เขต/อำเภอ",
+                          _districtController,
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildTextField(
+                          "จังหวัด",
+                          _provinceController,
+                          isDark: isDark,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildTextField(
+                          "รหัสไปรษณีย์",
+                          _postcodeController,
+                          isNumber: true,
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Container(
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: SwitchListTile(
+                title: const Text(
+                  "ตั้งเป็นที่อยู่จัดส่งหลัก",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  "ที่อยู่นี้จะถูกเลือกอัตโนมัติเมื่อสั่งซื้อสินค้า",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                value: _isDefault,
+                activeColor: AppTheme.primaryColor,
+                onChanged: (val) => setState(() => _isDefault = val),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );
@@ -510,16 +579,17 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     String label,
     TextEditingController controller, {
     bool isNumber = false,
+    required bool isDark,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 15),
       child: TextFormField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: Theme.of(context).cardColor,
+          fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: BorderSide.none,
@@ -528,7 +598,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             horizontal: 15,
             vertical: 15,
           ),
-          isDense: true,
         ),
         validator: (val) => val!.isEmpty ? "กรุณากรอกข้อมูล" : null,
       ),
@@ -571,7 +640,7 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
               child: Icon(
                 CupertinoIcons.location_solid,
                 size: 50,
-                color: Colors.red,
+                color: AppTheme.primaryColor,
               ),
             ),
           ),
@@ -582,6 +651,7 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             child: Center(
               child: SizedBox(
                 width: 200,
+                height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () => Get.back(result: _currentPosition),
                   icon: const Icon(
@@ -598,7 +668,6 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
@@ -608,12 +677,16 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             ),
           ),
           Positioned(
-            top: 40,
+            top: 50,
             left: 20,
             child: CircleAvatar(
               backgroundColor: Colors.white,
               child: IconButton(
-                icon: const Icon(CupertinoIcons.back, color: Colors.black),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.black,
+                  size: 18,
+                ),
                 onPressed: () => Get.back(),
               ),
             ),

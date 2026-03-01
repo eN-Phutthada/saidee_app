@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
   final String userId;
@@ -589,104 +590,23 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
   }
 
   void _confirmToggleStatus(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _isActive
-                      ? Colors.red.withOpacity(0.1)
-                      : Colors.green.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _isActive
-                      ? CupertinoIcons.nosign
-                      : CupertinoIcons.checkmark_shield_fill,
-                  color: _isActive ? Colors.red : Colors.green,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _isActive ? "ยืนยันการระงับบัญชี" : "ยืนยันการปลดระงับ",
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _isActive
-                    ? "คุณแน่ใจหรือไม่ที่จะระงับผู้ใช้นี้?\nพวกเขาจะไม่สามารถเข้าสู่ระบบหรือทำธุรกรรมใดๆ ได้"
-                    : "คุณแน่ใจหรือไม่ที่จะปลดระงับผู้ใช้นี้?\nระบบจะเปิดสิทธิ์ให้ใช้งานได้ตามปกติ",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ยกเลิก",
-                        style: TextStyle(
-                          color: isDark ? Colors.grey[400] : Colors.grey[700],
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.back();
-                        _toggleUserStatus();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isActive ? Colors.red : Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        _isActive ? "ระงับบัญชี" : "ปลดระงับ",
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: _isActive ? "ยืนยันการระงับบัญชี" : "ยืนยันการปลดระงับ",
+      message: _isActive
+          ? "คุณแน่ใจหรือไม่ที่จะระงับผู้ใช้นี้?\nพวกเขาจะไม่สามารถเข้าสู่ระบบหรือทำธุรกรรมใดๆ ได้"
+          : "คุณแน่ใจหรือไม่ที่จะปลดระงับผู้ใช้นี้?\nระบบจะเปิดสิทธิ์ให้ใช้งานได้ตามปกติ",
+      icon: _isActive
+          ? CupertinoIcons.nosign
+          : CupertinoIcons.checkmark_shield_fill,
+      iconColor: _isActive ? Colors.red : Colors.green,
+      confirmText: _isActive ? "ระงับบัญชี" : "ปลดระงับ",
+      showCancel: true,
+      cancelText: "ยกเลิก",
+      isDestructive: _isActive,
+      onConfirm: () {
+        Get.back();
+        _toggleUserStatus();
+      },
     );
   }
 }

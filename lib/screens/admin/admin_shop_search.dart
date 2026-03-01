@@ -56,7 +56,6 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
       ),
       body: Column(
         children: [
-          // --- Search Bar Section ---
           Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
             child: Container(

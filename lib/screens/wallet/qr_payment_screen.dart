@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class QRPaymentScreen extends StatefulWidget {
   final String qrString;
@@ -44,82 +45,18 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
             var data = snapshot.data() as Map<String, dynamic>;
             if (data['status'] == 'success') {
               _txSubscription?.cancel();
-              final theme = Theme.of(Get.context!);
-              final isDark = theme.brightness == Brightness.dark;
 
-              Get.dialog(
-                Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  backgroundColor: theme.cardColor,
-                  child: Padding(
-                    padding: const EdgeInsets.all(30),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.checkmark_alt,
-                            color: Colors.green,
-                            size: 60,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          "เติมเงินสำเร็จ!",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "ยอดเงิน ${widget.amount.toStringAsFixed(2)} บาท\nถูกเพิ่มเข้าวอลเล็ทของคุณแล้ว",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                            fontSize: 16,
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Get.back();
-                              Get.back();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryColor,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 0,
-                            ),
-                            child: const Text(
-                              "กลับสู่หน้าหลัก",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                barrierDismissible: false,
+              AppDialog.showCustomDialog(
+                title: "เติมเงินสำเร็จ!",
+                message:
+                    "ยอดเงิน ${widget.amount.toStringAsFixed(2)} บาท\nถูกเพิ่มเข้าวอลเล็ทของคุณแล้ว",
+                icon: CupertinoIcons.checkmark_alt,
+                iconColor: Colors.green,
+                confirmText: "กลับสู่หน้าหลัก",
+                onConfirm: () {
+                  Get.back();
+                  Get.back();
+                },
               );
             }
           }
@@ -130,7 +67,7 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
     setState(() => _isSimulating = true);
     try {
       const secretKey =
-          'xnd_development_uECbSQQ13qvRaRejTtYlQI20uqwgZowEobCwUTmN31xHBSM7vjxByLs5qlbtDC';
+          'xnd_development_uECbSQQ13qvRaRejTtYlQI20uqwgZowEobCwUTmN31xHBSM7vjxByLs5qlbtDC'; // ใส่ Secret Key ตามระบบเดิมของคุณ
       final basicAuth = 'Basic ${base64Encode(utf8.encode('$secretKey:'))}';
 
       final doc = await FirebaseFirestore.instance
@@ -213,95 +150,19 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
   }
 
   void _showCancelConfirmation() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  CupertinoIcons.xmark_circle_fill,
-                  color: Colors.red,
-                  size: 50,
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ยกเลิกรายการ?",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "คุณต้องการยกเลิกการเติมเงินครั้งนี้\nใช่หรือไม่?",
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[500], height: 1.5),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(
-                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "ไม่, รอชำระเงิน",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.back();
-                        _cancelPayment();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        "ใช่, ยกเลิกเลย",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    AppDialog.showCustomDialog(
+      title: "ยกเลิกรายการ?",
+      message: "คุณต้องการยกเลิกการเติมเงินครั้งนี้\nใช่หรือไม่?",
+      icon: CupertinoIcons.xmark_circle_fill,
+      iconColor: Colors.red,
+      confirmText: "ใช่, ยกเลิกเลย",
+      cancelText: "ไม่, รอชำระเงิน",
+      showCancel: true,
+      isDestructive: true,
+      onConfirm: () {
+        Get.back();
+        _cancelPayment();
+      },
     );
   }
 
@@ -365,7 +226,7 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _showCancelConfirmation();
       },
