@@ -24,6 +24,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
 
+  bool _isSellerValid = true;
+  bool _isCheckingSeller = true;
+
   @override
   void initState() {
     super.initState();
@@ -36,12 +39,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               });
             });
     }
+    _checkSellerStatus();
   }
 
   @override
   void dispose() {
     _videoController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkSellerStatus() async {
+    try {
+      var sellerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.product.sellerId)
+          .get();
+      if (sellerDoc.exists) {
+        var data = sellerDoc.data() as Map<String, dynamic>;
+        String status = data['status'] ?? 'active';
+        if (mounted) {
+          setState(() {
+            _isSellerValid = (status != 'banned' && status != 'suspended');
+            _isCheckingSeller = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isSellerValid = false;
+            _isCheckingSeller = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingSeller = false;
+        });
+      }
+    }
   }
 
   void _showCustomDialog({
@@ -179,6 +215,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       return;
     }
 
+    if (!_isSellerValid) {
+      Get.snackbar(
+        "ขออภัย",
+        "ร้านค้านี้ถูกระงับการใช้งานชั่วคราว ไม่สามารถสั่งซื้อได้",
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     try {
       final cartRef = FirebaseFirestore.instance
           .collection('users')
@@ -254,6 +300,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         currentUser != null && currentUser.uid == widget.product.sellerId;
     final bool isAvailable = widget.product.status == 'active';
 
+    final bool canAddToCart =
+        !_isCheckingSeller && _isSellerValid && isAvailable && !isOwner;
+
+    String buttonText = "เพิ่มลงตะกร้า";
+    if (isOwner) {
+      buttonText = "สินค้าของคุณ";
+    } else if (_isCheckingSeller) {
+      buttonText = "กำลังตรวจสอบ...";
+    } else if (!_isSellerValid) {
+      buttonText = "ร้านค้าถูกระงับชั่วคราว";
+    } else if (!isAvailable) {
+      buttonText = "สินค้าหมด";
+    }
+
     List<Widget> mediaPages = [];
 
     if (_isVideoInitialized && _videoController != null) {
@@ -281,7 +341,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
               ),
               if (!_videoController!.value.isPlaying)
-                CircleAvatar(
+                const CircleAvatar(
                   backgroundColor: Colors.black54,
                   radius: 30,
                   child: Icon(
@@ -330,8 +390,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             setState(() => _currentImageIndex = index);
                             if (_isVideoInitialized &&
                                 _videoController != null &&
-                                index != 0)
+                                index != 0) {
                               _videoController!.pause();
+                            }
                           },
                           itemBuilder: (context, index) => mediaPages[index],
                         )
@@ -476,20 +537,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     builder: (context, snapshot) {
                       String sellerName = "กำลังโหลด...";
                       String sellerImage = "";
+                      bool isBanned = false;
 
                       if (snapshot.hasData && snapshot.data!.exists) {
                         var userData =
                             snapshot.data!.data() as Map<String, dynamic>;
                         sellerName = userData['name'] ?? "ผู้ขายไม่ระบุชื่อ";
                         sellerImage = userData['profileImage'] ?? "";
+                        String sStatus = userData['status'] ?? 'active';
+                        if (sStatus == 'banned' || sStatus == 'suspended') {
+                          isBanned = true;
+                          sellerName = "ร้านค้านี้ถูกระงับการใช้งาน";
+                        }
+                      } else if (snapshot.connectionState ==
+                              ConnectionState.done &&
+                          !snapshot.data!.exists) {
+                        sellerName = "ไม่พบข้อมูลร้านค้า";
+                        isBanned = true;
                       }
 
                       return GestureDetector(
-                        onTap: () => Get.to(
-                          () => StoreProfileScreen(
-                            sellerId: widget.product.sellerId,
-                          ),
-                        ),
+                        onTap: isBanned
+                            ? null
+                            : () => Get.to(
+                                () => StoreProfileScreen(
+                                  sellerId: widget.product.sellerId,
+                                ),
+                              ),
                         child: Container(
                           color: Colors.transparent,
                           child: Row(
@@ -499,13 +573,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 backgroundColor: isDark
                                     ? Colors.grey[700]
                                     : Colors.grey[300],
-                                backgroundImage: sellerImage.isNotEmpty
+                                backgroundImage:
+                                    sellerImage.isNotEmpty && !isBanned
                                     ? NetworkImage(sellerImage)
                                     : null,
-                                child: sellerImage.isEmpty
-                                    ? const Icon(
-                                        Icons.person,
-                                        color: Colors.grey,
+                                child: (sellerImage.isEmpty || isBanned)
+                                    ? Icon(
+                                        isBanned
+                                            ? CupertinoIcons.nosign
+                                            : Icons.person,
+                                        color: isBanned
+                                            ? Colors.red
+                                            : Colors.grey,
                                       )
                                     : null,
                               ),
@@ -516,14 +595,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          sellerName,
-                                          style: theme.textTheme.titleMedium
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                        Expanded(
+                                          child: Text(
+                                            sellerName,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isBanned
+                                                      ? Colors.red
+                                                      : theme
+                                                            .colorScheme
+                                                            .onSurface,
+                                                ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                        if (isOwner) ...[
+                                        if (isOwner && !isBanned) ...[
                                           const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -549,46 +637,49 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         ],
                                       ],
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      "ส่งต่อเสื้อผ้าคุณภาพ",
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            color: isDark
-                                                ? Colors.grey[400]
-                                                : Colors.grey[600],
+                                    if (!isBanned) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "ส่งต่อเสื้อผ้าคุณภาพ",
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600],
+                                            ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            size: 14,
+                                            color: theme.colorScheme.onSurface,
                                           ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star,
-                                          size: 14,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "5.0/5 Rating",
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.grey[400]
-                                                    : Colors.grey[600],
-                                              ),
-                                        ),
-                                      ],
-                                    ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "5.0/5 Rating",
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: isDark
+                                                      ? Colors.grey[400]
+                                                      : Colors.grey[600],
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 18,
-                                color: isDark
-                                    ? Colors.grey[500]
-                                    : Colors.black54,
-                              ),
+                              if (!isBanned)
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 18,
+                                  color: isDark
+                                      ? Colors.grey[500]
+                                      : Colors.black54,
+                                ),
                             ],
                           ),
                         ),
@@ -602,7 +693,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: (isOwner || !isAvailable) ? null : _addToCart,
+                      onPressed: canAddToCart ? _addToCart : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         shape: RoundedRectangleBorder(
@@ -613,11 +704,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             : Colors.grey[400],
                       ),
                       child: Text(
-                        isOwner
-                            ? "สินค้าของคุณ"
-                            : (!isAvailable
-                                  ? "สินค้าหมด"
-                                  : "เพิ่มลงในตะกร้าของคุณ"),
+                        buttonText,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -695,17 +782,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () {},
+                      onPressed: !_isSellerValid ? null : () {},
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 15),
-                        side: const BorderSide(color: AppTheme.primaryColor),
+                        side: BorderSide(
+                          color: _isSellerValid
+                              ? AppTheme.primaryColor
+                              : Colors.grey,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         "แชทเลย",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _isSellerValid
+                              ? AppTheme.primaryColor
+                              : Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -713,7 +809,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: !isAvailable ? null : _addToCart,
+                      onPressed: canAddToCart ? _addToCart : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 15),
@@ -725,7 +821,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             : Colors.grey[400],
                       ),
                       child: Text(
-                        !isAvailable ? "สินค้าหมด" : "เพิ่มลงตะกร้า",
+                        buttonText,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,

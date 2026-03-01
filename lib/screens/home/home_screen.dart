@@ -32,6 +32,46 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _checkUserStatus();
+  }
+
+  Future<void> _checkUserStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+          if (userData['status'] == 'suspended' ||
+              userData['status'] == 'banned') {
+            await FirebaseAuth.instance.signOut();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Get.offAll(() => const LoginScreen());
+              Get.snackbar(
+                "บัญชีถูกระงับ",
+                "บัญชีของคุณถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ",
+                backgroundColor: Colors.red[800]!,
+                colorText: Colors.white,
+                icon: const Icon(CupertinoIcons.nosign, color: Colors.white),
+                snackPosition: SnackPosition.TOP,
+                duration: const Duration(seconds: 5),
+              );
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint("Error checking user status: $e");
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -196,6 +236,8 @@ class _HomeContentState extends State<HomeContent> {
   List<String> _displayTypes = [];
   List<String> _displayCategories = [];
 
+  final Map<String, bool> _sellerStatusCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -268,6 +310,48 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  Future<List<QueryDocumentSnapshot>> _filterValidProducts(
+    List<QueryDocumentSnapshot> rawProducts,
+  ) async {
+    List<QueryDocumentSnapshot> validProducts = [];
+    Set<String> sellersToFetch = {};
+
+    for (var p in rawProducts) {
+      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
+      if (sId.isNotEmpty && !_sellerStatusCache.containsKey(sId)) {
+        sellersToFetch.add(sId);
+      }
+    }
+
+    for (String sId in sellersToFetch) {
+      try {
+        var userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(sId)
+            .get();
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+          String status = userData['status'] ?? 'active';
+          _sellerStatusCache[sId] =
+              (status != 'suspended' && status != 'banned');
+        } else {
+          _sellerStatusCache[sId] = false;
+        }
+      } catch (e) {
+        _sellerStatusCache[sId] = false;
+      }
+    }
+
+    for (var p in rawProducts) {
+      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
+      if (_sellerStatusCache[sId] == true) {
+        validProducts.add(p);
+      }
+    }
+
+    return validProducts;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -276,19 +360,23 @@ class _HomeContentState extends State<HomeContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: double.infinity,
-            color: isDark ? Colors.grey[800] : const Color(0xFF6B6B6B),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: const Text(
-              "ใส่ใจสไตล์คุณ ในราคาที่คุ้มค่า",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('announcements')
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return MarqueeAnnouncement(
+                announcements: snapshot.data!.docs,
+                backgroundColor: isDark
+                    ? Colors.grey[850]!
+                    : const Color(0xFF4A4A4A),
+              );
+            },
           ),
 
           Stack(
@@ -428,33 +516,57 @@ class _HomeContentState extends State<HomeContent> {
                 );
               }
 
-              var products = snapshot.data!.docs;
-              products.sort((a, b) {
-                Timestamp? aTime =
-                    (a.data() as Map<String, dynamic>)['createdAt'];
-                Timestamp? bTime =
-                    (b.data() as Map<String, dynamic>)['createdAt'];
-                if (aTime == null || bTime == null) return 0;
-                return bTime.compareTo(aTime);
-              });
+              var rawProducts = snapshot.data!.docs;
 
-              var topProducts = products.take(10).toList();
+              return FutureBuilder<List<QueryDocumentSnapshot>>(
+                future: _filterValidProducts(rawProducts),
+                builder: (context, filterSnapshot) {
+                  if (filterSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 15),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.58,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                ),
-                itemCount: topProducts.length,
-                itemBuilder: (context, index) {
-                  var doc = topProducts[index];
-                  var data = doc.data() as Map<String, dynamic>;
-                  return _buildProductCard(context, data, doc.id, isDark);
+                  var validProducts = filterSnapshot.data ?? [];
+
+                  if (validProducts.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: Text(
+                        "ยังไม่มีสินค้าลงขาย",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
+
+                  validProducts.sort((a, b) {
+                    Timestamp? aTime =
+                        (a.data() as Map<String, dynamic>)['createdAt'];
+                    Timestamp? bTime =
+                        (b.data() as Map<String, dynamic>)['createdAt'];
+                    if (aTime == null || bTime == null) return 0;
+                    return bTime.compareTo(aTime);
+                  });
+
+                  var topProducts = validProducts.take(10).toList();
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 15),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.58,
+                          crossAxisSpacing: 15,
+                          mainAxisSpacing: 15,
+                        ),
+                    itemCount: topProducts.length,
+                    itemBuilder: (context, index) {
+                      var doc = topProducts[index];
+                      var data = doc.data() as Map<String, dynamic>;
+                      return _buildProductCard(context, data, doc.id, isDark);
+                    },
+                  );
                 },
               );
             },
@@ -691,8 +803,8 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
             Get.to(
               () => SearchResultsScreen(
                 keyword: "",
-                type: widget.isCategory ? null : widget.title,
-                category: widget.isCategory ? widget.title : null,
+                types: widget.isCategory ? null : [widget.title],
+                categories: widget.isCategory ? [widget.title] : null,
               ),
             );
           },
@@ -745,9 +857,11 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
                               Get.to(
                                 () => SearchResultsScreen(
                                   keyword: "",
-                                  type: widget.isCategory ? null : widget.title,
-                                  category: widget.isCategory
-                                      ? widget.title
+                                  types: widget.isCategory
+                                      ? null
+                                      : [widget.title],
+                                  categories: widget.isCategory
+                                      ? [widget.title]
                                       : null,
                                 ),
                               );
@@ -783,6 +897,277 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
           ),
         );
       },
+    );
+  }
+}
+
+class MarqueeAnnouncement extends StatefulWidget {
+  final List<QueryDocumentSnapshot> announcements;
+  final Color backgroundColor;
+
+  const MarqueeAnnouncement({
+    super.key,
+    required this.announcements,
+    required this.backgroundColor,
+  });
+
+  @override
+  State<MarqueeAnnouncement> createState() => _MarqueeAnnouncementState();
+}
+
+class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
+  late ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScrolling());
+  }
+
+  void _startScrolling() async {
+    while (_scrollController.hasClients) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (_scrollController.hasClients) {
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        final currentScroll = _scrollController.position.pixels;
+        double speed = 40.0;
+        double durationInSeconds = (maxScroll - currentScroll) / speed;
+
+        if (durationInSeconds > 0) {
+          await _scrollController.animateTo(
+            maxScroll,
+            duration: Duration(seconds: durationInSeconds.toInt()),
+            curve: Curves.linear,
+          );
+        }
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      }
+    }
+  }
+
+  void _showAnnouncementSheet(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.bottomSheet(
+      Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 45,
+              height: 5,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[700] : Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.bell_fill,
+                        color: AppTheme.primaryColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      "ประกาศข่าวสาร",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: () => Get.back(),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(CupertinoIcons.xmark, size: 18),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 25),
+
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                physics: const BouncingScrollPhysics(),
+                itemCount: widget.announcements.length,
+                itemBuilder: (context, index) {
+                  var data =
+                      widget.announcements[index].data()
+                          as Map<String, dynamic>;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.03)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white10 : Colors.grey[200]!,
+                        width: 1,
+                      ),
+                      boxShadow: isDark
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              CupertinoIcons.circle_fill,
+                              color: AppTheme.primaryColor,
+                              size: 8,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                data['title'] ?? '',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 18),
+                          child: Text(
+                            data['detail'] ?? '',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[700],
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    String totalText = widget.announcements
+        .map((doc) => (doc.data() as Map<String, dynamic>)['title'] ?? '')
+        .join('      |      ');
+    totalText = "$totalText      |      ";
+
+    return GestureDetector(
+      onTap: () => _showAnnouncementSheet(context),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          gradient: LinearGradient(
+            colors: [
+              widget.backgroundColor,
+              widget.backgroundColor.withOpacity(0.85),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: widget.backgroundColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          scrollDirection: Axis.horizontal,
+          physics: const NeverScrollableScrollPhysics(),
+          child: Row(
+            children: [
+              const SizedBox(width: 20),
+              const Icon(
+                CupertinoIcons.speaker_2_fill,
+                color: Colors.white,
+                size: 16,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                totalText + totalText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

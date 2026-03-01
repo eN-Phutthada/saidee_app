@@ -557,16 +557,10 @@ class AdminDashboardContent extends StatelessWidget {
                 const SizedBox(height: 5),
                 Row(
                   children: [
-                    const Icon(
-                      CupertinoIcons.star_fill,
-                      size: 16,
-                      color: Colors.amber,
-                    ),
-                    const SizedBox(width: 5),
                     Text(
-                      "5.0/5 Rating",
+                      data['email'] ?? '',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         color: isDark ? Colors.grey[400] : Colors.grey,
                       ),
                     ),

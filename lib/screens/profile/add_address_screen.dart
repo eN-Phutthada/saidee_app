@@ -33,7 +33,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   bool _isDefault = false;
   bool _isLoading = false;
   bool _isMapReady = false;
-
   bool _canFetchAddress = true;
 
   final Completer<GoogleMapController> _mapController = Completer();
@@ -44,11 +43,18 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   @override
   void initState() {
     super.initState();
+    _initialLoad();
+  }
+
+  Future<void> _initialLoad() async {
     if (_isEditing && widget.existingData != null) {
       _loadExistingData();
+      setState(() => _isMapReady = true);
     } else {
-      _fetchUserProfile();
-      _determinePosition();
+      await Future.wait([_fetchUserProfile(), _determinePosition()]);
+      if (mounted) {
+        setState(() => _isMapReady = true);
+      }
     }
   }
 
@@ -66,10 +72,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     if (data['latitude'] != null && data['longitude'] != null) {
       _currentPosition = LatLng(data['latitude'], data['longitude']);
     }
-
     _canFetchAddress = false;
-
-    setState(() => _isMapReady = true);
   }
 
   Future<void> _fetchUserProfile() async {
@@ -94,45 +97,29 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           });
         }
       } catch (e) {
-        debugPrint("Error fetching profile: $e");
+        debugPrint(e.toString());
       }
     }
   }
 
   Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      setState(() => _isMapReady = true);
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        setState(() => _isMapReady = true);
-        return;
-      }
+      if (permission == LocationPermission.denied) return;
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      setState(() => _isMapReady = true);
-      return;
-    }
+    if (permission == LocationPermission.deniedForever) return;
 
     Position position = await Geolocator.getCurrentPosition();
     if (!mounted) return;
 
-    setState(() {
-      _currentPosition = LatLng(position.latitude, position.longitude);
-      _isMapReady = true;
-    });
-
+    _currentPosition = LatLng(position.latitude, position.longitude);
     if (!_isEditing) {
-      _getAddressFromLatLng(_currentPosition);
+      await _getAddressFromLatLng(_currentPosition);
     }
   }
 
@@ -158,16 +145,15 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           _districtController.text =
               place.subAdministrativeArea ?? place.locality ?? '';
           String province = place.administrativeArea ?? '';
-          province = province
+          _provinceController.text = province
               .replaceAll('จ.', '')
               .replaceAll('Chang Wat', '')
               .trim();
-          _provinceController.text = province;
           _postcodeController.text = place.postalCode ?? '';
         });
       }
     } catch (e) {
-      debugPrint("Geocoding Error: $e");
+      debugPrint(e.toString());
     }
   }
 
@@ -184,44 +170,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       controller.animateCamera(CameraUpdate.newLatLng(result));
       _getAddressFromLatLng(result);
     }
-  }
-
-  Future<void> _deleteAddress() async {
-    Get.defaultDialog(
-      title: "ลบที่อยู่",
-      middleText: "คุณแน่ใจหรือไม่ที่จะลบที่อยู่นี้?",
-      textConfirm: "ลบ",
-      textCancel: "ยกเลิก",
-      confirmTextColor: Colors.white,
-      buttonColor: Colors.red,
-      cancelTextColor: Colors.black,
-      onConfirm: () async {
-        Get.back();
-        setState(() => _isLoading = true);
-        try {
-          final user = FirebaseAuth.instance.currentUser;
-          if (user != null && widget.docId != null) {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .collection('addresses')
-                .doc(widget.docId)
-                .delete();
-            Get.back();
-            Get.snackbar(
-              "สำเร็จ",
-              "ลบที่อยู่เรียบร้อยแล้ว",
-              backgroundColor: Colors.red,
-              colorText: Colors.white,
-            );
-          }
-        } catch (e) {
-          Get.snackbar("Error", e.toString());
-        } finally {
-          setState(() => _isLoading = false);
-        }
-      },
-    );
   }
 
   Future<void> _saveAddress() async {
@@ -245,9 +193,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         'updated_at': FieldValue.serverTimestamp(),
       };
 
-      if (!_isEditing) {
-        addressData['created_at'] = FieldValue.serverTimestamp();
-      }
+      if (!_isEditing) addressData['created_at'] = FieldValue.serverTimestamp();
 
       if (_isDefault) {
         var batch = FirebaseFirestore.instance.batch();
@@ -271,27 +217,20 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             .collection('addresses')
             .doc(widget.docId)
             .update(addressData);
-        Get.back();
-        Get.snackbar(
-          "สำเร็จ",
-          "แก้ไขที่อยู่เรียบร้อยแล้ว",
-          backgroundColor: AppTheme.primaryColor,
-          colorText: Colors.white,
-        );
       } else {
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user!.uid)
             .collection('addresses')
             .add(addressData);
-        Get.back();
-        Get.snackbar(
-          "สำเร็จ",
-          "เพิ่มที่อยู่เรียบร้อยแล้ว",
-          backgroundColor: AppTheme.primaryColor,
-          colorText: Colors.white,
-        );
       }
+      Get.back();
+      Get.snackbar(
+        "สำเร็จ",
+        "บันทึกที่อยู่เรียบร้อยแล้ว",
+        backgroundColor: AppTheme.primaryColor,
+        colorText: Colors.white,
+      );
     } catch (e) {
       Get.snackbar(
         "เกิดข้อผิดพลาด",
@@ -302,6 +241,109 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _deleteAddress() async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.trash_fill,
+                  color: Colors.red,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "ลบที่อยู่จัดส่ง",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "คุณแน่ใจหรือไม่ที่จะลบที่อยู่นี้?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back();
+                        setState(() => _isLoading = true);
+                        final user = FirebaseAuth.instance.currentUser;
+                        if (user != null && widget.docId != null) {
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(user.uid)
+                              .collection('addresses')
+                              .doc(widget.docId)
+                              .delete();
+                          Get.back();
+                        }
+                        setState(() => _isLoading = false);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ลบที่อยู่",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -323,7 +365,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             IconButton(
               onPressed: _isLoading ? null : _deleteAddress,
               icon: const Icon(CupertinoIcons.delete),
-              tooltip: "ลบที่อยู่",
             ),
           TextButton(
             onPressed: _isLoading ? null : _saveAddress,
@@ -337,141 +378,56 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: !_isMapReady
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildMapSection(),
+                Expanded(child: _buildFormSection()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildMapSection() {
+    return SizedBox(
+      height: 320,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          SizedBox(
-            height: 300,
-            child: !_isMapReady
-                ? const Center(child: CircularProgressIndicator())
-                : Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      GoogleMap(
-                        onMapCreated: (controller) {
-                          if (!_mapController.isCompleted) {
-                            _mapController.complete(controller);
-                          }
-                        },
-                        initialCameraPosition: CameraPosition(
-                          target: _currentPosition,
-                          zoom: 16,
-                        ),
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: true,
-                        zoomControlsEnabled: false,
-                        markers: {},
-                        onCameraMoveStarted: () {
-                          _canFetchAddress = true;
-                        },
-                        onCameraMove: (position) {
-                          _currentPosition = position.target;
-                        },
-                        onCameraIdle: () {
-                          if (_canFetchAddress) {
-                            _getAddressFromLatLng(_currentPosition);
-                          }
-                        },
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 30),
-                        child: Icon(
-                          CupertinoIcons.location_solid,
-                          size: 45,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 10,
-                        right: 10,
-                        child: FloatingActionButton.small(
-                          heroTag: "btn_fullscreen",
-                          backgroundColor: Colors.white,
-                          onPressed: _openFullScreenMap,
-                          child: const Icon(
-                            CupertinoIcons.fullscreen,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+          GoogleMap(
+            onMapCreated: (controller) => _mapController.complete(controller),
+            initialCameraPosition: CameraPosition(
+              target: _currentPosition,
+              zoom: 16,
+            ),
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: false,
+            onCameraMoveStarted: () => _canFetchAddress = true,
+            onCameraMove: (position) => _currentPosition = position.target,
+            onCameraIdle: () {
+              if (_canFetchAddress) _getAddressFromLatLng(_currentPosition);
+            },
           ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader("ข้อมูลผู้รับ"),
-                    const SizedBox(height: 10),
-                    _buildTextField("ชื่อ-นามสกุล", _nameController),
-                    _buildTextField(
-                      "เบอร์โทรศัพท์",
-                      _phoneController,
-                      isNumber: true,
-                    ),
-
-                    const SizedBox(height: 20),
-                    _buildSectionHeader("รายละเอียดที่อยู่"),
-                    const SizedBox(height: 10),
-                    _buildTextField(
-                      "บ้านเลขที่, ซอย, ถนน",
-                      _addressDetailController,
-                    ),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            "จังหวัด",
-                            _provinceController,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildTextField(
-                            "เขต/อำเภอ",
-                            _districtController,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildTextField(
-                            "แขวง/ตำบล",
-                            _subDistrictController,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _buildTextField(
-                            "รหัสไปรษณีย์",
-                            _postcodeController,
-                            isNumber: true,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 10),
-                    SwitchListTile(
-                      title: const Text(
-                        "ตั้งเป็นที่อยู่หลัก",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      value: _isDefault,
-                      activeColor: AppTheme.primaryColor,
-                      onChanged: (val) => setState(() => _isDefault = val),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    const SizedBox(height: 30),
-                  ],
-                ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 30),
+            child: Icon(
+              CupertinoIcons.location_solid,
+              size: 45,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+          Positioned(
+            bottom: 10,
+            right: 10,
+            child: FloatingActionButton.small(
+              heroTag: "fs",
+              backgroundColor: Colors.white,
+              onPressed: _openFullScreenMap,
+              child: const Icon(
+                CupertinoIcons.fullscreen,
+                color: Colors.black87,
               ),
             ),
           ),
@@ -480,13 +436,72 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.primary,
+  Widget _buildFormSection() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLabel("ข้อมูลผู้รับ"),
+            _buildTextField("ชื่อ-นามสกุล", _nameController),
+            _buildTextField("เบอร์โทรศัพท์", _phoneController, isNumber: true),
+            const SizedBox(height: 10),
+            _buildLabel("รายละเอียดที่อยู่"),
+            _buildTextField("บ้านเลขที่, ซอย, ถนน", _addressDetailController),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField("จังหวัด", _provinceController),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTextField("เขต/อำเภอ", _districtController),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTextField("แขวง/ตำบล", _subDistrictController),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildTextField(
+                    "รหัสไปรษณีย์",
+                    _postcodeController,
+                    isNumber: true,
+                  ),
+                ),
+              ],
+            ),
+            SwitchListTile(
+              title: const Text(
+                "ตั้งเป็นที่อยู่หลัก",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              value: _isDefault,
+              activeColor: AppTheme.primaryColor,
+              onChanged: (val) => setState(() => _isDefault = val),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: AppTheme.primaryColor,
+        ),
       ),
     );
   }
@@ -524,14 +539,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 class FullScreenMapPicker extends StatefulWidget {
   final LatLng initialPosition;
   const FullScreenMapPicker({super.key, required this.initialPosition});
-
   @override
   State<FullScreenMapPicker> createState() => _FullScreenMapPickerState();
 }
 
 class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
   late LatLng _currentPosition;
-
   @override
   void initState() {
     super.initState();
@@ -552,9 +565,9 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             myLocationButtonEnabled: true,
             onCameraMove: (pos) => _currentPosition = pos.target,
           ),
-          Center(
+          const Center(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 30),
+              padding: EdgeInsets.only(bottom: 30),
               child: Icon(
                 CupertinoIcons.location_solid,
                 size: 50,
@@ -589,7 +602,6 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    elevation: 5,
                   ),
                 ),
               ),

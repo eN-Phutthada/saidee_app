@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
 
 class CheckoutShopGroup {
@@ -81,8 +82,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           .orderBy('is_default', descending: true)
           .limit(1)
           .get();
+
       if (addressSnap.docs.isNotEmpty) {
-        _selectedAddress = addressSnap.docs.first.data();
+        var data = addressSnap.docs.first.data();
+        String fullAddress =
+            "${data['address_detail']} ${data['sub_district']} ${data['district']} ${data['province']} ${data['postcode']}";
+
+        data['name'] = data['receiver_name'];
+        data['address'] = fullAddress;
+        _selectedAddress = data;
       }
 
       var cartSnap = await FirebaseFirestore.instance
@@ -256,7 +264,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _appliedCoupon = couponData;
         _calculateGrandTotal();
       });
-      FocusScope.of(context).unfocus(); // ปิดคีย์บอร์ด
+      FocusScope.of(context).unfocus();
       Get.snackbar(
         "สำเร็จ",
         "ใช้โค้ดส่วนลดเรียบร้อยแล้ว",
@@ -400,12 +408,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             : null,
                         onTap: () {
                           setState(() {
-                            _selectedAddress = {
-                              'name': data['receiver_name'],
-                              'phone': data['phone'],
-                              'address': fullAddress,
-                              'address_detail': data['address_detail'],
-                            };
+                            _selectedAddress = Map<String, dynamic>.from(data);
+                            _selectedAddress!['name'] = data['receiver_name'];
+                            _selectedAddress!['address'] = fullAddress;
                           });
                           Get.back();
                         },
@@ -422,7 +427,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Future<void> _placeOrder() async {
+  void _showConfirmationDialog() {
     if (_selectedAddress == null) {
       Get.snackbar(
         "แจ้งเตือน",
@@ -440,7 +445,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (hasError) {
       Get.snackbar(
         "แจ้งเตือน",
-        "บางร้านค้าไม่รองรับการจัดส่งตามน้ำหนักนี้",
+        "บางร้านค้าไม่รองรับการจัดส่งตามน้ำหนักนี้ กรุณาแก้ไขตะกร้าสินค้า",
         backgroundColor: Colors.orange,
         colorText: Colors.white,
       );
@@ -450,13 +455,166 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (_walletBalance < _grandTotal) {
       Get.snackbar(
         "ยอดเงินไม่เพียงพอ",
-        "กรุณาเติมเงินเข้าวอลเล็ท",
+        "กรุณาเติมเงินเข้าวอลเล็ทของคุณก่อนชำระเงิน",
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
       return;
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    double remainingBalance = _walletBalance - _grandTotal;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.checkmark_alt_circle_fill,
+                  color: AppTheme.primaryColor,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "ยืนยันการชำระเงิน",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 25),
+
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[900] : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "ยอดที่ต้องชำระ",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        Text(
+                          "${_grandTotal.toStringAsFixed(2)} ฿",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "วอลเล็ทปัจจุบัน",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        Text(
+                          "${_walletBalance.toStringAsFixed(2)} ฿",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "ยอดคงเหลือหลังชำระ",
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        Text(
+                          "${remainingBalance.toStringAsFixed(2)} ฿",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        _executePayment();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ชำระเงิน",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<void> _executePayment() async {
     setState(() => _isProcessing = true);
     final user = FirebaseAuth.instance.currentUser;
     final db = FirebaseFirestore.instance;
@@ -525,48 +683,135 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       await batch.commit();
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
 
       Get.dialog(
         Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(28),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(30.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          backgroundColor: theme.cardColor,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Stack(
               children: [
-                const Icon(
-                  CupertinoIcons.checkmark_alt_circle_fill,
-                  color: Colors.green,
-                  size: 80,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "สั่งซื้อสำเร็จ!",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "คำสั่งซื้อถูกส่งไปยังผู้ขายแล้ว",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () => Get.offAll(() => const HomeScreen()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
+                Positioned(
+                  top: -50,
+                  right: -50,
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.05),
+                      shape: BoxShape.circle,
                     ),
-                    child: const Text(
-                      "กลับสู่หน้าหลัก",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 32,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.checkmark_alt,
+                            color: Colors.white,
+                            size: 40,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+
+                      const Text(
+                        "สั่งซื้อสำเร็จ!",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      Text(
+                        "คำสั่งซื้อของคุณถูกส่งไปยังผู้ขายแล้ว\nคุณสามารถติดตามสถานะได้ที่รายการสั่งซื้อ",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 15,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Get.offAll(() => const HomeScreen());
+                            Get.to(() => const BuyerOrdersScreen());
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 4,
+                            shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            "ดูรายการคำสั่งซื้อ",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: () => Get.offAll(() => const HomeScreen()),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: AppTheme.primaryColor.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            "เลือกซื้อสินค้าต่อ",
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -691,7 +936,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             ),
                                             const SizedBox(height: 5),
                                             Text(
-                                              "${_selectedAddress!['name'] ?? _selectedAddress!['receiver_name']} | ${_selectedAddress!['phone']}",
+                                              "${_selectedAddress!['receiver_name'] ?? _selectedAddress!['name']} | ${_selectedAddress!['phone']}",
                                               style: TextStyle(
                                                 color:
                                                     theme.colorScheme.onSurface,
@@ -702,7 +947,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                             const SizedBox(height: 4),
                                             Text(
                                               _selectedAddress!['address'] ??
-                                                  "${_selectedAddress!['address_detail']} ${_selectedAddress!['sub_district']} ${_selectedAddress!['district']} ${_selectedAddress!['province']} ${_selectedAddress!['postcode']}",
+                                                  "",
                                               style: TextStyle(
                                                 color: isDark
                                                     ? Colors.grey[400]
@@ -1168,7 +1413,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               _walletBalance < _grandTotal ||
                               _selectedAddress == null)
                           ? null
-                          : _placeOrder,
+                          : _showConfirmationDialog,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         shape: RoundedRectangleBorder(

@@ -2,11 +2,19 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:saidee_app/config/theme.dart';
 
-class AdminTransactionScreen extends StatelessWidget {
+class AdminTransactionScreen extends StatefulWidget {
   final bool isBottomNav;
 
   const AdminTransactionScreen({super.key, this.isBottomNav = false});
+
+  @override
+  State<AdminTransactionScreen> createState() => _AdminTransactionScreenState();
+}
+
+class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
+  String _selectedFilter = 'all';
 
   String _getTransactionTypeName(String type) {
     switch (type.toLowerCase()) {
@@ -27,253 +35,480 @@ class AdminTransactionScreen extends StatelessWidget {
     }
   }
 
-  bool _isIncomeToUser(String type) {
-    List<String> incomeTypes = ['topup', 'income', 'sale', 'refund'];
-    return incomeTypes.contains(type.toLowerCase());
+  bool _isAppIncome(String type) {
+    List<String> incomingToApp = ['topup', 'purchase', 'buy'];
+    return incomingToApp.contains(type.toLowerCase());
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          "ประวัติธุรกรรมการเงิน",
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          "ธุรกรรมการเงิน",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: isBottomNav
+        leading: widget.isBottomNav
             ? null
             : IconButton(
                 icon: Icon(
-                  Icons.arrow_back_ios,
+                  Icons.arrow_back_ios_new,
                   color: theme.colorScheme.onSurface,
+                  size: 20,
                 ),
                 onPressed: () => Get.back(),
               ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('transactions')
-            .orderBy('createdAt', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting)
-            return const Center(child: CircularProgressIndicator());
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        children: [
+          _buildBgCircle(isDark, top: -50, right: -50, size: 250),
+          _buildBgCircle(
+            isDark,
+            top: size.height * 0.4,
+            left: -100,
+            size: 300,
+            opacityFactor: 0.8,
+          ),
+
+          SafeArea(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('transactions')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CupertinoActivityIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildEmptyState(isDark);
+                }
+
+                final allTransactions = snapshot.data!.docs;
+
+                double totalIn = 0;
+                double totalOut = 0;
+
+                for (var doc in allTransactions) {
+                  var data = doc.data() as Map<String, dynamic>;
+                  double amount = (data['amount'] ?? 0).toDouble();
+                  String type = (data['type'] ?? '').toLowerCase();
+                  if (_isAppIncome(type)) {
+                    totalIn += amount;
+                  } else {
+                    totalOut += amount;
+                  }
+                }
+
+                final filteredDocs = _selectedFilter == 'all'
+                    ? allTransactions
+                    : allTransactions.where((doc) {
+                        var type =
+                            ((doc.data() as Map<String, dynamic>)['type'] ?? '')
+                                .toLowerCase();
+                        if (_selectedFilter == 'purchase' && type == 'buy') {
+                          return true;
+                        }
+                        return type == _selectedFilter;
+                      }).toList();
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(
+                                isDark ? 0.3 : 0.05,
+                              ),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                _buildSummaryItem(
+                                  "เงินเข้า (In)",
+                                  totalIn,
+                                  Colors.green,
+                                  CupertinoIcons.arrow_down_right_circle_fill,
+                                ),
+                                Container(
+                                  width: 1,
+                                  height: 40,
+                                  color: Colors.grey.withOpacity(0.2),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 15,
+                                  ),
+                                ),
+                                _buildSummaryItem(
+                                  "เงินออก (Out)",
+                                  totalOut,
+                                  Colors.redAccent,
+                                  CupertinoIcons.arrow_up_right_circle_fill,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _buildFilterChip('ทั้งหมด', 'all', isDark),
+                          _buildFilterChip('เติมเงิน', 'topup', isDark),
+                          _buildFilterChip('ซื้อสินค้า', 'purchase', isDark),
+                          _buildFilterChip('รายรับผู้ขาย', 'income', isDark),
+                          _buildFilterChip('ถอนเงิน', 'withdraw', isDark),
+                          _buildFilterChip('คืนเงิน', 'refund', isDark),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    Expanded(
+                      child: filteredDocs.isEmpty
+                          ? Center(
+                              child: Text(
+                                "ไม่พบรายการ",
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            )
+                          : ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                0,
+                                20,
+                                100,
+                              ),
+                              itemCount: filteredDocs.length,
+                              itemBuilder: (context, index) {
+                                var data =
+                                    filteredDocs[index].data()
+                                        as Map<String, dynamic>;
+                                return _buildTransactionItem(
+                                  context,
+                                  data,
+                                  isDark,
+                                  theme,
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(
+    String label,
+    double amount,
+    Color color,
+    IconData icon,
+  ) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${amount.toStringAsFixed(0)} ฿",
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, bool isDark) {
+    bool isSelected = _selectedFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 10),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) setState(() => _selectedFilter = value);
+        },
+        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+        selectedColor: AppTheme.primaryColor,
+        labelStyle: TextStyle(
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.grey[400] : Colors.grey[700]),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        ),
+        elevation: isSelected ? 4 : 0,
+        pressElevation: 0,
+        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+        side: BorderSide(
+          color: isSelected
+              ? AppTheme.primaryColor
+              : (isDark ? Colors.white10 : Colors.grey[200]!),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        showCheckmark: false,
+      ),
+    );
+  }
+
+  Widget _buildTransactionItem(
+    BuildContext context,
+    Map<String, dynamic> data,
+    bool isDark,
+    ThemeData theme,
+  ) {
+    String uid = data['uid'] ?? data['member_id'] ?? '';
+    String type = (data['type'] ?? 'unknown').toLowerCase();
+    double amount = (data['amount'] ?? 0).toDouble();
+    String status = data['status'] ?? 'pending';
+    Timestamp? ts = data['createdAt'];
+    DateTime date = ts?.toDate() ?? DateTime.now();
+    String formattedDate =
+        "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
+
+    bool isAppIn = _isAppIncome(type);
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      builder: (context, userSnapshot) {
+        String userName = "กำลังโหลด...";
+        String userImage = "";
+
+        if (userSnapshot.hasData && userSnapshot.data!.exists) {
+          var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+          userName = userData['name'] ?? "ไม่ทราบชื่อ";
+          userImage = userData['profileImage'] ?? "";
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.grey.shade100,
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    CupertinoIcons.doc_text_search,
-                    size: 80,
-                    color: Colors.grey[400],
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: isDark
+                        ? Colors.grey[800]
+                        : Colors.grey[100],
+                    backgroundImage: userImage.isNotEmpty
+                        ? NetworkImage(userImage)
+                        : null,
+                    child: userImage.isEmpty
+                        ? Icon(
+                            CupertinoIcons.person_fill,
+                            color: Colors.grey[400],
+                          )
+                        : null,
                   ),
-                  const SizedBox(height: 15),
-                  Text(
-                    "ยังไม่มีประวัติธุรกรรม",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: isAppIn ? Colors.green : Colors.redAccent,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: theme.cardColor, width: 2),
+                      ),
+                      child: Icon(
+                        isAppIn
+                            ? CupertinoIcons.arrow_down_left
+                            : CupertinoIcons.arrow_up_right,
+                        size: 10,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            );
-          }
-
-          final transactions = snapshot.data!.docs;
-
-          return ListView.builder(
-            padding: const EdgeInsets.only(top: 10, bottom: 40),
-            itemCount: transactions.length,
-            itemBuilder: (context, index) {
-              var data = transactions[index].data() as Map<String, dynamic>;
-              String uid = data['uid'] ?? data['member_id'] ?? '';
-              String type = data['type'] ?? 'unknown';
-              double amount = (data['amount'] ?? 0).toDouble();
-
-              Timestamp? ts = data['createdAt'];
-              DateTime date = ts?.toDate() ?? DateTime.now();
-              String formattedDate =
-                  "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}  ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
-
-              bool isIncome = _isIncomeToUser(type);
-
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(uid)
-                    .get(),
-                builder: (context, userSnapshot) {
-                  String userName = "ไม่ทราบชื่อ (UID: $uid)";
-                  String userImage = "";
-
-                  if (userSnapshot.hasData && userSnapshot.data!.exists) {
-                    var userData =
-                        userSnapshot.data!.data() as Map<String, dynamic>;
-                    userName = userData['name'] ?? userName;
-                    userImage = userData['profileImage'] ?? "";
-                  }
-
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 8,
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      _getTransactionTypeName(type),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              radius: 25,
-                              backgroundColor: isDark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[200],
-                              backgroundImage: userImage.isNotEmpty
-                                  ? NetworkImage(userImage)
-                                  : null,
-                              child: userImage.isEmpty
-                                  ? const Icon(
-                                      CupertinoIcons.person_fill,
-                                      color: Colors.grey,
-                                    )
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: -4,
-                              right: -4,
-                              child: CircleAvatar(
-                                radius: 12,
-                                backgroundColor: theme.cardColor,
-                                child: CircleAvatar(
-                                  radius: 10,
-                                  backgroundColor: isIncome
-                                      ? Colors.green
-                                      : Colors.red,
-                                  child: Icon(
-                                    isIncome
-                                        ? CupertinoIcons.arrow_down_left
-                                        : CupertinoIcons.arrow_up_right,
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 15),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                userName,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _getTransactionTypeName(type),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[700],
-                                ),
-                              ),
-                              if (data['order_id'] != null)
-                                Text(
-                                  "Order: ${data['order_id']}",
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                              const SizedBox(height: 6),
-                              Text(
-                                formattedDate,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[500],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              "${isIncome ? '+' : '-'}${amount.toStringAsFixed(2)} ฿",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 18,
-                                color: isIncome ? Colors.green : Colors.red,
-                                fontFamily: 'Kanit',
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (data['status'] != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: data['status'] == 'success'
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Text(
-                                  data['status'] == 'success'
-                                      ? "สำเร็จ"
-                                      : "รอดำเนินการ",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: data['status'] == 'success'
-                                        ? Colors.green
-                                        : Colors.orange,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      formattedDate,
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                     ),
-                  );
-                },
-              );
-            },
-          );
-        },
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "${isAppIn ? '+' : '-'}${amount.toStringAsFixed(2)} ฿",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+
+                      color: isAppIn ? Colors.green : Colors.redAccent,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildStatusBadge(status),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    String label;
+    switch (status.toLowerCase()) {
+      case 'success':
+        color = Colors.green;
+        label = "สำเร็จ";
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        label = "ยกเลิก";
+        break;
+      default:
+        color = Colors.orange;
+        label = "รอดำเนินการ";
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.doc_text_search,
+            size: 60,
+            color: isDark ? Colors.grey[800] : Colors.grey[200],
+          ),
+          const SizedBox(height: 15),
+          Text(
+            "ไม่พบประวัติธุรกรรม",
+            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBgCircle(
+    bool isDark, {
+    double? top,
+    double? bottom,
+    double? left,
+    double? right,
+    required double size,
+    double opacityFactor = 1.0,
+  }) {
+    final baseOpacity = isDark ? 0.03 : 0.06;
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }

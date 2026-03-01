@@ -167,7 +167,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       Get.snackbar(
         "สำเร็จ",
         "บันทึกข้อมูลเรียบร้อย",
-        backgroundColor: AppTheme.primaryColor.withOpacity(0.8),
+        backgroundColor: const Color(0xFF1E5B3D).withOpacity(0.8),
         colorText: Colors.white,
       );
     } catch (e) {
@@ -344,7 +344,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 15),
               _buildReadOnlyRow(
                 context,
-                "เบอร์โทร",
+                "เบอร์โทร*",
                 widget.userData['phone'] ?? '',
               ),
               const SizedBox(height: 15),
@@ -354,34 +354,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 widget.userData['email'] ?? '',
               ),
               const SizedBox(height: 30),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "ที่อยู่",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Get.to(() => const AddAddressScreen());
-                    },
-                    child: const Text(
-                      "เพิ่มที่อยู่",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
 
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -399,34 +371,77 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   }
 
                   final addresses = snapshot.data!.docs;
-
-                  if (addresses.isEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.grey[700]!
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "ยังไม่มีที่อยู่จัดส่ง",
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    );
-                  }
+                  bool canAddMore = addresses.length < 2;
 
                   return Column(
-                    children: addresses.map((doc) {
-                      var data = doc.data() as Map<String, dynamic>;
-                      return _buildAddressCard(context, doc.id, data);
-                    }).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "ที่อยู่ (${addresses.length}/2)",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          canAddMore
+                              ? GestureDetector(
+                                  onTap: () =>
+                                      Get.to(() => const AddAddressScreen()),
+                                  child: const Text(
+                                    "เพิ่มที่อยู่",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              : Text(
+                                  "ครบจำนวนที่กำหนด",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: isDark
+                                        ? Colors.grey[600]
+                                        : Colors.grey[400],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      if (addresses.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.grey[700]!
+                                  : Colors.grey.shade300,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              "ยังไม่มีที่อยู่จัดส่ง",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        Column(
+                          children: addresses.map((doc) {
+                            var data = doc.data() as Map<String, dynamic>;
+                            return _buildAddressCard(context, doc.id, data);
+                          }).toList(),
+                        ),
+                    ],
                   );
                 },
               ),

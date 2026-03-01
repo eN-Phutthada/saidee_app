@@ -44,11 +44,15 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
             var data = snapshot.data() as Map<String, dynamic>;
             if (data['status'] == 'success') {
               _txSubscription?.cancel();
+              final theme = Theme.of(Get.context!);
+              final isDark = theme.brightness == Brightness.dark;
+
               Get.dialog(
                 Dialog(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
+                  backgroundColor: theme.cardColor,
                   child: Padding(
                     padding: const EdgeInsets.all(30),
                     child: Column(
@@ -67,11 +71,12 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
+                        Text(
                           "เติมเงินสำเร็จ!",
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -79,8 +84,9 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
                           "ยอดเงิน ${widget.amount.toStringAsFixed(2)} บาท\nถูกเพิ่มเข้าวอลเล็ทของคุณแล้ว",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.grey[600],
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
                             fontSize: 16,
+                            height: 1.5,
                           ),
                         ),
                         const SizedBox(height: 30),
@@ -89,14 +95,15 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
                           height: 50,
                           child: ElevatedButton(
                             onPressed: () {
-                              Get.back(); // ปิด Dialog
-                              Get.back(); // กลับไปหน้าหลัก
+                              Get.back();
+                              Get.back();
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryColor,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              elevation: 0,
                             ),
                             child: const Text(
                               "กลับสู่หน้าหลัก",
@@ -123,7 +130,7 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
     setState(() => _isSimulating = true);
     try {
       const secretKey =
-          'xnd_development_uECbSQQ13qvRaRejTtYlQI20uqwgZowEobCwUTmN31xHBSM7vjxByLs5qlbtDC'; // ใส่ Secret Key ของ Xendit (Test Mode) ที่นี่
+          'xnd_development_uECbSQQ13qvRaRejTtYlQI20uqwgZowEobCwUTmN31xHBSM7vjxByLs5qlbtDC';
       final basicAuth = 'Basic ${base64Encode(utf8.encode('$secretKey:'))}';
 
       final doc = await FirebaseFirestore.instance
@@ -132,11 +139,11 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
           .get();
 
       if (!doc.exists || doc.data()?['qrId'] == null) {
-        Get.snackbar(
+        _showCustomSnackbar(
           "ข้อผิดพลาด",
           "ไม่พบรหัส QR ID ในระบบ",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          CupertinoIcons.xmark_circle_fill,
+          Colors.red,
         );
         setState(() => _isSimulating = false);
         return;
@@ -160,18 +167,162 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
       if (response.statusCode == 200) {
         debugPrint('✅ สั่ง Simulate สำเร็จ! รอรับ Webhook ใน 1-3 วินาที');
       } else {
-        Get.snackbar(
+        _showCustomSnackbar(
           "เกิดข้อผิดพลาด",
           "ไม่สามารถจำลองการจ่ายเงินได้",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+          CupertinoIcons.xmark_circle_fill,
+          Colors.red,
         );
       }
     } catch (e) {
       debugPrint('❌ Error: $e');
     } finally {
-      setState(() => _isSimulating = false);
+      if (mounted) setState(() => _isSimulating = false);
     }
+  }
+
+  Future<void> _cancelPayment() async {
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    try {
+      await FirebaseFirestore.instance
+          .collection('transactions')
+          .doc(widget.refNo)
+          .update({'status': 'cancelled'});
+
+      Get.back();
+      Get.back();
+
+      _showCustomSnackbar(
+        "ยกเลิกแล้ว",
+        "การทำรายการชำระเงินถูกยกเลิก",
+        CupertinoIcons.info_circle_fill,
+        Colors.orange,
+      );
+    } catch (e) {
+      Get.back();
+      _showCustomSnackbar(
+        "ข้อผิดพลาด",
+        "ไม่สามารถยกเลิกรายการได้",
+        CupertinoIcons.xmark_circle_fill,
+        Colors.red,
+      );
+    }
+  }
+
+  void _showCancelConfirmation() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.xmark_circle_fill,
+                  color: Colors.red,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "ยกเลิกรายการ?",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "คุณต้องการยกเลิกการเติมเงินครั้งนี้\nใช่หรือไม่?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500], height: 1.5),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(
+                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ไม่, รอชำระเงิน",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        _cancelPayment();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "ใช่, ยกเลิกเลย",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomSnackbar(
+    String title,
+    String message,
+    IconData icon,
+    Color bg,
+  ) {
+    Get.snackbar(
+      title,
+      message,
+      icon: Icon(icon, color: Colors.white, size: 28),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: bg.withOpacity(0.9),
+      colorText: Colors.white,
+      borderRadius: 16,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      duration: const Duration(seconds: 3),
+      barBlur: 20,
+    );
   }
 
   @override
@@ -180,262 +331,381 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
     super.dispose();
   }
 
+  Widget _buildBgCircle(
+    bool isDark, {
+    double? top,
+    double? bottom,
+    double? left,
+    double? right,
+    required double size,
+    double opacityFactor = 1.0,
+  }) {
+    final baseOpacity = isDark ? 0.05 : 0.08;
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          "ชำระเงิน",
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _showCancelConfirmation();
+      },
+      child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: theme.colorScheme.onSurface,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          title: Text(
+            "ชำระเงิน",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
-          onPressed: () => Get.back(),
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: theme.colorScheme.onSurface,
+            ),
+            onPressed: () => _showCancelConfirmation(),
+          ),
         ),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // --- Ticket Slip UI ---
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 30),
-                decoration: BoxDecoration(
-                  color: Colors.white, // ใบเสร็จ/QR พื้นต้องเป็นสีขาวเสมอ
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // ขอบด้านบนประดับสีเขียว
-                    Container(
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
+        body: Stack(
+          children: [
+            _buildBgCircle(isDark, top: -50, right: -100, size: 300),
+            _buildBgCircle(
+              isDark,
+              bottom: -80,
+              left: -80,
+              size: 250,
+              opacityFactor: 0.8,
+            ),
+            _buildBgCircle(
+              isDark,
+              top: size.height * 0.4,
+              left: -100,
+              size: 200,
+              opacityFactor: 0.5,
+            ),
+
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(
+                                isDark ? 0.3 : 0.08,
+                              ),
+                              blurRadius: 25,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(30),
-                      child: Column(
-                        children: [
-                          Image.asset(
-                            'assets/images/promptpay_logo.png',
-                            height: 40,
-                            errorBuilder: (_, __, ___) => const Text(
-                              "PromptPay",
-                              style: TextStyle(
-                                color: Color(0xFF113566),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 24,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 25),
-
-                          // QR Code
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Colors.grey[300]!,
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: QrImageView(
-                              data: widget.qrString,
-                              version: QrVersions.auto,
-                              size: 220.0,
-                              backgroundColor: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 25),
-
-                          // จำนวนเงิน
-                          const Text(
-                            "จำนวนเงินที่ต้องชำระ",
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
-                          const SizedBox(height: 5),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              "฿ ${widget.amount.toStringAsFixed(2)}",
-                              style: const TextStyle(
-                                color: AppTheme.primaryColor,
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Kanit',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // เส้นประ (Dashed Line)
-                    Row(
-                      children: List.generate(
-                        30,
-                        (index) => Expanded(
-                          child: Container(
-                            color: index % 2 == 0
-                                ? Colors.transparent
-                                : Colors.grey[300],
-                            height: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Footer ของ Slip
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Column(
                             children: [
-                              const Text(
-                                "หมายเลขอ้างอิง",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                width: double.infinity,
+                                color: AppTheme.primaryColor.withOpacity(0.05),
+                                child: Center(
+                                  child: Image.asset(
+                                    'assets/images/promptpay_logo.png',
+                                    height: 35,
+                                    errorBuilder: (_, __, ___) => const Text(
+                                      "PromptPay",
+                                      style: TextStyle(
+                                        color: Color(0xFF113566),
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 22,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                              Text(
-                                widget.refNo.length > 15
-                                    ? "${widget.refNo.substring(0, 15)}..."
-                                    : widget.refNo,
-                                style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+
+                              Padding(
+                                padding: const EdgeInsets.all(30),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        border: Border.all(
+                                          color: AppTheme.primaryColor
+                                              .withOpacity(0.2),
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppTheme.primaryColor
+                                                .withOpacity(0.1),
+                                            blurRadius: 15,
+                                            offset: const Offset(0, 5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: QrImageView(
+                                        data: widget.qrString,
+                                        version: QrVersions.auto,
+                                        size: 200.0,
+                                        backgroundColor: Colors.white,
+                                        eyeStyle: const QrEyeStyle(
+                                          eyeShape: QrEyeShape.square,
+                                          color: Colors.black87,
+                                        ),
+                                        dataModuleStyle:
+                                            const QrDataModuleStyle(
+                                              dataModuleShape:
+                                                  QrDataModuleShape.square,
+                                              color: Colors.black87,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 30),
+
+                                    const Text(
+                                      "ยอดที่ต้องชำระ",
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "฿ ${widget.amount.toStringAsFixed(2)}",
+                                      style: const TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Row(
+                                    children: List.generate(
+                                      40,
+                                      (index) => Expanded(
+                                        child: Container(
+                                          color: index % 2 == 0
+                                              ? Colors.transparent
+                                              : Colors.grey[300],
+                                          height: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    left: -15,
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: theme.scaffoldBackgroundColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: -15,
+                                    child: Container(
+                                      width: 30,
+                                      height: 30,
+                                      decoration: BoxDecoration(
+                                        color: theme.scaffoldBackgroundColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              Container(
+                                color: Colors.grey[50],
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          "หมายเลขอ้างอิง",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          widget.refNo,
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            fontFamily: 'Courier',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          "สถานะ",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 4,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.withOpacity(
+                                              0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "รอการชำระเงิน",
+                                            style: TextStyle(
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          const Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "สถานะ",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                "รอการชำระเงิน",
-                                style: TextStyle(
-                                  color: Colors.orange,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
 
-              const SizedBox(height: 30),
+                      const SizedBox(height: 30),
 
-              // --- คำแนะนำ ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(CupertinoIcons.time, color: Colors.grey, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    "กรุณาสแกนเพื่อชำระเงินภายใน 15 นาที",
-                    style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-
-              // --- ปุ่มจำลอง (เอาไว้เทส) ---
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed: _isSimulating ? null : _simulatePayment,
-                    icon: _isSimulating
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.black54,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(
-                            CupertinoIcons.hammer_fill,
-                            color: Colors.black54,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.timer,
+                            color: isDark ? Colors.grey[400] : Colors.grey[500],
                             size: 18,
                           ),
-                    label: Text(
-                      _isSimulating
-                          ? "กำลังจำลอง..."
-                          : "จำลองการชำระเงิน (Test Mode)",
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.bold,
+                          const SizedBox(width: 8),
+                          Text(
+                            "กรุณาสแกนเพื่อชำระเงินภายใน 15 นาที",
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors
-                          .grey[200], // ใช้สีเทาอ่อนให้ดูเป็นปุ่มเสริม ไม่แย่งความสนใจ
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+
+                      const SizedBox(height: 40),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton.icon(
+                            onPressed: _isSimulating ? null : _simulatePayment,
+                            icon: _isSimulating
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.black54,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    CupertinoIcons.hammer_fill,
+                                    color: Colors.black54,
+                                    size: 18,
+                                  ),
+                            label: Text(
+                              _isSimulating
+                                  ? "กำลังจำลอง..."
+                                  : "จำลองการชำระเงิน (Test Mode)",
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 30),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

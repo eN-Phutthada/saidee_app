@@ -6,19 +6,68 @@ import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
 
-class SearchResultsScreen extends StatelessWidget {
+class SearchResultsScreen extends StatefulWidget {
   final String keyword;
-  final String? category;
-  final String? type;
-  final String? size;
+  final List<String>? categories;
+  final List<String>? types;
+  final List<String>? sizes;
 
   const SearchResultsScreen({
     super.key,
     required this.keyword,
-    this.category,
-    this.type,
-    this.size,
+    this.categories,
+    this.types,
+    this.sizes,
   });
+
+  @override
+  State<SearchResultsScreen> createState() => _SearchResultsScreenState();
+}
+
+class _SearchResultsScreenState extends State<SearchResultsScreen> {
+  final Map<String, bool> _sellerStatusCache = {};
+
+  Future<List<QueryDocumentSnapshot>> _filterValidProducts(
+    List<QueryDocumentSnapshot> rawProducts,
+  ) async {
+    List<QueryDocumentSnapshot> validProducts = [];
+    Set<String> sellersToFetch = {};
+
+    for (var p in rawProducts) {
+      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
+      if (sId.isNotEmpty && !_sellerStatusCache.containsKey(sId)) {
+        sellersToFetch.add(sId);
+      }
+    }
+
+    for (String sId in sellersToFetch) {
+      try {
+        var userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(sId)
+            .get();
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+          String status = userData['status'] ?? 'active';
+          _sellerStatusCache[sId] =
+              (status != 'suspended' && status != 'banned');
+        } else {
+          _sellerStatusCache[sId] = false;
+        }
+      } catch (e) {
+        _sellerStatusCache[sId] = false;
+      }
+    }
+
+    for (var p in rawProducts) {
+      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
+      if (_sellerStatusCache[sId] == true) {
+        validProducts.add(p);
+      }
+    }
+
+    return validProducts;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,9 +78,15 @@ class SearchResultsScreen extends StatelessWidget {
         .collection('products')
         .where('status', isEqualTo: 'active');
 
-    if (category != null) query = query.where('category', isEqualTo: category);
-    if (type != null) query = query.where('type', isEqualTo: type);
-    if (size != null) query = query.where('size', isEqualTo: size);
+    if (widget.categories != null && widget.categories!.isNotEmpty) {
+      query = query.where('category', whereIn: widget.categories);
+    }
+    if (widget.types != null && widget.types!.isNotEmpty) {
+      query = query.where('type', whereIn: widget.types);
+    }
+    if (widget.sizes != null && widget.sizes!.isNotEmpty) {
+      query = query.where('size', whereIn: widget.sizes);
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -43,6 +98,10 @@ class SearchResultsScreen extends StatelessWidget {
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios),
+          onPressed: () => Get.back(),
+        ),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: query.snapshots(),
@@ -55,8 +114,9 @@ class SearchResultsScreen extends StatelessWidget {
           }
 
           var products = snapshot.data!.docs;
-          if (keyword.isNotEmpty) {
-            final searchTerm = keyword.toLowerCase();
+
+          if (widget.keyword.isNotEmpty) {
+            final searchTerm = widget.keyword.toLowerCase();
             products = products.where((doc) {
               var data = doc.data() as Map<String, dynamic>;
               String name = (data['name'] ?? '').toLowerCase();
@@ -69,19 +129,34 @@ class SearchResultsScreen extends StatelessWidget {
             return _buildEmptyResult(theme, isDark);
           }
 
-          return GridView.builder(
-            padding: const EdgeInsets.all(15),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.58,
-              crossAxisSpacing: 15,
-              mainAxisSpacing: 15,
-            ),
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              var doc = products[index];
-              var data = doc.data() as Map<String, dynamic>;
-              return _buildProductCard(context, data, doc.id, isDark);
+          return FutureBuilder<List<QueryDocumentSnapshot>>(
+            future: _filterValidProducts(products),
+            builder: (context, filterSnapshot) {
+              if (filterSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              var validProducts = filterSnapshot.data ?? [];
+
+              if (validProducts.isEmpty) {
+                return _buildEmptyResult(theme, isDark);
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.all(15),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.58,
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                ),
+                itemCount: validProducts.length,
+                itemBuilder: (context, index) {
+                  var doc = validProducts[index];
+                  var data = doc.data() as Map<String, dynamic>;
+                  return _buildProductCard(context, data, doc.id, isDark);
+                },
+              );
             },
           );
         },

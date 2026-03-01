@@ -49,6 +49,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
       User? user = userCredential.user;
       if (user != null) {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          var userData = userDoc.data() as Map<String, dynamic>;
+          String status = userData['status'] ?? 'active';
+
+          if (status == 'suspended') {
+            await FirebaseAuth.instance.signOut();
+
+            _showCustomSnackbar(
+              title: "บัญชีถูกระงับ",
+              message:
+                  "บัญชีของคุณถูกระงับการใช้งานเนื่องจากละเมิดกฎของระบบ กรุณาติดต่อแอดมิน",
+              icon: CupertinoIcons.nosign,
+              backgroundColor: Colors.red[800]!,
+            );
+
+            setState(() => _isLoading = false);
+            return;
+          }
+        }
+
         DocumentSnapshot adminDoc = await FirebaseFirestore.instance
             .collection('admins')
             .doc(user.uid)
@@ -73,15 +98,35 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
-      if (e.code == 'user-not-found') {
-        message = 'ไม่พบผู้ใช้งานนี้ กรุณาลงทะเบียน';
-      } else if (e.code == 'wrong-password') {
-        message = 'รหัสผ่านไม่ถูกต้อง';
-      } else if (e.code == 'invalid-email') {
-        message = 'รูปแบบอีเมลไม่ถูกต้อง';
-      } else {
-        message = e.message ?? message;
+      String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง";
+      switch (e.code) {
+        case 'user-not-found':
+          message = 'ไม่พบผู้ใช้งานนี้ กรุณาตรวจสอบอีเมลหรือลงทะเบียนใหม่';
+          break;
+        case 'wrong-password':
+          message = 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
+          break;
+        case 'invalid-credential':
+          message = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+          break;
+        case 'invalid-email':
+          message = 'รูปแบบอีเมลไม่ถูกต้อง (เช่น ขาด @)';
+          break;
+        case 'user-disabled':
+          message = 'บัญชีผู้ใช้นี้ถูกระงับการใช้งานโดยผู้ดูแลระบบ';
+          break;
+        case 'too-many-requests':
+          message =
+              'เข้าสู่ระบบผิดพลาดหลายครั้งเกินไป กรุณารอสักครู่แล้วลองใหม่';
+          break;
+        case 'operation-not-allowed':
+          message = 'ระบบยังไม่เปิดใช้งานการเข้าสู่ระบบด้วยวิธีนี้';
+          break;
+        case 'network-request-failed':
+          message = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต';
+          break;
+        default:
+          message = e.message ?? message;
       }
 
       _showCustomSnackbar(

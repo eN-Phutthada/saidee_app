@@ -25,6 +25,7 @@ class _CartScreenState extends State<CartScreen> {
 
   Stream<QuerySnapshot>? _cartStream;
   final Map<String, Stream<DocumentSnapshot>> _productStreams = {};
+  final Map<String, Stream<DocumentSnapshot>> _sellerStreams = {};
   final Map<String, bool> _availabilityCache = {};
 
   @override
@@ -502,195 +503,268 @@ class _CartScreenState extends State<CartScreen> {
   ) {
     var data = doc.data() as Map<String, dynamic>;
     String productId = data['productId'] ?? '';
+    String sellerId = data['sellerId'] ?? '';
 
     _productStreams[productId] ??= FirebaseFirestore.instance
         .collection('products')
         .doc(productId)
         .snapshots();
+    _sellerStreams[sellerId] ??= FirebaseFirestore.instance
+        .collection('users')
+        .doc(sellerId)
+        .snapshots();
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: _productStreams[productId],
-      builder: (context, prodSnapshot) {
-        bool isAvailable = true;
+      stream: _sellerStreams[sellerId],
+      builder: (context, sellerSnap) {
+        return StreamBuilder<DocumentSnapshot>(
+          stream: _productStreams[productId],
+          builder: (context, prodSnapshot) {
+            bool isAvailable = true;
+            String unavailableReason = "";
 
-        if (prodSnapshot.hasData) {
-          if (!prodSnapshot.data!.exists) {
-            isAvailable = false;
-          } else {
-            var pData = prodSnapshot.data!.data() as Map<String, dynamic>;
-            if (pData['status'] != 'active') isAvailable = false;
-          }
+            if (prodSnapshot.hasData) {
+              if (!prodSnapshot.data!.exists) {
+                isAvailable = false;
+                unavailableReason = "สินค้านี้ถูกลบออกจากระบบแล้ว";
+              } else {
+                var pData = prodSnapshot.data!.data() as Map<String, dynamic>;
+                if (pData['status'] != 'active') {
+                  isAvailable = false;
+                  unavailableReason = "สินค้าถูกขายไปแล้ว หรือหมดสต็อก";
+                }
+              }
+            }
 
-          _availabilityCache[doc.id] = isAvailable;
-        }
+            if (isAvailable && sellerSnap.hasData) {
+              if (!sellerSnap.data!.exists) {
+                isAvailable = false;
+                unavailableReason = "ไม่พบร้านค้านี้ในระบบ";
+              } else {
+                var sData = sellerSnap.data!.data() as Map<String, dynamic>;
+                String sellerStatus = sData['status'] ?? 'active';
+                if (sellerStatus == 'suspended' || sellerStatus == 'banned') {
+                  isAvailable = false;
+                  unavailableReason = "ร้านค้านี้ถูกระงับการใช้งาน";
+                }
+              }
+            }
 
-        bool isSelected = _selectedCartIds.contains(doc.id);
+            _availabilityCache[doc.id] = isAvailable;
+            bool isSelected = _selectedCartIds.contains(doc.id);
 
-        if (!isAvailable && isSelected && !_isEditing) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              setState(() {
-                _selectedCartIds.remove(doc.id);
+            if (!isAvailable && isSelected && !_isEditing) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  setState(() {
+                    _selectedCartIds.remove(doc.id);
+                  });
+                }
               });
             }
-          });
-        }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: DottedBorder(
-            color: isAvailable
-                ? Colors.transparent
-                : Colors.orange.withOpacity(0.5),
-            strokeWidth: 1.2,
-            dashPattern: const [5, 4],
-            borderType: BorderType.RRect,
-            radius: const Radius.circular(15),
-            child: Container(
-              padding: const EdgeInsets.only(
-                left: 5,
-                right: 15,
-                top: 12,
-                bottom: 12,
-              ),
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: isSelected,
-                    activeColor: _isEditing
-                        ? Colors.red
-                        : AppTheme.primaryColor,
-                    onChanged: (!isAvailable && !_isEditing)
-                        ? null
-                        : (val) => _toggleItemSelection(doc.id),
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: DottedBorder(
+                color: isAvailable
+                    ? Colors.transparent
+                    : Colors.orange.withOpacity(0.5),
+                strokeWidth: 1.2,
+                dashPattern: const [5, 4],
+                borderType: BorderType.RRect,
+                radius: const Radius.circular(15),
+                child: Container(
+                  padding: const EdgeInsets.only(
+                    left: 5,
+                    right: 15,
+                    top: 12,
+                    bottom: 12,
                   ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        if (!isAvailable && !_isEditing) {
-                          _showCustomDialog(
-                            title: "สินค้าไม่พร้อมจำหน่าย",
-                            message:
-                                "ขออภัย สินค้ารายการนี้ถูกจำหน่ายไปแล้ว หรือถูกลบออกจากระบบ คุณต้องการลบออกจากตะกร้าหรือไม่?",
-                            icon: CupertinoIcons.info_circle_fill,
-                            iconColor: Colors.orange,
-                            confirmText: "ลบออก",
-                            isDestructive: true,
-                            showCancel: true,
-                            cancelText: "ปิด",
-                            onConfirm: () async {
-                              Get.back();
-                              _selectedCartIds.add(doc.id);
-                              await _deleteSelectedItems();
-                            },
-                          );
-                        } else {
-                          _navigateToProductDetail(productId);
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          Stack(
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: isSelected,
+                        activeColor: _isEditing
+                            ? Colors.red
+                            : AppTheme.primaryColor,
+                        onChanged: (!isAvailable && !_isEditing)
+                            ? null
+                            : (val) => _toggleItemSelection(doc.id),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (!isAvailable && !_isEditing) {
+                              _showCustomDialog(
+                                title: "สินค้าไม่พร้อมจำหน่าย",
+                                message:
+                                    "$unavailableReason\nคุณต้องการลบออกจากตะกร้าหรือไม่?",
+                                icon: CupertinoIcons.info_circle_fill,
+                                iconColor: Colors.orange,
+                                confirmText: "ลบออก",
+                                isDestructive: true,
+                                showCancel: true,
+                                cancelText: "ปิด",
+                                onConfirm: () async {
+                                  Get.back();
+                                  _selectedCartIds.add(doc.id);
+                                  await _deleteSelectedItems();
+                                },
+                              );
+                            } else {
+                              _navigateToProductDetail(productId);
+                            }
+                          },
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 80,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  image: DecorationImage(
-                                    image: NetworkImage(data['image'] ?? ''),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              ),
-                              if (!isAvailable)
-                                Positioned.fill(
-                                  child: Container(
+                              Stack(
+                                children: [
+                                  Container(
+                                    width: 80,
+                                    height: 100,
                                     decoration: BoxDecoration(
-                                      color: Colors.black26,
+                                      color: isDark
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
                                       borderRadius: BorderRadius.circular(12),
+                                      image:
+                                          (data['image'] != null &&
+                                              data['image'] != '')
+                                          ? DecorationImage(
+                                              image: NetworkImage(
+                                                data['image'],
+                                              ),
+                                              fit: BoxFit.cover,
+                                              colorFilter: !isAvailable
+                                                  ? const ColorFilter.mode(
+                                                      Colors.grey,
+                                                      BlendMode.saturation,
+                                                    )
+                                                  : null,
+                                            )
+                                          : null,
                                     ),
-                                    child: Center(
+                                    child:
+                                        (data['image'] == null ||
+                                            data['image'] == '')
+                                        ? const Icon(
+                                            CupertinoIcons.photo,
+                                            color: Colors.grey,
+                                          )
+                                        : null,
+                                  ),
+                                  if (!isAvailable)
+                                    Positioned.fill(
                                       child: Container(
-                                        padding: const EdgeInsets.all(4),
                                         decoration: BoxDecoration(
-                                          color: Colors.orange,
+                                          color: Colors.black26,
                                           borderRadius: BorderRadius.circular(
-                                            5,
+                                            12,
                                           ),
                                         ),
-                                        child: const Text(
-                                          "หมดแล้ว",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
+                                        child: Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
+                                            ),
+                                            child: const Text(
+                                              "ไม่พร้อมขาย",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      data['brand'] ?? 'ไม่ระบุแบรนด์',
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      data['name'] ?? '',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            decoration:
+                                                (!isAvailable && !_isEditing)
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      "ไซส์: ${data['size'] ?? '-'}",
+                                      style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      "${data['price'] ?? 0} ฿",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 16,
+                                        color: (!isAvailable && !_isEditing)
+                                            ? Colors.grey
+                                            : null,
+                                      ),
+                                    ),
+                                    if (!isAvailable && !_isEditing)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 8.0,
+                                        ),
+                                        child: Text(
+                                          unavailableReason,
+                                          style: const TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
+                              ),
                             ],
                           ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  data['brand'] ?? 'ไม่ระบุแบรนด์',
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  data['name'] ?? '',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    decoration: (!isAvailable && !_isEditing)
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  "ไซส์: ${data['size'] ?? '-'}",
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  "${data['price'] ?? 0} ฿",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16,
-                                    color: (!isAvailable && !_isEditing)
-                                        ? Colors.grey
-                                        : null,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -764,6 +838,7 @@ class _CartScreenState extends State<CartScreen> {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[500],
+                  height: 1.5,
                 ),
               ),
               const SizedBox(height: 30),

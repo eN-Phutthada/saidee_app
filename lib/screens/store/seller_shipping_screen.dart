@@ -19,7 +19,7 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
 
   Map<String, List<Map<String, dynamic>>> _shippingGroups = {};
 
-  Set<String> _selectedShipping = {};
+  String? _selectedShippingCompany;
 
   @override
   void initState() {
@@ -60,17 +60,20 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
           .doc(widget.sellerId)
           .get();
 
-      Set<String> savedShipping = {};
+      String? savedCompany;
       if (userSnap.exists) {
         var data = userSnap.data() as Map<String, dynamic>;
         if (data.containsKey('enabled_shipping')) {
-          savedShipping = Set<String>.from(data['enabled_shipping']);
+          List enabledList = data['enabled_shipping'] ?? [];
+          if (enabledList.isNotEmpty) {
+            savedCompany = enabledList.first.toString();
+          }
         }
       }
 
       setState(() {
         _shippingGroups = tempGroups;
-        _selectedShipping = savedShipping;
+        _selectedShippingCompany = savedCompany;
         _isLoading = false;
       });
     } catch (e) {
@@ -87,10 +90,14 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
   Future<void> _saveShippingPreferences() async {
     setState(() => _isSaving = true);
     try {
+      List<String> dataToSave = _selectedShippingCompany != null
+          ? [_selectedShippingCompany!]
+          : [];
+
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.sellerId)
-          .update({'enabled_shipping': _selectedShipping.toList()});
+          .update({'enabled_shipping': dataToSave});
 
       Get.back();
       Get.snackbar(
@@ -150,14 +157,14 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "ตั้งค่าช่องทางการจัดส่ง",
+                    "ตั้งค่าช่องทางการจัดส่ง (เลือกได้ 1 อย่าง)",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "เปิดสวิตช์บริการขนส่งที่คุณสะดวกใช้บริการเพื่อส่งสินค้าให้ลูกค้า และตรวจสอบเรทราคาด้านล่าง",
+                    "เลือกบริการขนส่งที่ร้านของคุณสะดวกที่สุดเพียง 1 รายการเพื่อใช้จัดส่งสินค้าให้ลูกค้า",
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
                       fontSize: 13,
@@ -165,9 +172,8 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                     ),
                   ),
                   const SizedBox(height: 25),
-
                   ...companyNames.map((company) {
-                    bool isEnabled = _selectedShipping.contains(company);
+                    bool isEnabled = _selectedShippingCompany == company;
                     List<Map<String, dynamic>> rates =
                         _shippingGroups[company]!;
 
@@ -231,9 +237,7 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        isEnabled
-                                            ? "เปิดใช้งานแล้ว"
-                                            : "ปิดใช้งาน",
+                                        isEnabled ? "เลือกแล้ว" : "ไม่ได้เลือก",
                                         style: TextStyle(
                                           color: isEnabled
                                               ? AppTheme.primaryColor
@@ -251,9 +255,9 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                                   onChanged: (bool value) {
                                     setState(() {
                                       if (value) {
-                                        _selectedShipping.add(company);
+                                        _selectedShippingCompany = company;
                                       } else {
-                                        _selectedShipping.remove(company);
+                                        _selectedShippingCompany = null;
                                       }
                                     });
                                   },
@@ -261,7 +265,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                               ],
                             ),
                           ),
-
                           Container(
                             decoration: BoxDecoration(
                               color: isDark
@@ -321,7 +324,6 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                 ],
               ),
             ),
-
       bottomNavigationBar: _isLoading || companyNames.isEmpty
           ? null
           : Container(

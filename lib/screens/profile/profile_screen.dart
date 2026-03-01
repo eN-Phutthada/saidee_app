@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
+import 'package:saidee_app/screens/profile/account_security_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'edit_profile_screen.dart';
@@ -31,295 +32,323 @@ class ProfileScreen extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 
         if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
-          return Scaffold(
-            appBar: AppBar(title: const Text("บัญชีของฉัน")),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("ไม่พบข้อมูลผู้ใช้ หรือเกิดข้อผิดพลาด"),
-                  const SizedBox(height: 20),
-                  TextButton.icon(
-                    onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
-                      Get.offAll(() => const HomeScreen());
-                    },
-                    icon: const Icon(CupertinoIcons.square_arrow_right),
-                    label: const Text("ออกจากระบบ"),
-                  ),
-                ],
-              ),
-            ),
-          );
+          return _buildErrorState(theme);
         }
 
         Map<String, dynamic> userData =
             snapshot.data!.data() as Map<String, dynamic>;
 
         return Scaffold(
-          appBar: AppBar(
-            centerTitle: true,
-            title: Text(
-              "บัญชีของฉัน",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  isDark ? CupertinoIcons.sun_max : CupertinoIcons.moon_stars,
-                ),
-                onPressed: () {
-                  Get.changeThemeMode(
-                    isDark ? ThemeMode.light : ThemeMode.dark,
-                  );
-                },
-              ),
-              IconButton(
-                icon: Icon(
-                  CupertinoIcons.settings,
-                  color: theme.colorScheme.onSurface,
-                ),
-                onPressed: () {
-                  Get.to(() => EditProfileScreen(userData: userData));
-                },
-              ),
-            ],
-          ),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () =>
+          backgroundColor: isDark
+              ? const Color(0xFF121212)
+              : const Color(0xFFF5F5F5),
+          body: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 140.0,
+                floating: false,
+                pinned: true,
+                backgroundColor: AppTheme.primaryColor,
+                elevation: 0,
+                actions: [
+                  IconButton(
+                    icon: Icon(
+                      isDark
+                          ? CupertinoIcons.sun_max
+                          : CupertinoIcons.moon_stars,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Get.changeThemeMode(
+                      isDark ? ThemeMode.light : ThemeMode.dark,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      CupertinoIcons.pencil_ellipsis_rectangle,
+                      color: Colors.white,
+                    ),
+                    tooltip: "แก้ไขโปรไฟล์",
+                    onPressed: () =>
                         Get.to(() => EditProfileScreen(userData: userData)),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 35,
-                            backgroundColor: isDark
-                                ? Colors.grey[700]
-                                : Colors.grey[200],
-                            backgroundImage:
-                                (userData['profileImage'] != null &&
-                                    userData['profileImage'] != '')
-                                ? NetworkImage(userData['profileImage'])
-                                : null,
-                            child:
-                                (userData['profileImage'] == null ||
-                                    userData['profileImage'] == '')
-                                ? Icon(
-                                    CupertinoIcons.person_fill,
-                                    size: 35,
-                                    color: isDark
-                                        ? Colors.grey[400]
-                                        : Colors.grey,
-                                  )
-                                : null,
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  userData['name'] ?? 'ไม่มีชื่อ',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  userData['bio'] ?? 'ส่งต่อเสื้อผ้าคุณภาพ',
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            CupertinoIcons.pencil,
-                            color: isDark ? Colors.grey[400] : Colors.grey,
-                          ),
-                        ],
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    padding: const EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      bottom: 20,
+                      top: 60,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      borderRadius: BorderRadius.vertical(
+                        bottom: Radius.circular(30),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildBigButton(
-                          context,
-                          CupertinoIcons.cube_box,
-                          "การสั่งซื้อ\nของฉัน",
-                          onTap: () {
-                            Get.to(() => BuyerOrdersScreen());
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: _buildBigButton(
-                          context,
-                          CupertinoIcons.bag,
-                          "การขาย\nของฉัน",
-                          onTap: () {
-                            Get.to(
-                              () => StoreProfileScreen(sellerId: user.uid),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-
-                  _buildMenuTile(
-                    context,
-                    title: "เติมวอลเล็ท",
-                    isBold: true,
-                    onTap: () => Get.to(() => const WalletTopUpScreen()),
-                  ),
-                  const SizedBox(height: 25),
-
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _buildMenuTile(
-                          context,
-                          title: "การสั่งซื้อและการขาย",
-                          hasBorder: true,
-                          useContainer: false,
+                        CircleAvatar(
+                          radius: 35,
+                          backgroundColor: Colors.white24,
+                          backgroundImage:
+                              (userData['profileImage'] != null &&
+                                  userData['profileImage'] != '')
+                              ? NetworkImage(userData['profileImage'])
+                              : null,
+                          child:
+                              (userData['profileImage'] == null ||
+                                  userData['profileImage'] == '')
+                              ? const Icon(
+                                  CupertinoIcons.person_fill,
+                                  size: 35,
+                                  color: Colors.white,
+                                )
+                              : null,
                         ),
-                        _buildMenuTile(
-                          context,
-                          title: "ที่อยู่ของฉัน",
-                          hasBorder: true,
-                          useContainer: false,
-                        ),
-                        _buildMenuTile(
-                          context,
-                          title: "ฟีดแบค/แนะนำฟีเจอร์ใหม่",
-                          hasBorder: false,
-                          useContainer: false,
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userData['name'] ?? 'ไม่มีชื่อ',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                userData['email'] ?? '',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 35),
+                ),
+              ),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.errorColor.withOpacity(0.9),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWalletCard(context, userData, isDark),
+                      const SizedBox(height: 25),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBigButton(
+                              context,
+                              CupertinoIcons.cube_box,
+                              "การสั่งซื้อของฉัน",
+                              onTap: () =>
+                                  Get.to(() => const BuyerOrdersScreen()),
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildBigButton(
+                              context,
+                              CupertinoIcons.bag,
+                              "ร้านค้าของฉัน",
+                              onTap: () => Get.to(
+                                () => StoreProfileScreen(sellerId: user.uid),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      onPressed: () async {
-                        await FirebaseAuth.instance.signOut();
+                      const SizedBox(height: 30),
 
-                        Get.snackbar(
-                          "สำเร็จ",
-                          "ออกจากระบบเรียบร้อยแล้ว",
-                          icon: const Icon(
-                            CupertinoIcons.checkmark_alt_circle_fill,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                          snackPosition: SnackPosition.TOP,
-                          backgroundColor: AppTheme.primaryColor.withOpacity(
-                            0.9,
-                          ),
-                          colorText: Colors.white,
-                          borderRadius: 16,
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 20,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 16,
-                          ),
-                          duration: const Duration(seconds: 3),
-                          isDismissible: true,
-                          dismissDirection: DismissDirection.horizontal,
-                          forwardAnimationCurve: Curves.easeOutBack,
-                          barBlur: 20,
-                          boxShadows: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withOpacity(0.4),
-                              blurRadius: 15,
-                              offset: const Offset(0, 5),
+                      _buildSectionHeader("การตั้งค่าบัญชี"),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.location,
+                              title: "ที่อยู่ของฉัน",
+                              hasBorder: true,
+                              onTap: () => Get.to(
+                                () => EditProfileScreen(userData: userData),
+                              ),
+                            ),
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.shield,
+                              title: "ความปลอดภัยบัญชี",
+                              hasBorder: false,
+                              onTap: () => Get.to(
+                                () => AccountSecurityScreen(
+                                  email: userData['email'] ?? '',
+                                ),
+                              ),
                             ),
                           ],
-                        );
-
-                        Get.offAll(() => const HomeScreen());
-                      },
-                      child: const Text(
-                        "ออกจากระบบ",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 25),
+
+                      _buildSectionHeader("ช่วยเหลือและอื่นๆ"),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Column(
+                          children: [
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.chat_bubble_text,
+                              title: "ฟีดแบค / แนะนำฟีเจอร์",
+                              hasBorder: true,
+                              onTap: () =>
+                                  _showFeedbackDialog(context, user.uid),
+                            ),
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.info_circle,
+                              title: "เกี่ยวกับ Saidee App",
+                              hasBorder: false,
+                              onTap: () => _showAboutApp(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _confirmLogout(context),
+                          icon: const Icon(CupertinoIcons.power, size: 20),
+                          label: const Text(
+                            "ออกจากระบบ",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                    ],
                   ),
-                  const SizedBox(height: 30),
-                  // ElevatedButton(
-                  //   onPressed: () {
-                  //     DummyDataHelper.setupDummyData(count: 3);
-                  //   },
-                  //   child: Padding(
-                  //     padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-                  //     child: const Text("เพิ่มสินค้าแบบสุ่ม"),
-                  //   ),
-                  // ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildWalletCard(BuildContext context, Map userData, bool isDark) {
+    double balance = (userData['walletBalance'] ?? 0).toDouble();
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    CupertinoIcons.creditcard,
+                    color: Colors.grey,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "วอลเล็ทของฉัน",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "${balance.toStringAsFixed(2)} ฿",
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Get.to(() => const WalletTopUpScreen()),
+            icon: const Icon(CupertinoIcons.add_circled, size: 18),
+            label: const Text(
+              "เติมเงิน",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -330,30 +359,36 @@ class ProfileScreen extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 100,
+        padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
               blurRadius: 10,
-              offset: const Offset(0, 5),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: theme.iconTheme.color),
-            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 28),
+            ),
+            const SizedBox(height: 12),
             Text(
               label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ],
         ),
@@ -361,64 +396,441 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 5, bottom: 10),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMenuTile(
     BuildContext context, {
+    required IconData icon,
     required String title,
-    bool isBold = false,
-    bool hasBorder = false,
-    bool useContainer = true,
+    required bool hasBorder,
     VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    Widget listTile = ListTile(
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
-          fontSize: 16,
-        ),
-      ),
-      trailing: Icon(
-        CupertinoIcons.chevron_right,
-        size: 16,
-        color: theme.iconTheme.color?.withOpacity(0.5),
-      ),
-      onTap: onTap ?? () {},
-    );
-
-    if (!useContainer) {
-      if (hasBorder) {
-        return Container(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.1),
-              ),
-            ),
-          ),
-          child: listTile,
-        );
-      }
-      return listTile;
-    }
-
     return Container(
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: isBold
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
+        border: hasBorder
+            ? Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.grey.shade100,
                 ),
-              ]
-            : [],
+              )
+            : null,
       ),
-      child: listTile,
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isDark ? Colors.grey[400] : Colors.grey[700],
+          size: 22,
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        trailing: const Icon(
+          CupertinoIcons.chevron_right,
+          size: 16,
+          color: Colors.grey,
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("โปรไฟล์")),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              CupertinoIcons.exclamationmark_triangle,
+              size: 50,
+              color: Colors.orange,
+            ),
+            const SizedBox(height: 15),
+            const Text("ไม่พบข้อมูลผู้ใช้ หรือเกิดข้อผิดพลาด"),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () async {
+                await FirebaseAuth.instance.signOut();
+                Get.offAll(() => const HomeScreen());
+              },
+              icon: const Icon(CupertinoIcons.square_arrow_right),
+              label: const Text("ออกจากระบบ"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmLogout(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.power,
+                  color: Colors.redAccent,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "ออกจากระบบ",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "คุณแน่ใจหรือไม่ที่จะออกจากระบบ Saidee App?",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Get.back(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back();
+                        Get.dialog(
+                          const Center(child: CircularProgressIndicator()),
+                          barrierDismissible: false,
+                        );
+                        await FirebaseAuth.instance.signOut();
+                        Get.back();
+                        Get.offAll(() => const HomeScreen());
+                        _showCustomSnackbar(
+                          "สำเร็จ",
+                          "ออกจากระบบเรียบร้อยแล้ว",
+                          CupertinoIcons.checkmark_alt_circle_fill,
+                          AppTheme.primaryColor,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ออกจากระบบ",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFeedbackDialog(BuildContext context, String uid) {
+    final TextEditingController feedbackCtrl = TextEditingController();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                CupertinoIcons.chat_bubble_2_fill,
+                color: AppTheme.primaryColor,
+                size: 40,
+              ),
+              const SizedBox(height: 15),
+              const Text(
+                "ส่งฟีดแบค / เสนอแนะ",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: feedbackCtrl,
+                maxLines: 4,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+                decoration: InputDecoration(
+                  hintText:
+                      "แอปใช้งานยากตรงไหน หรืออยากให้มีฟีเจอร์อะไรเพิ่ม พิมพ์บอกเราได้เลยครับ...",
+                  hintStyle: TextStyle(
+                    color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    fontSize: 13,
+                  ),
+                  filled: true,
+                  fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.all(15),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Get.back(),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          color: isDark ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (feedbackCtrl.text.trim().isEmpty) return;
+                        Get.back();
+                        try {
+                          await FirebaseFirestore.instance
+                              .collection('feedbacks')
+                              .add({
+                                'uid': uid,
+                                'message': feedbackCtrl.text.trim(),
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+                          _showCustomSnackbar(
+                            "ขอบคุณครับ! 🎉",
+                            "เราได้รับข้อเสนอแนะของคุณเรียบร้อยแล้ว",
+                            CupertinoIcons.heart_fill,
+                            Colors.green,
+                          );
+                        } catch (e) {
+                          _showCustomSnackbar(
+                            "ผิดพลาด",
+                            "ไม่สามารถส่งข้อมูลได้",
+                            CupertinoIcons.xmark_circle_fill,
+                            Colors.red,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "ส่งข้อมูล",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAboutApp(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  height: 60,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    CupertinoIcons.tag_fill,
+                    color: AppTheme.primaryColor,
+                    size: 60,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Saidee App",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "Version 1.0.0 (Beta)",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "แพลตฟอร์มสำหรับซื้อ-ขาย เสื้อผ้ามือสองคุณภาพดี\nส่งต่อความสวยงามและลดขยะแฟชั่นไปด้วยกัน ♻️",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 20,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text(
+                  "พัฒนาโดย: ทีมงาน Saidee",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Get.back(),
+                  style: TextButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "ปิด",
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showCustomSnackbar(
+    String title,
+    String message,
+    IconData icon,
+    Color backgroundColor,
+  ) {
+    Get.snackbar(
+      title,
+      message,
+      icon: Icon(icon, color: Colors.white, size: 28),
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: backgroundColor.withOpacity(0.9),
+      colorText: Colors.white,
+      borderRadius: 16,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      duration: const Duration(seconds: 3),
+      isDismissible: true,
+      dismissDirection: DismissDirection.horizontal,
+      forwardAnimationCurve: Curves.easeOutBack,
+      barBlur: 20,
+      boxShadows: [
+        BoxShadow(
+          color: backgroundColor.withOpacity(0.4),
+          blurRadius: 15,
+          offset: const Offset(0, 5),
+        ),
+      ],
     );
   }
 }
