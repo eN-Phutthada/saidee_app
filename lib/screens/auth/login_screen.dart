@@ -36,6 +36,264 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  void _showBannedPopup() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.nosign,
+                  color: Colors.red,
+                  size: 60,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "บัญชีถูกระงับการใช้งาน",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "บัญชีของคุณถูกระงับการใช้งานเนื่องจากละเมิดนโยบายของระบบ หรือถูกรายงานจากผู้ใช้อื่น\n\nหากมีข้อสงสัยกรุณาติดต่อผู้ดูแลระบบ",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  height: 1.5,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 30),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "ตกลง",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  void _showForgotPasswordDialog() {
+    final TextEditingController resetEmailCtrl = TextEditingController(
+      text: _emailController.text,
+    );
+    bool isSending = false;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: theme.cardColor,
+            child: Padding(
+              padding: const EdgeInsets.all(25.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.lock_rotation,
+                      color: AppTheme.primaryColor,
+                      size: 50,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "ลืมรหัสผ่านใช่หรือไม่?",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "กรุณากรอกอีเมลที่ลงทะเบียนไว้\nระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปให้คุณ",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      height: 1.5,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: resetEmailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      labelText: "อีเมล",
+                      prefixIcon: const Icon(
+                        CupertinoIcons.mail,
+                        color: AppTheme.primaryColor,
+                      ),
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Get.back(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.grey[700]!
+                                  : Colors.grey[300]!,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            "ยกเลิก",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isSending
+                              ? null
+                              : () async {
+                                  String email = resetEmailCtrl.text.trim();
+                                  if (email.isEmpty) {
+                                    Get.snackbar(
+                                      "แจ้งเตือน",
+                                      "กรุณากรอกอีเมลของคุณ",
+                                      backgroundColor: Colors.orange,
+                                      colorText: Colors.white,
+                                      snackPosition: SnackPosition.TOP,
+                                    );
+                                    return;
+                                  }
+
+                                  setStateDialog(() => isSending = true);
+
+                                  try {
+                                    await FirebaseAuth.instance
+                                        .sendPasswordResetEmail(email: email);
+
+                                    Get.back();
+                                    _showCustomSnackbar(
+                                      title: "ส่งลิงก์สำเร็จ",
+                                      message:
+                                          "กรุณาตรวจสอบกล่องจดหมาย (หรือโฟลเดอร์สแปม) ของคุณเพื่อตั้งรหัสผ่านใหม่",
+                                      icon: CupertinoIcons
+                                          .check_mark_circled_solid,
+                                      backgroundColor: Colors.green,
+                                    );
+                                  } on FirebaseAuthException catch (e) {
+                                    String msg = "เกิดข้อผิดพลาด กรุณาลองใหม่";
+                                    if (e.code == 'user-not-found') {
+                                      msg = "ไม่พบอีเมลนี้ในระบบ";
+                                    } else if (e.code == 'invalid-email') {
+                                      msg = "รูปแบบอีเมลไม่ถูกต้อง";
+                                    }
+                                    Get.snackbar(
+                                      "ข้อผิดพลาด",
+                                      msg,
+                                      backgroundColor: Colors.red,
+                                      colorText: Colors.white,
+                                      snackPosition: SnackPosition.TOP,
+                                    );
+                                  } finally {
+                                    if (mounted)
+                                      setStateDialog(() => isSending = false);
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: isSending
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "ส่งลิงก์",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      barrierDismissible: false,
+    );
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -58,18 +316,12 @@ class _LoginScreenState extends State<LoginScreen> {
           var userData = userDoc.data() as Map<String, dynamic>;
           String status = userData['status'] ?? 'active';
 
-          if (status == 'suspended') {
+          if (status == 'suspended' || status == 'banned') {
             await FirebaseAuth.instance.signOut();
 
-            _showCustomSnackbar(
-              title: "บัญชีถูกระงับ",
-              message:
-                  "บัญชีของคุณถูกระงับการใช้งานเนื่องจากละเมิดกฎของระบบ กรุณาติดต่อแอดมิน",
-              icon: CupertinoIcons.nosign,
-              backgroundColor: Colors.red[800]!,
-            );
-
             setState(() => _isLoading = false);
+
+            _showBannedPopup();
             return;
           }
         }
@@ -188,7 +440,6 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Stack(
         children: [
           _buildBgCircle(isDark, top: -100, right: -100, size: 300),
-
           _buildBgCircle(
             isDark,
             bottom: -80,
@@ -196,7 +447,6 @@ class _LoginScreenState extends State<LoginScreen> {
             size: 250,
             opacityFactor: 0.8,
           ),
-
           _buildBgCircle(
             isDark,
             top: size.height * 0.15,
@@ -204,7 +454,6 @@ class _LoginScreenState extends State<LoginScreen> {
             size: 200,
             opacityFactor: 0.6,
           ),
-
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -238,7 +487,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-
                         Text(
                           "ยินดีต้อนรับกลับมา!",
                           style: TextStyle(
@@ -256,7 +504,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 40),
-
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
@@ -297,11 +544,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ? 'กรุณากรอกรหัสผ่าน'
                                     : null,
                               ),
-
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {}, // TODO: ลืมรหัสผ่าน
+                                  onPressed: _showForgotPasswordDialog,
                                   child: Text(
                                     "ลืมรหัสผ่าน?",
                                     style: TextStyle(
@@ -313,7 +559,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
-
                               const SizedBox(height: 10),
                               SizedBox(
                                 width: double.infinity,
@@ -356,7 +601,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 30),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -382,7 +626,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 40),
 
                         // --- DEBUG SECTION ---
