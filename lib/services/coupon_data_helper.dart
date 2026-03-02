@@ -9,7 +9,7 @@ class CouponDataHelper {
     final List<Map<String, dynamic>> coupons = [
       {
         'code': 'WELCOME50',
-        'type': 'flat',
+        'type': 'percent',
         'value': 50.0,
         'min_order': 300.0,
         'desc': 'ส่วนลดต้อนรับลูกค้าใหม่',
@@ -30,15 +30,15 @@ class CouponDataHelper {
       },
       {
         'code': 'SAVE20',
-        'type': 'flat',
+        'type': 'percent',
         'value': 20.0,
         'min_order': 150.0,
         'desc': 'ลดเล็กน้อยสำหรับคำสั่งซื้อขนาดเล็ก',
       },
       {
         'code': 'FASHION100',
-        'type': 'flat',
-        'value': 100.0,
+        'type': 'percent',
+        'value': 10.0,
         'min_order': 800.0,
         'desc': 'คุ้มสุดๆ ลดทันที 100 บาท',
       },

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
@@ -20,13 +21,49 @@ class StoreProfileScreen extends StatefulWidget {
 
 class _StoreProfileScreenState extends State<StoreProfileScreen> {
   final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
-
   bool get isOwner => currentUserId == widget.sellerId;
+
+  bool _isSellerBanned = false;
+  bool _isLoadingSeller = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSellerStatus();
+  }
+
+  Future<void> _checkSellerStatus() async {
+    try {
+      var sellerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.sellerId)
+          .get();
+      if (sellerDoc.exists) {
+        String status = sellerDoc.data()?['status'] ?? 'active';
+        if (status == 'banned' || status == 'suspended') {
+          setState(() => _isSellerBanned = true);
+        }
+      } else {
+        setState(() => _isSellerBanned = true);
+      }
+    } catch (e) {
+      debugPrint("Error checking seller status: $e");
+    } finally {
+      setState(() => _isLoadingSeller = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    if (_isLoadingSeller) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return DefaultTabController(
       length: 2,
@@ -64,7 +101,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 child: Column(
                   children: [
                     _buildProfileCard(theme, isDark),
-                    _buildActionButtons(theme, isDark),
+                    if (!_isSellerBanned) _buildActionButtons(theme, isDark),
                     const SizedBox(height: 10),
                   ],
                 ),
@@ -94,10 +131,44 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               ),
             ];
           },
-          body: TabBarView(
-            children: [_buildProductGrid(theme, isDark), _buildReviews(theme)],
-          ),
+          body: _isSellerBanned
+              ? _buildBannedMessage()
+              : TabBarView(
+                  children: [
+                    _buildProductGrid(theme, isDark),
+                    _buildReviews(theme, isDark),
+                  ],
+                ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBannedMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.nosign,
+            size: 80,
+            color: Colors.red.withOpacity(0.5),
+          ),
+          const SizedBox(height: 15),
+          const Text(
+            "ร้านค้านี้ถูกระงับการใช้งาน",
+            style: TextStyle(
+              color: Colors.red,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "ไม่สามารถดูสินค้าหรือรีวิวของร้านค้านี้ได้",
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+        ],
       ),
     );
   }
@@ -125,6 +196,11 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           name = data['name'] ?? name;
           bio = data['bio'] ?? bio;
           profileImage = data['profileImage'] ?? "";
+
+          if (_isSellerBanned) {
+            name = "ร้านค้านี้ถูกระงับการใช้งาน";
+            bio = "-";
+          }
         }
 
         return Container(
@@ -147,11 +223,15 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               CircleAvatar(
                 radius: 35,
                 backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                backgroundImage: profileImage.isNotEmpty
+                backgroundImage: (profileImage.isNotEmpty && !_isSellerBanned)
                     ? NetworkImage(profileImage)
                     : null,
-                child: profileImage.isEmpty
-                    ? const Icon(Icons.person, size: 35, color: Colors.grey)
+                child: (profileImage.isEmpty || _isSellerBanned)
+                    ? Icon(
+                        _isSellerBanned ? CupertinoIcons.nosign : Icons.person,
+                        size: 35,
+                        color: _isSellerBanned ? Colors.red : Colors.grey,
+                      )
                     : null,
               ),
               const SizedBox(width: 15),
@@ -163,6 +243,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       name,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: _isSellerBanned ? Colors.red : null,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -172,41 +253,86 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         color: isDark ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star,
-                          size: 16,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "5.0/5 Rating",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark ? Colors.grey[400] : Colors.grey[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('products')
-                          .where('sellerId', isEqualTo: widget.sellerId)
-                          .snapshots(),
-                      builder: (context, prodSnapshot) {
-                        int count = prodSnapshot.hasData
-                            ? prodSnapshot.data!.docs.length
-                            : 0;
-                        return Text(
-                          "• $count ชิ้น",
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark ? Colors.grey[400] : Colors.grey[700],
-                          ),
-                        );
-                      },
-                    ),
+
+                    if (!_isSellerBanned) ...[
+                      const SizedBox(height: 8),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('reviews')
+                            .where('sellerId', isEqualTo: widget.sellerId)
+                            .snapshots(),
+                        builder: (context, reviewSnap) {
+                          double avgRating = 5.0;
+                          int reviewCount = 0;
+
+                          if (reviewSnap.hasData &&
+                              reviewSnap.data!.docs.isNotEmpty) {
+                            reviewCount = reviewSnap.data!.docs.length;
+                            double totalRating = 0;
+                            for (var doc in reviewSnap.data!.docs) {
+                              totalRating +=
+                                  (doc.data()
+                                      as Map<String, dynamic>)['rating'] ??
+                                  5.0;
+                            }
+                            avgRating = totalRating / reviewCount;
+                          }
+
+                          return Row(
+                            children: [
+                              Icon(
+                                Icons.star,
+                                size: 16,
+                                color: Colors.amber[600],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "${avgRating.toStringAsFixed(1)} / 5 ($reviewCount รีวิว)",
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[700],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('products')
+                            .where('sellerId', isEqualTo: widget.sellerId)
+                            .where('status', isEqualTo: 'active')
+                            .snapshots(),
+                        builder: (context, prodSnapshot) {
+                          int count = prodSnapshot.hasData
+                              ? prodSnapshot.data!.docs.length
+                              : 0;
+                          return Row(
+                            children: [
+                              const Icon(
+                                CupertinoIcons.cube_box,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "ขายอยู่ $count รายการ",
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -239,25 +365,22 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
         children: [
           Expanded(
             child: _buildButtonContainer(
-              "เลือกบริการขนส่ง",
-              Icons.arrow_forward_ios,
+              "เลือกขนส่ง",
+              Icons.local_shipping_outlined,
               theme,
               isDark,
-              () {
-                Get.to(() => SellerShippingScreen(sellerId: widget.sellerId));
-              },
+              () =>
+                  Get.to(() => SellerShippingScreen(sellerId: widget.sellerId)),
             ),
           ),
           const SizedBox(width: 15),
           Expanded(
             child: _buildButtonContainer(
               "สถานะการขาย",
-              Icons.arrow_forward_ios,
+              Icons.receipt_long_outlined,
               theme,
               isDark,
-              () {
-                Get.to(() => SellerOrdersScreen());
-              },
+              () => Get.to(() => const SellerOrdersScreen()),
             ),
           ),
         ],
@@ -275,10 +398,11 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 15),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.5)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
@@ -288,18 +412,22 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              title,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+            Icon(icon, size: 16, color: AppTheme.primaryColor),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                  fontSize: 13,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            Icon(
-              icon,
-              size: 14,
-              color: isDark ? Colors.grey[400] : Colors.black54,
             ),
           ],
         ),
@@ -333,26 +461,26 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
         return GridView.builder(
           padding: const EdgeInsets.all(20),
-          physics: const NeverScrollableScrollPhysics(),
+          physics: const BouncingScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.60,
+            childAspectRatio: 0.55,
             crossAxisSpacing: 15,
             mainAxisSpacing: 15,
           ),
           itemCount: products.length,
           itemBuilder: (context, index) {
             var doc = products[index];
-            ProductModel product = ProductModel.fromMap(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            );
+            var data = doc.data() as Map<String, dynamic>;
+            ProductModel product = ProductModel.fromMap(data, doc.id);
             String imgUrl = product.images.isNotEmpty ? product.images[0] : '';
 
+            int views = data['views'] ?? 0;
+            int likes = data['likes'] ?? 0;
+            bool isSold = data['status'] == 'sold';
+
             return GestureDetector(
-              onTap: () {
-                Get.to(() => ProductDetailScreen(product: product));
-              },
+              onTap: () => Get.to(() => ProductDetailScreen(product: product)),
               child: Container(
                 decoration: BoxDecoration(
                   color: theme.cardColor,
@@ -369,22 +497,48 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(15),
-                        ),
-                        child: imgUrl.isNotEmpty
-                            ? Image.network(
-                                imgUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                              )
-                            : Container(
-                                color: isDark
-                                    ? Colors.grey[800]
-                                    : Colors.grey[200],
-                                child: const Icon(Icons.image),
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(15),
+                            ),
+                            child: imgUrl.isNotEmpty
+                                ? Image.network(
+                                    imgUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                  )
+                                : Container(
+                                    color: isDark
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
+                                    child: const Center(
+                                      child: Icon(Icons.image),
+                                    ),
+                                  ),
+                          ),
+                          if (isSold)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(15),
+                                ),
                               ),
+                              child: const Center(
+                                child: Text(
+                                  "ขายแล้ว",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     Padding(
@@ -392,51 +546,67 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  product.name.isNotEmpty
-                                      ? product.name
-                                      : product.brand,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Text(
-                                "${product.price.toStringAsFixed(0)}฿",
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            product.name.isNotEmpty
+                                ? product.name
+                                : product.brand,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${product.price.toStringAsFixed(0)} ฿",
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                product.size,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[600],
-                                ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.eye,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    views.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    CupertinoIcons.heart,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    likes.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
                               ),
                               if (isOwner)
                                 GestureDetector(
-                                  onTap: () {
-                                    Get.to(
-                                      () => AddProductScreen(product: product),
-                                    );
-                                  },
+                                  onTap: () => Get.to(
+                                    () => AddProductScreen(product: product),
+                                  ),
                                   child: Icon(
                                     CupertinoIcons.square_pencil_fill,
-                                    size: 32,
+                                    size: 24,
                                     color: isDark
                                         ? Colors.grey[400]
                                         : Colors.grey,
@@ -457,12 +627,231 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     );
   }
 
-  Widget _buildReviews(ThemeData theme) {
-    return Center(
-      child: Text(
-        "ยังไม่มีรีวิว",
-        style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey),
-      ),
+  Widget _buildReviews(ThemeData theme, bool isDark) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('reviews')
+          .where('sellerId', isEqualTo: widget.sellerId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.star_circle,
+                  size: 80,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "ยังไม่มีรีวิว",
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        var reviewDocs = snapshot.data!.docs;
+        reviewDocs.sort((a, b) {
+          Timestamp? tA = (a.data() as Map<String, dynamic>)['createdAt'];
+          Timestamp? tB = (b.data() as Map<String, dynamic>)['createdAt'];
+          if (tA == null || tB == null) return 0;
+          return tB.compareTo(tA);
+        });
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          physics: const BouncingScrollPhysics(),
+          itemCount: reviewDocs.length,
+          itemBuilder: (context, index) {
+            var data = reviewDocs[index].data() as Map<String, dynamic>;
+            int rating = data['rating'] ?? 5;
+            String buyerId = data['buyerId'] ?? '';
+            String orderId = data['orderId'] ?? '';
+            String comment = data['comment'] ?? 'ไม่มีความคิดเห็น';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 15),
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FutureBuilder<DocumentSnapshot>(
+                    future: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(buyerId)
+                        .get(),
+                    builder: (context, userSnap) {
+                      String buyerName = "ผู้ใช้ทั่วไป";
+                      String buyerImg = "";
+
+                      if (userSnap.hasData && userSnap.data!.exists) {
+                        var uData =
+                            userSnap.data!.data() as Map<String, dynamic>;
+                        buyerName = uData['name'] ?? buyerName;
+                        buyerImg = uData['profileImage'] ?? "";
+                      }
+
+                      return Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 15,
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage: buyerImg.isNotEmpty
+                                ? NetworkImage(buyerImg)
+                                : null,
+                            child: buyerImg.isEmpty
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 15,
+                                    color: Colors.grey,
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              buyerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Row(
+                            children: List.generate(5, (starIndex) {
+                              return Icon(
+                                starIndex < rating
+                                    ? Icons.star
+                                    : Icons.star_border,
+                                color: Colors.amber,
+                                size: 16,
+                              );
+                            }),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+                  Text(
+                    comment,
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[300] : Colors.grey[800],
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  if (orderId.isNotEmpty)
+                    FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance
+                          .collection('orders')
+                          .doc(orderId)
+                          .get(),
+                      builder: (context, orderSnap) {
+                        if (!orderSnap.hasData || !orderSnap.data!.exists) {
+                          return const SizedBox();
+                        }
+
+                        var oData =
+                            orderSnap.data!.data() as Map<String, dynamic>;
+                        List items = oData['items'] ?? [];
+                        if (items.isEmpty) return const SizedBox();
+
+                        var firstItem = items.first;
+
+                        return Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[800] : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(5),
+                                  image:
+                                      (firstItem['image'] != null &&
+                                          firstItem['image'] != '')
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            firstItem['image'],
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null,
+                                ),
+                                child:
+                                    (firstItem['image'] == null ||
+                                        firstItem['image'] == '')
+                                    ? const Icon(
+                                        Icons.image,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      firstItem['name'] ?? 'ไม่มีชื่อสินค้า',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      "ตัวเลือก: ${firstItem['size'] ?? '-'}",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

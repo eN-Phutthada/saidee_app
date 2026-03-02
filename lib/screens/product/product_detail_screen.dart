@@ -55,13 +55,108 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   debugPrint("Video Load Error: $error");
                 });
     }
+
     _checkSellerStatus();
+    _incrementViewCount();
+    _checkFavoriteStatus();
   }
 
   @override
   void dispose() {
     _videoController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _incrementViewCount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.uid == widget.product.sellerId) return;
+
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id)
+          .update({'views': FieldValue.increment(1)});
+    } catch (e) {
+      debugPrint("Error incrementing view: $e");
+    }
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      var doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .doc(widget.product.id)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _isFavorite = doc.exists;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error checking favorite status: $e");
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showCustomDialog(
+        title: "กรุณาเข้าสู่ระบบ",
+        message: "คุณต้องเข้าสู่ระบบก่อนจึงจะสามารถกดถูกใจสินค้าได้",
+        icon: CupertinoIcons.person_crop_circle_badge_exclam,
+        iconColor: Colors.orange,
+        confirmText: "เข้าสู่ระบบ",
+        onConfirm: () {
+          Get.back();
+          Get.to(() => const LoginScreen());
+        },
+        showCancel: true,
+      );
+      return;
+    }
+
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+
+    try {
+      final favRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .doc(widget.product.id);
+
+      final prodRef = FirebaseFirestore.instance
+          .collection('products')
+          .doc(widget.product.id);
+
+      if (_isFavorite) {
+        await favRef.set({
+          'productId': widget.product.id,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+        await prodRef.update({'likes': FieldValue.increment(1)});
+      } else {
+        await favRef.delete();
+        await prodRef.update({'likes': FieldValue.increment(-1)});
+      }
+    } catch (e) {
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      Get.snackbar(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถทำรายการได้ กรุณาลองใหม่",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
   Future<void> _checkSellerStatus() async {
@@ -330,11 +425,115 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
+  void _showCustomDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color iconColor,
+    required String confirmText,
+    required VoidCallback onConfirm,
+    bool showCancel = false,
+    String cancelText = "ยกเลิก",
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(25.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 60),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                children: [
+                  if (showCancel) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Get.back(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[300]!,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          cancelText,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 15),
+                  ],
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: onConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        confirmText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: true,
+    );
+  }
+
   Future<void> _addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      AppDialog.showCustomDialog(
+      _showCustomDialog(
         title: "กรุณาเข้าสู่ระบบ",
         message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถสั่งซื้อสินค้าได้",
         icon: CupertinoIcons.person_crop_circle_badge_exclam,
@@ -350,7 +549,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     if (user.uid == widget.product.sellerId) {
-      AppDialog.showCustomDialog(
+      _showCustomDialog(
         title: "ไม่สามารถทำรายการได้",
         message: "คุณไม่สามารถเพิ่มสินค้าของตัวเองลงในตะกร้าได้",
         icon: CupertinoIcons.xmark_circle_fill,
@@ -381,7 +580,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       if (existingItem.docs.isNotEmpty) {
-        AppDialog.showCustomDialog(
+        _showCustomDialog(
           title: "สินค้าอยู่ในตะกร้าแล้ว",
           message:
               "สินค้านี้ถูกเพิ่มลงในตะกร้าของคุณไปแล้ว คุณต้องการไปยังตะกร้าสินค้าหรือไม่?",
@@ -413,7 +612,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'addedAt': Timestamp.now(),
       });
 
-      AppDialog.showCustomDialog(
+      _showCustomDialog(
         title: "เพิ่มลงตะกร้าสำเร็จ!",
         message: "สินค้าถูกเพิ่มลงในตะกร้าของคุณเรียบร้อยแล้ว",
         icon: CupertinoIcons.checkmark_alt_circle_fill,
@@ -723,10 +922,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 : theme.colorScheme.onSurface,
                             size: 24,
                           ),
-                          onPressed: () {
-                            setState(() => _isFavorite = !_isFavorite);
-                            _showNotImplementedSnackbar("รายการโปรด");
-                          },
+                          onPressed: _toggleFavorite,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -817,6 +1013,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
+
+                  const SizedBox(height: 10),
+
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('products')
+                        .doc(widget.product.id)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      int views = 0;
+                      int likes = 0;
+                      if (snapshot.hasData && snapshot.data!.exists) {
+                        var data =
+                            snapshot.data!.data() as Map<String, dynamic>;
+                        views = data['views'] ?? 0;
+                        likes = data['likes'] ?? 0;
+                      }
+                      return Row(
+                        children: [
+                          const Icon(
+                            CupertinoIcons.eye,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "$views เข้าชม",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          const Icon(
+                            CupertinoIcons.heart_fill,
+                            size: 16,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "$likes ถูกใจ",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 15.0),
                     child: Divider(

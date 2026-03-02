@@ -464,19 +464,185 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     double remainingBalance = _walletBalance - _grandTotal;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    AppDialog.showCustomDialog(
-      title: "ยืนยันการชำระเงิน",
-      message:
-          "ยอดที่ต้องชำระ: ${_grandTotal.toStringAsFixed(2)} ฿\nวอลเล็ทปัจจุบัน: ${_walletBalance.toStringAsFixed(2)} ฿\n\nยอดคงเหลือหลังชำระ: ${remainingBalance.toStringAsFixed(2)} ฿",
-      icon: CupertinoIcons.checkmark_circle_fill,
-      iconColor: AppTheme.primaryColor,
-      confirmText: "ชำระเงิน",
-      showCancel: true,
-      onConfirm: () {
-        Get.back();
-        _executePayment();
-      },
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(25),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  CupertinoIcons.shield_fill,
+                  color: AppTheme.primaryColor,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              const Text(
+                "ยืนยันการชำระเงิน",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                "กรุณาตรวจสอบยอดชำระก่อนยืนยันทำรายการ",
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              Text(
+                "${_grandTotal.toStringAsFixed(2)} ฿",
+                style: const TextStyle(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[900] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildReceiptRow(
+                      "ยอดเงินในวอลเล็ท",
+                      "${_walletBalance.toStringAsFixed(2)} ฿",
+                      isDark,
+                    ),
+                    const SizedBox(height: 10),
+                    _buildReceiptRow(
+                      "ยอดที่ต้องชำระ",
+                      "-${_grandTotal.toStringAsFixed(2)} ฿",
+                      isDark,
+                      valueColor: Colors.red,
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      child: Divider(height: 1),
+                    ),
+                    _buildReceiptRow(
+                      "ยอดคงเหลือหลังชำระ",
+                      "${remainingBalance.toStringAsFixed(2)} ฿",
+                      isDark,
+                      isBold: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 35),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(
+                          color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Text(
+                        "ยกเลิก",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        _executePayment();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 5,
+                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                      ),
+                      child: const Text(
+                        "ชำระเงิน",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildReceiptRow(
+    String title,
+    String value,
+    bool isDark, {
+    Color? valueColor,
+    bool isBold = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: isBold
+                ? (isDark ? Colors.white : Colors.black)
+                : (isDark ? Colors.grey[400] : Colors.grey[600]),
+            fontSize: isBold ? 16 : 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor ?? (isDark ? Colors.white : Colors.black),
+            fontSize: isBold ? 18 : 15,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 

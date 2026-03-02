@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/announcement_data_helper.dart';
@@ -115,11 +116,22 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                       child: ElevatedButton(
                         onPressed: () async {
                           if (_titleController.text.isEmpty) return;
+
+                          String currentAdminId =
+                              FirebaseAuth.instance.currentUser?.uid ??
+                              'Unknown';
+
                           final data = {
                             'title': _titleController.text,
                             'detail': _detailController.text,
+                            'adminId': currentAdminId,
                             'updatedAt': FieldValue.serverTimestamp(),
                           };
+
+                          Get.dialog(
+                            const Center(child: CircularProgressIndicator()),
+                            barrierDismissible: false,
+                          );
 
                           if (docId == null) {
                             data['createdAt'] = FieldValue.serverTimestamp();
@@ -132,6 +144,8 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                                 .doc(docId)
                                 .update(data);
                           }
+
+                          Get.back();
                           Get.back();
                         },
                         style: ElevatedButton.styleFrom(
@@ -226,6 +240,16 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
 
+              Timestamp? ts = data['createdAt'] ?? data['updatedAt'];
+              String dateString = "ไม่ระบุเวลา";
+              if (ts != null) {
+                DateTime d = ts.toDate();
+                dateString =
+                    "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year + 543} เวลา ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')} น.";
+              }
+
+              String adminId = data['adminId'] ?? 'System';
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 15),
                 padding: const EdgeInsets.all(20),
@@ -244,6 +268,7 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
@@ -258,12 +283,35 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                         ),
                         const SizedBox(width: 15),
                         Expanded(
-                          child: Text(
-                            data['title'],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data['title'],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.time,
+                                    size: 12,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    dateString,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -272,11 +320,59 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                     Text(
                       data['detail'],
                       style: TextStyle(
-                        color: isDark ? Colors.grey[400] : Colors.grey[700],
+                        color: isDark ? Colors.grey[300] : Colors.grey[800],
                         height: 1.5,
                       ),
                     ),
                     const SizedBox(height: 15),
+
+                    FutureBuilder<DocumentSnapshot>(
+                      future: adminId == 'System'
+                          ? null
+                          : FirebaseFirestore.instance
+                                .collection('admins')
+                                .doc(adminId)
+                                .get(),
+                      builder: (context, adminSnap) {
+                        String adminEmail = "System / ระบบอัตโนมัติ";
+                        if (adminSnap.hasData && adminSnap.data!.exists) {
+                          var adminData =
+                              adminSnap.data!.data() as Map<String, dynamic>;
+                          adminEmail = adminData['email'] ?? "ไม่ระบุอีเมล";
+                        }
+                        return Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey[800] : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                CupertinoIcons.person_solid,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  "ประกาศโดย: $adminEmail",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 10),
                     Divider(
                       color: isDark ? Colors.grey[800] : Colors.grey[200],
                     ),
@@ -296,11 +392,14 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                           ),
                           label: const Text(
                             "แก้ไข",
-                            style: TextStyle(color: Colors.blue),
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: () => doc.reference.delete(),
+                          onPressed: () => _confirmDelete(doc.reference),
                           icon: const Icon(
                             CupertinoIcons.delete,
                             size: 18,
@@ -308,7 +407,10 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                           ),
                           label: const Text(
                             "ลบ",
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -320,6 +422,28 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _confirmDelete(DocumentReference docRef) {
+    Get.defaultDialog(
+      title: "ยืนยันการลบ",
+      middleText: "คุณแน่ใจหรือไม่ที่จะลบประกาศข่าวสารนี้?",
+      textConfirm: "ลบ",
+      textCancel: "ยกเลิก",
+      confirmTextColor: Colors.white,
+      buttonColor: Colors.red,
+      cancelTextColor: Colors.black87,
+      onConfirm: () async {
+        Get.back();
+        await docRef.delete();
+        Get.snackbar(
+          "สำเร็จ",
+          "ลบประกาศเรียบร้อยแล้ว",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+      },
     );
   }
 }

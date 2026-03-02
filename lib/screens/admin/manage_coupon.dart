@@ -17,17 +17,65 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
   final _codeController = TextEditingController();
   final _valueController = TextEditingController();
   final _minOrderController = TextEditingController();
-  final _descController = TextEditingController();
-  String _discountType = 'percent';
+
   bool _isActive = true;
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  Future<void> _selectDate(
+    BuildContext context,
+    bool isStart,
+    StateSetter setModalState,
+  ) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isStart
+          ? (_startDate ?? DateTime.now())
+          : (_endDate ?? (_startDate ?? DateTime.now())),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppTheme.primaryColor,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setModalState(() {
+        if (isStart) {
+          _startDate = picked;
+          if (_endDate != null && _endDate!.isBefore(_startDate!)) {
+            _endDate = _startDate;
+          }
+        } else {
+          _endDate = picked;
+        }
+      });
+    }
+  }
 
   void _showEditDialog({String? docId, Map<String, dynamic>? data}) {
     _codeController.text = data?['code'] ?? '';
     _valueController.text = data?['value']?.toString() ?? '';
     _minOrderController.text = data?['min_order']?.toString() ?? '';
-    _descController.text = data?['desc'] ?? '';
-    _discountType = data?['type'] ?? 'percent';
     _isActive = data?['status'] == 'active' || data?['status'] == null;
+
+    if (data?['start_date'] != null) {
+      _startDate = (data?['start_date'] as Timestamp).toDate();
+    } else {
+      _startDate = DateTime.now();
+    }
+
+    if (data?['end_date'] != null) {
+      _endDate = (data?['end_date'] as Timestamp).toDate();
+    } else {
+      _endDate = DateTime.now().add(const Duration(days: 30));
+    }
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -40,80 +88,48 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: StatefulBuilder(
-              builder: (context, setState) => Column(
+              builder: (context, setModalState) => Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.ticket_fill,
-                      color: Colors.orange,
-                      size: 40,
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.ticket_fill,
+                        color: Colors.orange,
+                        size: 40,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
-                  Text(
-                    docId == null ? "เพิ่มคูปองส่วนลด" : "แก้ไขคูปอง",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                  Center(
+                    child: Text(
+                      docId == null ? "สร้างคูปองใหม่" : "แก้ไขคูปอง",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 25),
+
                   _buildTextField(
-                    "โค้ดคูปอง (เช่น WELCOME50)",
+                    "รหัสโค้ดคูปอง (เช่น WELCOME50)",
                     _codeController,
                     isDark,
                   ),
                   const SizedBox(height: 15),
-                  _buildTextField("คำอธิบายคูปอง", _descController, isDark),
-                  const SizedBox(height: 15),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text(
-                              "ลด %",
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            value: 'percent',
-                            groupValue: _discountType,
-                            activeColor: AppTheme.primaryColor,
-                            onChanged: (val) =>
-                                setState(() => _discountType = val!),
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<String>(
-                            title: const Text(
-                              "ลด บาท",
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            value: 'flat',
-                            groupValue: _discountType,
-                            activeColor: AppTheme.primaryColor,
-                            onChanged: (val) =>
-                                setState(() => _discountType = val!),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 15),
+
                   Row(
                     children: [
                       Expanded(
                         child: _buildTextField(
-                          "จำนวนลด",
+                          "% ส่วนลด",
                           _valueController,
                           isDark,
                           isNumber: true,
@@ -122,7 +138,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: _buildTextField(
-                          "ขั้นต่ำ (฿)",
+                          "สั่งขั้นต่ำ (บาท)",
                           _minOrderController,
                           isDark,
                           isNumber: true,
@@ -131,6 +147,92 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     ],
                   ),
                   const SizedBox(height: 15),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              _selectDate(context, true, setModalState),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "วันเริ่มต้น",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _startDate != null
+                                      ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
+                                      : "-",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              _selectDate(context, false, setModalState),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 15,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "วันสิ้นสุด",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _endDate != null
+                                      ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                                      : "-",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
                   Container(
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[800] : Colors.grey[100],
@@ -138,7 +240,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     ),
                     child: SwitchListTile(
                       title: const Text(
-                        "เปิดใช้งานคูปองนี้",
+                        "สถานะการใช้งาน",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -146,10 +248,11 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                       ),
                       value: _isActive,
                       activeColor: AppTheme.primaryColor,
-                      onChanged: (val) => setState(() => _isActive = val),
+                      onChanged: (val) => setModalState(() => _isActive = val),
                     ),
                   ),
                   const SizedBox(height: 30),
+
                   Row(
                     children: [
                       Expanded(
@@ -171,21 +274,32 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                             if (_codeController.text.isEmpty) {
                               Get.snackbar(
                                 "ข้อมูลไม่ครบ",
-                                "กรุณากรอกโค้ดคูปอง",
+                                "กรุณากรอกรหัสโค้ดคูปอง",
                                 backgroundColor: Colors.orange,
                                 colorText: Colors.white,
                               );
                               return;
                             }
+                            if (_startDate == null || _endDate == null) {
+                              Get.snackbar(
+                                "ข้อมูลไม่ครบ",
+                                "กรุณาระบุวันเริ่มต้นและสิ้นสุด",
+                                backgroundColor: Colors.orange,
+                                colorText: Colors.white,
+                              );
+                              return;
+                            }
+
                             final newData = {
                               'code': _codeController.text.trim().toUpperCase(),
-                              'desc': _descController.text.trim(),
-                              'type': _discountType,
+                              'type': 'percent',
                               'value':
                                   double.tryParse(_valueController.text) ?? 0,
                               'min_order':
                                   double.tryParse(_minOrderController.text) ??
                                   0,
+                              'start_date': Timestamp.fromDate(_startDate!),
+                              'end_date': Timestamp.fromDate(_endDate!),
                               'status': _isActive ? 'active' : 'inactive',
                             };
 
@@ -209,7 +323,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                             ),
                           ),
                           child: const Text(
-                            "บันทึก",
+                            "บันทึกข้อมูล",
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -240,10 +354,10 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
       AppDialog.showCustomDialog(
         title: "ไม่สามารถลบได้",
         message:
-            "มีการใช้คูปอง '$code' ในระบบคำสั่งซื้อแล้ว\nกรุณาแก้ไขและ 'ปิดการใช้งาน' แทนการลบ",
+            "มีการใช้คูปอง '$code' ในระบบคำสั่งซื้อแล้ว\nกรุณา 'ปิดการใช้งาน' แทนการลบเพื่อเก็บเป็นประวัติ",
         icon: CupertinoIcons.exclamationmark_triangle_fill,
         iconColor: Colors.orange,
-        confirmText: "ตกลง",
+        confirmText: "เข้าใจแล้ว",
         onConfirm: () => Get.back(),
       );
       return;
@@ -295,7 +409,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
         backgroundColor: AppTheme.primaryColor,
         icon: const Icon(CupertinoIcons.add, color: Colors.white),
         label: const Text(
-          "เพิ่มคูปอง",
+          "เพิ่มคูปองใหม่",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         onPressed: () => _showEditDialog(),
@@ -305,14 +419,13 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
         builder: (context, snapshot) {
           if (!snapshot.hasData)
             return const Center(child: CircularProgressIndicator());
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.data!.docs.isEmpty)
             return Center(
               child: Text(
                 "ไม่มีข้อมูลคูปอง",
                 style: TextStyle(color: Colors.grey[500]),
               ),
             );
-          }
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(15, 15, 15, 100),
@@ -321,12 +434,16 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
               var doc = snapshot.data!.docs[index];
               var data = doc.data() as Map<String, dynamic>;
 
-              String discountLabel = data['type'] == 'percent'
-                  ? "ลด ${data['value']}%"
-                  : "ลด ${data['value']} ฿";
+              String discountLabel = "ลด ${data['value']}%";
+              bool isActive = data['status'] == 'active';
 
-              bool isActive =
-                  data['status'] == 'active' || data['status'] == null;
+              String dateRange = "ไม่ระบุเวลา";
+              if (data['start_date'] != null && data['end_date'] != null) {
+                DateTime sDate = (data['start_date'] as Timestamp).toDate();
+                DateTime eDate = (data['end_date'] as Timestamp).toDate();
+                dateRange =
+                    "${sDate.day}/${sDate.month}/${sDate.year} - ${eDate.day}/${eDate.month}/${eDate.year}";
+              }
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 20),
@@ -407,38 +524,43 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     ),
                     Padding(
                       padding: const EdgeInsets.all(15),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  data['desc'] ?? 'ไม่มีคำอธิบาย',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                    color: isActive
-                                        ? theme.colorScheme.onSurface
-                                        : Colors.grey,
-                                  ),
+                          Row(
+                            children: [
+                              _buildInfoBadge(
+                                discountLabel,
+                                isActive ? Colors.orange : Colors.grey,
+                              ),
+                              const SizedBox(width: 10),
+                              _buildInfoBadge(
+                                "ขั้นต่ำ ${data['min_order']} ฿",
+                                isActive ? Colors.blue : Colors.grey,
+                              ),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10),
+                            child: Divider(height: 1),
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                CupertinoIcons.calendar,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                dateRange,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    _buildInfoBadge(
-                                      discountLabel,
-                                      isActive ? Colors.orange : Colors.grey,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    _buildInfoBadge(
-                                      "ขั้นต่ำ ${data['min_order']} ฿",
-                                      isActive ? Colors.blue : Colors.grey,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -464,11 +586,19 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(
+          fontSize: 14,
+          color: isDark ? Colors.grey[400] : Colors.grey[600],
+        ),
         filled: true,
         fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 15,
         ),
       ),
     );
@@ -485,7 +615,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
         text,
         style: TextStyle(
           color: color,
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.bold,
         ),
       ),

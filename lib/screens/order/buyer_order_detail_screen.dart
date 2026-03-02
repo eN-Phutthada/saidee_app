@@ -1,12 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
-class BuyerOrderDetailScreen extends StatelessWidget {
+class BuyerOrderDetailScreen extends StatefulWidget {
   final String orderId;
   final Map<String, dynamic> orderData;
 
@@ -15,6 +20,107 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     required this.orderId,
     required this.orderData,
   });
+
+  @override
+  State<BuyerOrderDetailScreen> createState() => _BuyerOrderDetailScreenState();
+}
+
+class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
+  late bool _isReviewed;
+
+  @override
+  void initState() {
+    super.initState();
+    _isReviewed = widget.orderData['isReviewed'] == true;
+  }
+
+  void _copyTrackingNumber(String trackingNumber) {
+    if (trackingNumber.isEmpty || trackingNumber == '-') return;
+    Clipboard.setData(ClipboardData(text: trackingNumber));
+    Get.snackbar(
+      "คัดลอกแล้ว",
+      "คัดลอกหมายเลขพัสดุ $trackingNumber เรียบร้อยแล้ว",
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.black87,
+      colorText: Colors.white,
+      icon: const Icon(
+        CupertinoIcons.doc_on_clipboard_fill,
+        color: Colors.white,
+      ),
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  Future<void> _confirmDelivery() async {
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการรับสินค้า",
+      message:
+          "คุณได้ตรวจสอบสินค้าและต้องการยืนยันการรับสินค้าใช่หรือไม่?\n(การกระทำนี้ไม่สามารถย้อนกลับได้)",
+      icon: CupertinoIcons.checkmark_seal_fill,
+      iconColor: Colors.green,
+      confirmText: "ฉันยอมรับสินค้า",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      onConfirm: () async {
+        Get.back();
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
+        try {
+          await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(widget.orderId)
+              .update({
+                'status': 'completed',
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+
+          double totalAmount = (widget.orderData['total'] ?? 0).toDouble();
+          String sellerId = widget.orderData['sellerId'];
+
+          WriteBatch batch = FirebaseFirestore.instance.batch();
+          DocumentReference sellerRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(sellerId);
+          batch.update(sellerRef, {
+            'walletBalance': FieldValue.increment(totalAmount),
+          });
+
+          DocumentReference txRef = FirebaseFirestore.instance
+              .collection('transactions')
+              .doc();
+          batch.set(txRef, {
+            'uid': sellerId,
+            'type': 'income',
+            'amount': totalAmount,
+            'order_id': widget.orderId,
+            'status': 'success',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          await batch.commit();
+
+          Get.back();
+          Get.back();
+          Get.snackbar(
+            "สำเร็จ",
+            "ยืนยันการรับสินค้าเรียบร้อยแล้ว",
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+        } catch (e) {
+          Get.back();
+          Get.snackbar(
+            "เกิดข้อผิดพลาด",
+            "ไม่สามารถทำรายการได้ กรุณาลองใหม่",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      },
+    );
+  }
 
   Future<void> _cancelOrder(BuildContext context, double totalAmount) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -48,7 +154,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
 
       DocumentReference orderRef = FirebaseFirestore.instance
           .collection('orders')
-          .doc(orderId);
+          .doc(widget.orderId);
       batch.update(orderRef, {
         'status': 'cancelled',
         'updatedAt': FieldValue.serverTimestamp(),
@@ -68,12 +174,12 @@ class BuyerOrderDetailScreen extends StatelessWidget {
         'uid': uid,
         'type': 'refund',
         'amount': totalAmount,
-        'order_id': orderId,
+        'order_id': widget.orderId,
         'status': 'success',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      List items = orderData['items'] ?? [];
+      List items = widget.orderData['items'] ?? [];
       for (var item in items) {
         String productId = item['productId'];
         DocumentReference productRef = FirebaseFirestore.instance
@@ -103,38 +209,512 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     }
   }
 
+  void _showReviewSheet(BuildContext context) {
+    if (_isReviewed) return;
+
+    int rating = 5;
+    TextEditingController reviewCtrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              left: 20,
+              right: 20,
+              top: 15,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(25),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "ให้คะแนนสินค้าและร้านค้า",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "ความพึงพอใจของคุณเป็นอย่างไรบ้าง?",
+                    style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () => setModalState(() => rating = index + 1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: Icon(
+                            index < rating
+                                ? CupertinoIcons.star_fill
+                                : CupertinoIcons.star,
+                            color: Colors.amber,
+                            size: 45,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 25),
+                  TextField(
+                    controller: reviewCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: "แบ่งปันประสบการณ์ของคุณกับสินค้านี้...",
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.all(15),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back();
+                        Get.dialog(
+                          const Center(child: CircularProgressIndicator()),
+                          barrierDismissible: false,
+                        );
+                        try {
+                          String sellerId = widget.orderData['sellerId'];
+
+                          await FirebaseFirestore.instance
+                              .collection('reviews')
+                              .add({
+                                'orderId': widget.orderId,
+                                'buyerId':
+                                    FirebaseAuth.instance.currentUser!.uid,
+                                'sellerId': sellerId,
+                                'rating': rating,
+                                'comment': reviewCtrl.text.trim(),
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+
+                          await FirebaseFirestore.instance
+                              .collection('orders')
+                              .doc(widget.orderId)
+                              .update({'isReviewed': true});
+
+                          Get.back();
+
+                          setState(() {
+                            _isReviewed = true;
+                          });
+
+                          Get.snackbar(
+                            "สำเร็จ",
+                            "ขอบคุณสำหรับการประเมิน!",
+                            backgroundColor: Colors.green,
+                            colorText: Colors.white,
+                          );
+                        } catch (e) {
+                          Get.back();
+                          Get.snackbar(
+                            "ข้อผิดพลาด",
+                            "ไม่สามารถส่งรีวิวได้",
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ส่งรีวิว",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  void _showReportSheet(BuildContext context) {
+    TextEditingController topicCtrl = TextEditingController();
+    TextEditingController detailCtrl = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    File? imageProof;
+    final ImagePicker picker = ImagePicker();
+
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              left: 25,
+              right: 25,
+              top: 15,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(25),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.exclamationmark_triangle_fill,
+                          color: Colors.red,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      const Text(
+                        "รายงานปัญหาผู้ขาย",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    "หากพบว่าผู้ขายมีพฤติกรรมฉ้อโกง ส่งสินค้าไม่ตรงปก หรือมีปัญหาอื่นๆ โปรดแจ้งให้ทีมงานทราบ",
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: topicCtrl,
+                    decoration: InputDecoration(
+                      labelText: "หัวข้อปัญหา (เช่น สินค้าไม่ตรงปก, ของปลอม)",
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: detailCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: "อธิบายรายละเอียดเพิ่มเติม",
+                      alignLabelWithHint: true,
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    "แนบรูปภาพหลักฐาน (ถ้ามี)",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () async {
+                      final pickedFile = await picker.pickImage(
+                        source: ImageSource.gallery,
+                        imageQuality: 70,
+                      );
+                      if (pickedFile != null) {
+                        setModalState(() {
+                          imageProof = File(pickedFile.path);
+                        });
+                      }
+                    },
+                    child: imageProof == null
+                        ? DottedBorder(
+                            color: isDark
+                                ? Colors.grey[600]!
+                                : Colors.grey[400]!,
+                            strokeWidth: 1,
+                            dashPattern: const [6, 4],
+                            borderType: BorderType.RRect,
+                            radius: const Radius.circular(12),
+                            child: Container(
+                              height: 100,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[50],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.camera,
+                                    color: Colors.grey[500],
+                                    size: 30,
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    "เพิ่มรูป",
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : Stack(
+                            children: [
+                              Container(
+                                height: 100,
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: DecorationImage(
+                                    image: FileImage(imageProof!),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      setModalState(() => imageProof = null),
+                                  child: const CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: Colors.red,
+                                    child: Icon(
+                                      CupertinoIcons.xmark,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+
+                  const SizedBox(height: 25),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (topicCtrl.text.isEmpty) {
+                          Get.snackbar(
+                            "แจ้งเตือน",
+                            "กรุณาระบุหัวข้อปัญหา",
+                            backgroundColor: Colors.orange,
+                            colorText: Colors.white,
+                          );
+                          return;
+                        }
+
+                        Get.back();
+                        Get.dialog(
+                          Dialog(
+                            backgroundColor: Theme.of(context).cardColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  CircularProgressIndicator(color: Colors.red),
+                                  SizedBox(height: 20),
+                                  Text("กำลังส่งรายงาน..."),
+                                ],
+                              ),
+                            ),
+                          ),
+                          barrierDismissible: false,
+                        );
+
+                        try {
+                          String imageUrl = "";
+
+                          if (imageProof != null) {
+                            String fileName =
+                                'report_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                            Reference ref = FirebaseStorage.instance
+                                .ref()
+                                .child('reports/$fileName');
+                            await ref.putFile(imageProof!);
+                            imageUrl = await ref.getDownloadURL();
+                          }
+
+                          await FirebaseFirestore.instance
+                              .collection('reports')
+                              .add({
+                                'reporter_id':
+                                    FirebaseAuth.instance.currentUser!.uid,
+                                'reported_id': widget.orderData['sellerId'],
+                                'order_id': widget.orderId,
+                                'topic': topicCtrl.text.trim(),
+                                'detail': detailCtrl.text.trim(),
+                                'image_proof': imageUrl,
+                                'status': 'pending',
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
+
+                          Get.back();
+                          Get.snackbar(
+                            "ส่งรายงานสำเร็จ",
+                            "ระบบได้รับข้อมูลของคุณแล้ว ทีมงานจะดำเนินการตรวจสอบโดยเร็วที่สุด",
+                            backgroundColor: Colors.green,
+                            colorText: Colors.white,
+                            duration: const Duration(seconds: 4),
+                          );
+                        } catch (e) {
+                          Get.back();
+                          Get.snackbar(
+                            "ข้อผิดพลาด",
+                            "ไม่สามารถส่งรายงานได้",
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ส่งรายงานให้แอดมิน",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      isScrollControlled: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    List items = orderData['items'] ?? [];
-    var address = orderData['shippingAddress'] ?? {};
-    String status = orderData['status'] ?? 'pending';
+    List items = widget.orderData['items'] ?? [];
+    var address = widget.orderData['shippingAddress'] ?? {};
+    String status = widget.orderData['status'] ?? 'pending';
 
     String statusTitle = "กำลังดำเนินการ";
     String statusDesc = "รอผู้ขายจัดเตรียมและส่งสินค้า";
     Color headerColor = Colors.orange;
     IconData headerIcon = CupertinoIcons.time;
+    String warrantyText = "";
 
     if (status == 'shipping') {
       statusTitle = "กำลังจัดส่ง";
-      statusDesc = "ผู้ขายได้จัดส่งสินค้าให้คุณแล้ว";
+      statusDesc = "พัสดุของคุณกำลังเดินทาง";
       headerColor = Colors.blue;
       headerIcon = CupertinoIcons.cube_box;
+
+      Timestamp? ts =
+          widget.orderData['updatedAt'] ?? widget.orderData['createdAt'];
+      if (ts != null) {
+        DateTime shippedDate = ts.toDate();
+        DateTime autoConfirmDate = shippedDate.add(const Duration(days: 7));
+        warrantyText =
+            "${autoConfirmDate.day.toString().padLeft(2, '0')}/${autoConfirmDate.month.toString().padLeft(2, '0')}/${autoConfirmDate.year + 543} เวลา ${autoConfirmDate.hour.toString().padLeft(2, '0')}:${autoConfirmDate.minute.toString().padLeft(2, '0')} น.";
+      }
     } else if (status == 'completed') {
       statusTitle = "จัดส่งสำเร็จ";
-      statusDesc = "คำสั่งซื้อเสร็จสมบูรณ์";
+      statusDesc = "คำสั่งซื้อนี้เสร็จสมบูรณ์แล้ว";
       headerColor = Colors.green;
       headerIcon = CupertinoIcons.checkmark_seal_fill;
     } else if (status == 'cancelled') {
       statusTitle = "ยกเลิกแล้ว";
-      statusDesc = "คำสั่งซื้อถูกยกเลิกแล้ว";
+      statusDesc = "คำสั่งซื้อถูกยกเลิก";
       headerColor = Colors.red;
       headerIcon = CupertinoIcons.xmark_circle;
     }
 
-    Timestamp? ts = orderData['createdAt'];
+    Timestamp? ts = widget.orderData['createdAt'];
     String orderDate = "-";
     if (ts != null) {
       DateTime d = ts.toDate();
@@ -167,21 +747,88 @@ class BuyerOrderDetailScreen extends StatelessWidget {
               headerColor,
               headerIcon,
             ),
-
             Padding(
               padding: const EdgeInsets.all(15.0),
               child: Column(
                 children: [
                   if (status == 'shipping' || status == 'completed')
-                    _buildTrackingCard(theme, isDark, orderData),
+                    _buildTrackingCard(theme, isDark, widget.orderData),
+
+                  if (status == 'shipping' && warrantyText.isNotEmpty)
+                    _buildWarrantyInfoBox(theme, isDark, warrantyText),
 
                   _buildAddressCard(theme, isDark, address),
 
                   _buildItemsCard(theme, isDark, items),
 
-                  _buildPaymentSummaryCard(theme, isDark, orderData),
+                  _buildPaymentSummaryCard(theme, isDark, widget.orderData),
 
                   _buildOrderInfoCard(theme, isDark, orderDate),
+
+                  if (status == 'completed') ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        onPressed: _isReviewed
+                            ? null
+                            : () => _showReviewSheet(context),
+                        icon: Icon(
+                          CupertinoIcons.star_fill,
+                          color: _isReviewed ? Colors.grey : Colors.white,
+                          size: 20,
+                        ),
+                        label: Text(
+                          _isReviewed
+                              ? "คุณรีวิวสินค้านี้แล้ว"
+                              : "ให้คะแนนและรีวิวสินค้า",
+                          style: TextStyle(
+                            color: _isReviewed
+                                ? Colors.grey[700]
+                                : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          disabledBackgroundColor: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[300],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showReportSheet(context),
+                        icon: const Icon(
+                          CupertinoIcons.exclamationmark_triangle_fill,
+                          color: Colors.red,
+                          size: 18,
+                        ),
+                        label: const Text(
+                          "รายงานปัญหา / ผู้ขายทุจริต",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 100),
                 ],
@@ -190,8 +837,14 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomSheet: (status == 'pending')
-          ? _buildBottomAction(context, theme, isDark)
+      bottomSheet: (status == 'pending' || status == 'shipping')
+          ? _buildBottomAction(
+              context,
+              theme,
+              isDark,
+              status,
+              (widget.orderData['total'] ?? 0).toDouble(),
+            )
           : null,
     );
   }
@@ -236,6 +889,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
   }
 
   Widget _buildTrackingCard(ThemeData theme, bool isDark, Map data) {
+    String trackingNumber = data['trackingNumber'] ?? '-';
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 15),
@@ -267,24 +921,103 @@ class BuyerOrderDetailScreen extends StatelessWidget {
               color: isDark ? Colors.grey[400] : Colors.grey[700],
             ),
           ),
-          const SizedBox(height: 5),
-          Row(
-            children: [
-              Text(
-                "เลขพัสดุ: ",
-                style: TextStyle(
-                  color: isDark ? Colors.grey[400] : Colors.grey[700],
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  "เลขพัสดุ: ",
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                  ),
                 ),
-              ),
-              SelectableText(
-                "${data['trackingNumber'] ?? '-'}",
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                  fontSize: 16,
+                Expanded(
+                  child: Text(
+                    trackingNumber,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                if (trackingNumber != '-')
+                  GestureDetector(
+                    onTap: () => _copyTrackingNumber(trackingNumber),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.copy,
+                        size: 14,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarrantyInfoBox(
+    ThemeData theme,
+    bool isDark,
+    String dateString,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(CupertinoIcons.timer, color: Colors.orange, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "ระยะเวลาประกันสินค้า (รับของอัตโนมัติ)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  "กรุณาตรวจสอบสินค้าและกดยืนยันภายในวันที่ $dateString หากเลยกำหนด ระบบจะยืนยันการรับสินค้าและโอนเงินให้ผู้ขายอัตโนมัติ",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[300] : Colors.grey[800],
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -358,7 +1091,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  "ร้าน: ${orderData['sellerName'] ?? 'ไม่ระบุ'}",
+                  "ร้าน: ${widget.orderData['sellerName'] ?? 'ไม่ระบุ'}",
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -372,10 +1105,11 @@ class BuyerOrderDetailScreen extends StatelessWidget {
             (item) => Padding(
               padding: const EdgeInsets.all(15),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: 65,
+                    height: 80,
                     decoration: BoxDecoration(
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(8),
@@ -394,10 +1128,14 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                       children: [
                         Text(
                           item['name'] ?? '',
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
+                        const SizedBox(height: 4),
                         Text(
                           "ไซส์: ${item['size'] ?? '-'}",
                           style: const TextStyle(
@@ -405,12 +1143,23 @@ class BuyerOrderDetailScreen extends StatelessWidget {
                             fontSize: 12,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "${item['price']} ฿",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  Text(
-                    "${item['price']} ฿",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      "x1",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -449,7 +1198,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
           ),
           if ((data['discount'] ?? 0) > 0)
             _buildSummaryRow(
-              "ส่วนลด",
+              "ส่วนลดคูปอง",
               "-${data['discount']} ฿",
               theme,
               isDark,
@@ -490,7 +1239,7 @@ class BuyerOrderDetailScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildSummaryRow("หมายเลขคำสั่งซื้อ", orderId, theme, isDark),
+          _buildSummaryRow("หมายเลขคำสั่งซื้อ", widget.orderId, theme, isDark),
           _buildSummaryRow("เวลาที่สั่งซื้อ", date, theme, isDark),
           _buildSummaryRow("ช่องทางชำระเงิน", "SAIDEE Wallet", theme, isDark),
         ],
@@ -502,36 +1251,57 @@ class BuyerOrderDetailScreen extends StatelessWidget {
     BuildContext context,
     ThemeData theme,
     bool isDark,
+    String status,
+    double totalAmount,
   ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        border: Border(
-          top: BorderSide(
-            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, -5),
           ),
-        ),
+        ],
       ),
       child: SafeArea(
         child: SizedBox(
           width: double.infinity,
-          height: 50,
-          child: OutlinedButton(
-            onPressed: () =>
-                _cancelOrder(context, (orderData['total'] ?? 0).toDouble()),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              "ยกเลิกคำสั่งซื้อ",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+          height: 55,
+          child: status == 'pending'
+              ? OutlinedButton(
+                  onPressed: () => _cancelOrder(context, totalAmount),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "ยกเลิกคำสั่งซื้อ",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                )
+              : ElevatedButton(
+                  onPressed: _confirmDelivery,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "ฉันได้ตรวจสอบและยอมรับสินค้า",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
         ),
       ),
     );
