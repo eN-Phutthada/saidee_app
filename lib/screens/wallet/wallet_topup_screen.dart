@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/screens/wallet/qr_payment_screen.dart';
+import 'package:saidee_app/screens/wallet/slip_payment_screen.dart';
 
 class WalletTopUpScreen extends StatefulWidget {
   const WalletTopUpScreen({super.key});
@@ -19,9 +17,10 @@ class WalletTopUpScreen extends StatefulWidget {
 class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
   final TextEditingController _amountController = TextEditingController();
   final List<int> _quickAmounts = [100, 300, 500, 1000, 2000, 5000];
+
   bool _isLoading = false;
 
-  Future<void> _generateQR() async {
+  Future<void> _processTopUp() async {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
       _showCustomSnackbar(
@@ -44,38 +43,8 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    try {
-      final HttpsCallable callable = FirebaseFunctions.instanceFor(
-        region: 'asia-southeast1',
-      ).httpsCallable('createXenditQR');
-      final response = await callable.call(<String, dynamic>{'amount': amount});
-
-      final String qrString = response.data['qrString'];
-      final String refNo = response.data['externalId'];
-
-      Get.to(
-        () => QRPaymentScreen(qrString: qrString, amount: amount, refNo: refNo),
-      );
-    } on FirebaseFunctionsException catch (e) {
-      log(e.message ?? "เกิดข้อผิดพลาดในการสร้าง QR Code");
-      _showCustomSnackbar(
-        "ข้อผิดพลาด",
-        e.message ?? "เกิดข้อผิดพลาดในการสร้าง QR Code",
-        CupertinoIcons.xmark_circle_fill,
-        Colors.red[800]!,
-      );
-    } catch (e) {
-      _showCustomSnackbar(
-        "Error",
-        "เกิดข้อผิดพลาดในการเชื่อมต่อ",
-        CupertinoIcons.wifi_exclamationmark,
-        Colors.red[800]!,
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    // ไปที่หน้าอัปโหลดสลิปทันที
+    Get.to(() => SlipPaymentScreen(amount: amount));
   }
 
   void _showCustomSnackbar(
@@ -175,6 +144,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 10),
 
@@ -224,7 +194,6 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                               ),
                             ),
                           ),
-
                           Padding(
                             padding: const EdgeInsets.all(30),
                             child: Column(
@@ -283,12 +252,14 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  Text(
-                    "ระบุจำนวนเงินที่ต้องการเติม",
-                    style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Center(
+                    child: Text(
+                      "ระบุจำนวนเงินที่ต้องการเติม",
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -347,8 +318,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -380,22 +350,6 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                                           : Colors.grey[200]!),
                                 width: 2,
                               ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: AppTheme.primaryColor
-                                            .withOpacity(0.4),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ]
-                                  : [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.02),
-                                        blurRadius: 5,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
                             ),
                             child: Center(
                               child: Text(
@@ -416,6 +370,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                       }).toList(),
                     ),
                   ),
+
                   const SizedBox(height: 40),
                 ],
               ),
@@ -440,7 +395,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
           child: SizedBox(
             height: 55,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _generateQR,
+              onPressed: _isLoading ? null : _processTopUp,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 shape: RoundedRectangleBorder(
@@ -459,7 +414,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                       ),
                     )
                   : const Text(
-                      "สแกน QR เพื่อชำระเงิน",
+                      "ดำเนินการโอนเงินแนบสลิป",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

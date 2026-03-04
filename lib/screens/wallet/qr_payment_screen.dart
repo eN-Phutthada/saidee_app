@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -66,8 +67,8 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
   Future<void> _simulatePayment() async {
     setState(() => _isSimulating = true);
     try {
-      const secretKey =
-          'xnd_development_uECbSQQ13qvRaRejTtYlQI20uqwgZowEobCwUTmN31xHBSM7vjxByLs5qlbtDC'; // ใส่ Secret Key ตามระบบเดิมของคุณ
+      final String secretKey = dotenv.env['XENDIT_SECRET_KEY'] ?? '';
+
       final basicAuth = 'Basic ${base64Encode(utf8.encode('$secretKey:'))}';
 
       final doc = await FirebaseFirestore.instance
@@ -304,7 +305,7 @@ class _QRPaymentScreenState extends State<QRPaymentScreen> {
                                 color: AppTheme.primaryColor.withOpacity(0.05),
                                 child: Center(
                                   child: Image.asset(
-                                    'assets/images/promptpay_logo.png',
+                                    'assets/images/promptpay_logo.jpg',
                                     height: 35,
                                     errorBuilder: (_, __, ___) => const Text(
                                       "PromptPay",

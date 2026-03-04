@@ -253,8 +253,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                       snackPosition: SnackPosition.TOP,
                                     );
                                   } finally {
-                                    if (mounted)
+                                    if (mounted) {
                                       setStateDialog(() => isSending = false);
+                                    }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
