@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
@@ -205,6 +206,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         ? data['images'][0]
         : null;
 
+    final currentUser = FirebaseAuth.instance.currentUser;
+    List<dynamic> likedBy = data['likedBy'] ?? [];
+    bool isLiked = currentUser != null && likedBy.contains(currentUser.uid);
+
     return GestureDetector(
       onTap: () {
         ProductModel product = ProductModel.fromMap(data, docId);
@@ -253,13 +258,44 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   Positioned(
                     bottom: 8,
                     right: 8,
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      radius: 14,
-                      child: Icon(
-                        CupertinoIcons.heart_fill,
-                        size: 16,
-                        color: Colors.grey[300],
+                    child: GestureDetector(
+                      onTap: () async {
+                        if (currentUser == null) {
+                          Get.snackbar(
+                            "แจ้งเตือน",
+                            "กรุณาเข้าสู่ระบบเพื่อกดถูกใจ",
+                            backgroundColor: Colors.orange,
+                            colorText: Colors.white,
+                          );
+                          return;
+                        }
+
+                        final docRef = FirebaseFirestore.instance
+                            .collection('products')
+                            .doc(docId);
+
+                        if (isLiked) {
+                          await docRef.update({
+                            'likedBy': FieldValue.arrayRemove([
+                              currentUser.uid,
+                            ]),
+                            'likes': FieldValue.increment(-1),
+                          });
+                        } else {
+                          await docRef.update({
+                            'likedBy': FieldValue.arrayUnion([currentUser.uid]),
+                            'likes': FieldValue.increment(1),
+                          });
+                        }
+                      },
+                      child: CircleAvatar(
+                        backgroundColor: Colors.white,
+                        radius: 14,
+                        child: Icon(
+                          CupertinoIcons.heart_fill,
+                          size: 16,
+                          color: isLiked ? Colors.red : Colors.grey[300],
+                        ),
                       ),
                     ),
                   ),

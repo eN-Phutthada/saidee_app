@@ -295,6 +295,104 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showSuccessWelcomeDialog({required bool isAdmin}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    Get.dialog(
+      PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: TweenAnimationBuilder(
+            duration: const Duration(milliseconds: 600),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(25),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isAdmin ? Colors.blue : Colors.green)
+                            .withOpacity(0.2),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: isAdmin
+                              ? Colors.blue.withOpacity(0.1)
+                              : Colors.green.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isAdmin
+                              ? CupertinoIcons.checkmark_seal_fill
+                              : CupertinoIcons.checkmark_seal_fill,
+                          color: isAdmin ? Colors.blue : Colors.green,
+                          size: 60,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      Text(
+                        isAdmin ? "ยินดีต้อนรับแอดมิน!" : "เข้าสู่ระบบสำเร็จ!",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isAdmin ? Colors.blue : Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        "กำลังพาท่านเข้าสู่ระบบ กรุณารอสักครู่...",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                          color: isAdmin ? Colors.blue : Colors.green,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (isAdmin) {
+        Get.offAll(() => const AdminDashboard());
+      } else {
+        Get.offAll(() => const HomeScreen());
+      }
+    });
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
@@ -319,9 +417,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           if (status == 'suspended' || status == 'banned') {
             await FirebaseAuth.instance.signOut();
-
             setState(() => _isLoading = false);
-
             _showBannedPopup();
             return;
           }
@@ -332,25 +428,16 @@ class _LoginScreenState extends State<LoginScreen> {
             .doc(user.uid)
             .get();
 
+        if (mounted) setState(() => _isLoading = false);
+
         if (adminDoc.exists) {
-          _showCustomSnackbar(
-            title: "ยินดีต้อนรับ",
-            message: "เข้าสู่ระบบ Admin เรียบร้อยแล้ว",
-            icon: CupertinoIcons.shield_lefthalf_fill,
-            backgroundColor: Colors.blueAccent,
-          );
-          Get.offAll(() => const AdminDashboard());
+          _showSuccessWelcomeDialog(isAdmin: true);
         } else {
-          _showCustomSnackbar(
-            title: "สำเร็จ",
-            message: "เข้าสู่ระบบเรียบร้อยแล้ว",
-            icon: CupertinoIcons.checkmark_alt_circle_fill,
-            backgroundColor: AppTheme.primaryColor,
-          );
-          Get.offAll(() => const HomeScreen());
+          _showSuccessWelcomeDialog(isAdmin: false);
         }
       }
     } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => _isLoading = false);
       String message = "เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง";
       switch (e.code) {
         case 'user-not-found':
@@ -389,14 +476,13 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppTheme.errorColor,
       );
     } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
       _showCustomSnackbar(
         title: "Error",
         message: e.toString(),
         icon: CupertinoIcons.xmark_circle_fill,
         backgroundColor: Colors.red[800]!,
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 

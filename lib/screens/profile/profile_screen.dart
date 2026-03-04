@@ -480,7 +480,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  // --- อัปเดตฟังก์ชัน Logout ให้เป็น Popup แอนิเมชันเด้งดึ๋ง ---
   void _confirmLogout(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     AppDialog.showCustomDialog(
       title: "ออกจากระบบ",
       message: "คุณแน่ใจหรือไม่ที่จะออกจากระบบ Saidee App?",
@@ -491,20 +495,98 @@ class ProfileScreen extends StatelessWidget {
       showCancel: true,
       isDestructive: true,
       onConfirm: () async {
-        Get.back();
+        Get.back(); // ปิด Popup ยืนยัน
+
+        // โชว์ Popup โบกมือลา แอนิเมชัน
         Get.dialog(
-          const Center(child: CircularProgressIndicator()),
+          PopScope(
+            canPop: false,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: TweenAnimationBuilder(
+                duration: const Duration(milliseconds: 600),
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      padding: const EdgeInsets.all(30),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(25),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withOpacity(0.2),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.waving_hand_rounded, // ไอคอนโบกมือ
+                              color: AppTheme.primaryColor,
+                              size: 55,
+                            ),
+                          ),
+                          const SizedBox(height: 25),
+                          const Text(
+                            "ออกจากระบบสำเร็จ",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            "แล้วพบกันใหม่โอกาสหน้านะครับ...",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 25),
+                          const SizedBox(
+                            width: 30,
+                            height: 30,
+                            child: CircularProgressIndicator(
+                              color: AppTheme.primaryColor,
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
           barrierDismissible: false,
         );
+
+        // ดำเนินการ Logout จริง
         await FirebaseAuth.instance.signOut();
-        Get.back();
-        Get.offAll(() => const HomeScreen());
-        _showCustomSnackbar(
-          "สำเร็จ",
-          "ออกจากระบบเรียบร้อยแล้ว",
-          CupertinoIcons.checkmark_alt_circle_fill,
-          AppTheme.primaryColor,
-        );
+
+        // หน่วงเวลา 1.5 วินาทีให้เห็นแอนิเมชันก่อนเด้งไปหน้าโฮม (Guest mode)
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          Get.offAll(() => const HomeScreen());
+        });
       },
     );
   }

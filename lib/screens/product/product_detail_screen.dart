@@ -3,9 +3,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
 import '../cart/cart_screen.dart';
@@ -87,15 +87,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     try {
       var doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('favorites')
+          .collection('products')
           .doc(widget.product.id)
           .get();
 
-      if (mounted) {
+      if (mounted && doc.exists) {
+        var data = doc.data() as Map<String, dynamic>;
+        List<dynamic> likedBy = data['likedBy'] ?? [];
         setState(() {
-          _isFavorite = doc.exists;
+          _isFavorite = likedBy.contains(user.uid);
         });
       }
     } catch (e) {
@@ -106,7 +106,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _toggleFavorite() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "กรุณาเข้าสู่ระบบ",
         message: "คุณต้องเข้าสู่ระบบก่อนจึงจะสามารถกดถูกใจสินค้าได้",
         icon: CupertinoIcons.person_crop_circle_badge_exclam,
@@ -141,10 +141,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           'productId': widget.product.id,
           'addedAt': FieldValue.serverTimestamp(),
         });
-        await prodRef.update({'likes': FieldValue.increment(1)});
+        await prodRef.update({
+          'likes': FieldValue.increment(1),
+          'likedBy': FieldValue.arrayUnion([user.uid]),
+        });
       } else {
         await favRef.delete();
-        await prodRef.update({'likes': FieldValue.increment(-1)});
+        await prodRef.update({
+          'likes': FieldValue.increment(-1),
+          'likedBy': FieldValue.arrayRemove([user.uid]),
+        });
       }
     } catch (e) {
       setState(() {
@@ -425,115 +431,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  void _showCustomDialog({
-    required String title,
-    required String message,
-    required IconData icon,
-    required Color iconColor,
-    required String confirmText,
-    required VoidCallback onConfirm,
-    bool showCancel = false,
-    String cancelText = "ยกเลิก",
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(25.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 60),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  if (showCancel) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Get.back(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(
-                            color: isDark
-                                ? Colors.grey[700]!
-                                : Colors.grey[300]!,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          cancelText,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 15),
-                  ],
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onConfirm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        confirmText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-      barrierDismissible: true,
-    );
-  }
-
   Future<void> _addToCart() async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "กรุณาเข้าสู่ระบบ",
         message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถสั่งซื้อสินค้าได้",
         icon: CupertinoIcons.person_crop_circle_badge_exclam,
@@ -549,7 +451,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
 
     if (user.uid == widget.product.sellerId) {
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "ไม่สามารถทำรายการได้",
         message: "คุณไม่สามารถเพิ่มสินค้าของตัวเองลงในตะกร้าได้",
         icon: CupertinoIcons.xmark_circle_fill,
@@ -580,7 +482,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
 
       if (existingItem.docs.isNotEmpty) {
-        _showCustomDialog(
+        AppDialog.showCustomDialog(
           title: "สินค้าอยู่ในตะกร้าแล้ว",
           message:
               "สินค้านี้ถูกเพิ่มลงในตะกร้าของคุณไปแล้ว คุณต้องการไปยังตะกร้าสินค้าหรือไม่?",
@@ -612,7 +514,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'addedAt': Timestamp.now(),
       });
 
-      _showCustomDialog(
+      AppDialog.showCustomDialog(
         title: "เพิ่มลงตะกร้าสำเร็จ!",
         message: "สินค้าถูกเพิ่มลงในตะกร้าของคุณเรียบร้อยแล้ว",
         icon: CupertinoIcons.checkmark_alt_circle_fill,
@@ -914,12 +816,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             : Colors.white70,
                         child: IconButton(
                           icon: Icon(
-                            _isFavorite
-                                ? CupertinoIcons.heart_fill
-                                : CupertinoIcons.heart,
-                            color: _isFavorite
-                                ? Colors.red
-                                : theme.colorScheme.onSurface,
+                            CupertinoIcons.heart_fill,
+                            color: _isFavorite ? Colors.red : Colors.grey[400],
                             size: 24,
                           ),
                           onPressed: _toggleFavorite,

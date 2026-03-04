@@ -75,6 +75,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 20),
               const Text(
                 "เปลี่ยนรูปโปรไฟล์",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -188,6 +197,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppTheme.primaryColor,
         elevation: 0,
@@ -238,7 +248,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: AppTheme.primaryColor,
-                            width: 2,
+                            width: 3,
                           ),
                           image: _newImageFile != null
                               ? DecorationImage(
@@ -268,21 +278,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         bottom: 0,
                         right: 0,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: theme.cardColor,
+                            color: AppTheme.primaryColor,
                             shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                              ),
-                            ],
+                            border: Border.all(
+                              color: theme.scaffoldBackgroundColor,
+                              width: 2,
+                            ),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             CupertinoIcons.camera_fill,
-                            size: 20,
-                            color: theme.iconTheme.color,
+                            size: 18,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -290,36 +298,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 35),
 
-              _buildLabel(context, "ชื่อ - สกุล"),
-              _buildTextField(context, _nameController),
-              const SizedBox(height: 20),
-              _buildLabel(context, "คำอธิบายเกี่ยวกับฉัน"),
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: theme.inputDecorationTheme.fillColor,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 5,
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _bioController,
-                  maxLines: 5,
-                  style: theme.textTheme.bodyLarge,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(16),
-                    hintText: 'แนะนำตัวสั้นๆ...',
-                  ),
-                ),
+              _buildModernTextField(
+                context: context,
+                label: "ชื่อ - สกุล",
+                hint: "กรอกชื่อของคุณ",
+                controller: _nameController,
+                icon: CupertinoIcons.person_fill,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
+
+              _buildModernTextField(
+                context: context,
+                label: "คำอธิบายเกี่ยวกับฉัน",
+                hint: "แนะนำตัวสั้นๆ ให้ทุกคนรู้จักคุณมากขึ้น...",
+                controller: _bioController,
+                icon: CupertinoIcons.text_quote,
+                maxLines: 4,
+              ),
+              const SizedBox(height: 35),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -353,7 +351,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 "อีเมล*",
                 widget.userData['email'] ?? '',
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 35),
 
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -412,7 +410,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 15),
 
                       if (addresses.isEmpty)
                         Container(
@@ -420,7 +418,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             color: theme.cardColor,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(15),
                             border: Border.all(
                               color: isDark
                                   ? Colors.grey[700]!
@@ -454,6 +452,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Widget _buildModernTextField({
+    required BuildContext context,
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required IconData icon,
+    int maxLines = 1,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.grey[300] : Colors.grey[800],
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          style: theme.textTheme.bodyLarge,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+            prefixIcon: Padding(
+              padding: EdgeInsets.only(
+                bottom: maxLines > 1 ? (maxLines * 12.0) : 0,
+              ),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 20),
+            ),
+            filled: true,
+            fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAddressCard(
     BuildContext context,
     String docId,
@@ -468,11 +525,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Get.to(() => AddAddressScreen(docId: docId, existingData: data));
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.only(bottom: 15),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: isDefault
                 ? AppTheme.primaryColor
@@ -545,43 +602,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildLabel(BuildContext context, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 4),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 16,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    BuildContext context,
-    TextEditingController controller,
-  ) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.inputDecorationTheme.fillColor,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5),
-        ],
-      ),
-      child: TextField(
-        controller: controller,
-        style: theme.textTheme.bodyLarge,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      ),
-    );
-  }
-
   Widget _buildReadOnlyRow(BuildContext context, String label, String value) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
@@ -592,18 +612,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             label,
             style: TextStyle(
               color: isDark ? Colors.grey[400] : Colors.grey,
-              fontSize: 16,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: isDark ? Colors.grey[800] : Colors.grey[100],
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(15),
               border: Border.all(
-                color: isDark ? Colors.grey[700]! : Colors.grey.shade300,
+                color: isDark ? Colors.grey[700]! : Colors.grey.shade200,
               ),
             ),
             child: Text(

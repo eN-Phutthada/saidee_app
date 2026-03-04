@@ -12,7 +12,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/screens/home/home_screen.dart';
 
 class SlipPaymentScreen extends StatefulWidget {
   final double amount;
@@ -119,7 +118,9 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
     } catch (e) {
       _showError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่");
     } finally {
-      setState(() => _isVerifying = false);
+      if (mounted) {
+        setState(() => _isVerifying = false);
+      }
     }
   }
 
@@ -166,17 +167,83 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
 
       await batch.commit();
 
-      Get.offAll(() => const HomeScreen());
-      Get.snackbar(
-        "เติมเงินสำเร็จ!",
-        "เติมเงิน ${widget.amount.toStringAsFixed(2)} บาท เข้าวอลเล็ทเรียบร้อยแล้ว",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        icon: const Icon(
-          CupertinoIcons.check_mark_circled_solid,
-          color: Colors.white,
+      final theme = Theme.of(context);
+
+      Get.dialog(
+        PopScope(
+          canPop: false,
+          child: Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: theme.cardColor,
+            child: Padding(
+              padding: const EdgeInsets.all(30.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      CupertinoIcons.check_mark_circled_solid,
+                      color: Colors.green,
+                      size: 60,
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  const Text(
+                    "เติมเงินสำเร็จ!",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    "ยอดเงิน ${widget.amount.toStringAsFixed(2)} บาท\nถูกเพิ่มเข้า SAIDEE Wallet ของคุณเรียบร้อยแล้ว",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      height: 1.5,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ตกลง",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        duration: const Duration(seconds: 4),
+        barrierDismissible: false,
       );
     } catch (e) {
       _showError("เกิดข้อผิดพลาดในการบันทึกข้อมูลระบบ");

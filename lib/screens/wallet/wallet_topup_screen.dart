@@ -18,7 +18,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
   final TextEditingController _amountController = TextEditingController();
   final List<int> _quickAmounts = [100, 300, 500, 1000, 2000, 5000];
 
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   Future<void> _processTopUp() async {
     final amountText = _amountController.text.trim();
@@ -33,7 +33,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
     }
 
     final double? amount = double.tryParse(amountText);
-    if (amount == null || amount < 20) {
+    if (amount == null) {
       _showCustomSnackbar(
         "แจ้งเตือน",
         "จำนวนเงินขั้นต่ำ 20 บาท",
@@ -43,7 +43,6 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
       return;
     }
 
-    // ไปที่หน้าอัปโหลดสลิปทันที
     Get.to(() => SlipPaymentScreen(amount: amount));
   }
 
