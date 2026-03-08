@@ -861,31 +861,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
 
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(widget.product.sellerId)
-                        .get(),
-                    builder: (context, snapshot) {
+                  FutureBuilder<List<dynamic>>(
+                    future: Future.wait([
+                      FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(widget.product.sellerId)
+                          .get(),
+                      FirebaseFirestore.instance
+                          .collection('reviews')
+                          .where('sellerId', isEqualTo: widget.product.sellerId)
+                          .get(),
+                    ]),
+                    builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
                       String sellerName = "กำลังโหลด...";
                       String sellerImage = "";
+                      String sellerBio = "ส่งต่อเสื้อผ้าคุณภาพ";
                       bool isBanned = false;
+                      double avgRating = 0.0;
+                      int reviewCount = 0;
 
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        var userData =
-                            snapshot.data!.data() as Map<String, dynamic>;
-                        sellerName = userData['name'] ?? "ผู้ขายไม่ระบุชื่อ";
-                        sellerImage = userData['profileImage'] ?? "";
-                        String sStatus = userData['status'] ?? 'active';
-                        if (sStatus == 'banned' || sStatus == 'suspended') {
+                      if (snapshot.hasData) {
+                        DocumentSnapshot userDoc = snapshot.data![0];
+                        if (userDoc.exists) {
+                          var userData = userDoc.data() as Map<String, dynamic>;
+                          sellerName = userData['name'] ?? "ผู้ขายไม่ระบุชื่อ";
+                          sellerImage = userData['profileImage'] ?? "";
+                          String bioText = (userData['bio'] ?? "").trim();
+                          if (bioText.isNotEmpty) {
+                            sellerBio = bioText;
+                          }
+
+                          String sStatus = userData['status'] ?? 'active';
+                          if (sStatus == 'banned' || sStatus == 'suspended') {
+                            isBanned = true;
+                            sellerName = "ร้านค้านี้ถูกระงับการใช้งาน";
+                          }
+                        } else {
+                          sellerName = "ไม่พบข้อมูลร้านค้า";
                           isBanned = true;
-                          sellerName = "ร้านค้านี้ถูกระงับการใช้งาน";
                         }
-                      } else if (snapshot.connectionState ==
-                              ConnectionState.done &&
-                          !snapshot.data!.exists) {
-                        sellerName = "ไม่พบข้อมูลร้านค้า";
-                        isBanned = true;
+
+                        QuerySnapshot reviewSnap = snapshot.data![1];
+                        if (reviewSnap.docs.isNotEmpty) {
+                          reviewCount = reviewSnap.docs.length;
+                          double totalRating = 0;
+                          for (var doc in reviewSnap.docs) {
+                            totalRating +=
+                                (doc.data()
+                                    as Map<String, dynamic>)['rating'] ??
+                                5.0;
+                          }
+                          avgRating = totalRating / reviewCount;
+                        }
                       }
 
                       return GestureDetector(
@@ -972,7 +999,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     if (!isBanned) ...[
                                       const SizedBox(height: 2),
                                       Text(
-                                        "ส่งต่อเสื้อผ้าคุณภาพ",
+                                        sellerBio,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
                                               color: isDark
@@ -986,11 +1015,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           Icon(
                                             Icons.star,
                                             size: 14,
-                                            color: theme.colorScheme.onSurface,
+                                            color: reviewCount > 0
+                                                ? Colors.amber[600]
+                                                : theme.colorScheme.onSurface,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            "5.0/5 Rating",
+                                            reviewCount > 0
+                                                ? "${avgRating.toStringAsFixed(1)} / 5 ($reviewCount รีวิว)"
+                                                : "ยังไม่มีคะแนนรีวิว",
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
                                                   color: isDark

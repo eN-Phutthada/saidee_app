@@ -287,7 +287,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                "${avgRating.toStringAsFixed(1)} / 5 ($reviewCount รีวิว)",
+                                reviewCount > 0
+                                    ? "${avgRating.toStringAsFixed(1)} / 5 ($reviewCount รีวิว)"
+                                    : "ยังไม่มีคะแนนรีวิว",
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isDark
                                       ? Colors.grey[400]
