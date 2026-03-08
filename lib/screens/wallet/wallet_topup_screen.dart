@@ -36,7 +36,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
     if (amount == null) {
       _showCustomSnackbar(
         "แจ้งเตือน",
-        "จำนวนเงินขั้นต่ำ 20 บาท",
+        "กรุณาระบุจำนวนเงิน",
         CupertinoIcons.info_circle_fill,
         Colors.orange[800]!,
       );

@@ -352,7 +352,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                   ),
 
                   Padding(
-                    padding: const EdgeInsets.all(15),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
                         const Text(
@@ -368,11 +368,100 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                             color: AppTheme.primaryColor,
                           ),
                         ),
+                        const SizedBox(height: 20),
 
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          child: Divider(),
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.grey[300]!),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              Image.network(
+                                'https://promptpay.io/$promptPayNumber/${widget.amount}.png',
+                                height: 180,
+                                width: 180,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 180,
+                                    width: 180,
+                                    color: Colors.grey[100],
+                                    child: const Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.qr_code_2,
+                                          size: 80,
+                                          color: Colors.grey,
+                                        ),
+                                        SizedBox(height: 10),
+                                        Text(
+                                          "ไม่สามารถโหลด QR ได้",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                "สแกนเพื่อชำระเงิน",
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+
+                        const SizedBox(height: 25),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Divider(
+                                color: isDark
+                                    ? Colors.grey[700]
+                                    : Colors.grey[300],
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              child: Text(
+                                "หรือโอนผ่านเบอร์",
+                                style: TextStyle(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Divider(
+                                color: isDark
+                                    ? Colors.grey[700]
+                                    : Colors.grey[300],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 15),
 
                         const Text(
                           "เบอร์พร้อมเพย์",

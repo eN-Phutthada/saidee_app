@@ -236,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 if (user == null)
                   Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
+                    padding: const EdgeInsets.only(right: 8.0),
                     child: FilledButton.tonal(
                       onPressed: () => Get.to(() => const LoginScreen()),
                       style: FilledButton.styleFrom(
@@ -251,48 +251,75 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   )
-                else ...[
-                  IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        CupertinoIcons.chat_bubble_text_fill,
-                        color: AppTheme.primaryColor,
-                        size: 22,
-                      ),
-                    ),
-                    onPressed: () {
-                      Get.to(() => const ChatListScreen());
-                    },
-                  ),
+                else
                   Padding(
                     padding: const EdgeInsets.only(right: 12.0),
-                    child: IconButton(
-                      icon: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          CupertinoIcons.bell_fill,
-                          color: AppTheme.primaryColor,
-                          size: 22,
-                        ),
-                      ),
-                      onPressed: () {
-                        Get.snackbar(
-                          "แจ้งเตือน",
-                          "ยังไม่มีการแจ้งเตือนใหม่ในขณะนี้",
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('chats')
+                          .where('users', arrayContains: user.uid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        int unreadCount = 0;
+                        if (snapshot.hasData) {
+                          for (var doc in snapshot.data!.docs) {
+                            var data = doc.data() as Map<String, dynamic>;
+                            String lastSender = data['lastSenderId'] ?? '';
+                            bool isRead = data['lastMessageRead'] ?? true;
+                            if (lastSender != user.uid && !isRead) {
+                              unreadCount++;
+                            }
+                          }
+                        }
+
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              icon: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.chat_bubble_text_fill,
+                                  color: AppTheme.primaryColor,
+                                  size: 24,
+                                ),
+                              ),
+                              onPressed: () {
+                                Get.to(() => const ChatListScreen());
+                              },
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                top: 8,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 9
+                                        ? '9+'
+                                        : unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         );
                       },
                     ),
                   ),
-                ],
               ],
             )
           : null,

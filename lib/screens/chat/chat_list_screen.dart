@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/config/theme.dart';
 import 'package:intl/intl.dart';
 import 'chat_screen.dart';
 
@@ -17,7 +18,7 @@ class ChatListScreen extends StatelessWidget {
 
     if (currentUser == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text("กล่องข้อความ")),
+        appBar: AppBar(title: const Text("ข้อความ")),
         body: const Center(child: Text("กรุณาเข้าสู่ระบบ")),
       );
     }
@@ -27,9 +28,9 @@ class ChatListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text(
           "ข้อความ",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
         ),
-        centerTitle: true,
+        centerTitle: false,
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -49,12 +50,11 @@ class ChatListScreen extends StatelessWidget {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                "เกิดข้อผิดพลาด: ${snapshot.error}",
+                "เกิดข้อผิดพลาด",
                 style: const TextStyle(color: Colors.red),
               ),
             );
           }
-
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -71,7 +71,7 @@ class ChatListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    "คุณยังไม่มีข้อความ",
+                    "ยังไม่มีการสนทนา",
                     style: TextStyle(color: Colors.grey[500], fontSize: 16),
                   ),
                 ],
@@ -89,9 +89,13 @@ class ChatListScreen extends StatelessWidget {
             return tB.compareTo(tA);
           });
 
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+          return ListView.separated(
             itemCount: docs.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              indent: 80,
+            ),
             itemBuilder: (context, index) {
               var doc = docs[index];
               var data = doc.data() as Map<String, dynamic>;
@@ -103,10 +107,14 @@ class ChatListScreen extends StatelessWidget {
               );
 
               String lastMessage = data['lastMessage'] ?? '';
+              String lastSenderId = data['lastSenderId'] ?? '';
+              bool isMeLast = lastSenderId == currentUser.uid;
+
+              bool isRead = data['lastMessageRead'] ?? true;
+              bool hasUnread = !isMeLast && !isRead;
+
               Timestamp? time = data['lastMessageTime'];
-              String timeStr = time != null
-                  ? DateFormat('dd/MM HH:mm').format(time.toDate())
-                  : '';
+              String timeStr = _formatTime(time);
 
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance
@@ -114,12 +122,12 @@ class ChatListScreen extends StatelessWidget {
                     .doc(targetUserId)
                     .get(),
                 builder: (context, userSnap) {
-                  String name = "ไม่ระบุชื่อ";
+                  String name = "กำลังโหลด...";
                   String img = "";
 
                   if (userSnap.hasData && userSnap.data!.exists) {
                     var uData = userSnap.data!.data() as Map<String, dynamic>;
-                    name = uData['name'] ?? name;
+                    name = uData['name'] ?? "ผู้ใช้งาน";
                     img = uData['profileImage'] ?? "";
                   }
 
@@ -133,28 +141,26 @@ class ChatListScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    child: Container(
+                    child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 15,
                       ),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: isDark ? Colors.white10 : Colors.grey[200]!,
-                          ),
-                        ),
-                      ),
                       child: Row(
                         children: [
                           CircleAvatar(
-                            radius: 28,
-                            backgroundColor: Colors.grey[300],
+                            radius: 26,
+                            backgroundColor: isDark
+                                ? Colors.grey[800]
+                                : Colors.grey[200],
                             backgroundImage: img.isNotEmpty
                                 ? NetworkImage(img)
                                 : null,
                             child: img.isEmpty
-                                ? const Icon(Icons.person, color: Colors.grey)
+                                ? const Icon(
+                                    CupertinoIcons.person_fill,
+                                    color: Colors.grey,
+                                  )
                                 : null,
                           ),
                           const SizedBox(width: 15),
@@ -169,9 +175,12 @@ class ChatListScreen extends StatelessWidget {
                                     Expanded(
                                       child: Text(
                                         name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                        style: TextStyle(
+                                          fontWeight: hasUnread
+                                              ? FontWeight.w900
+                                              : FontWeight.bold,
                                           fontSize: 16,
+                                          color: theme.colorScheme.onSurface,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -180,23 +189,51 @@ class ChatListScreen extends StatelessWidget {
                                     Text(
                                       timeStr,
                                       style: TextStyle(
-                                        color: Colors.grey[500],
+                                        color: hasUnread
+                                            ? AppTheme.primaryColor
+                                            : Colors.grey[500],
                                         fontSize: 12,
+                                        fontWeight: hasUnread
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  lastMessage,
-                                  style: TextStyle(
-                                    color: isDark
-                                        ? Colors.grey[400]
-                                        : Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        isMeLast
+                                            ? "คุณ: $lastMessage"
+                                            : lastMessage,
+                                        style: TextStyle(
+                                          color: hasUnread
+                                              ? theme.colorScheme.onSurface
+                                              : (isDark
+                                                    ? Colors.grey[400]
+                                                    : Colors.grey[600]),
+                                          fontSize: 14,
+                                          fontWeight: hasUnread
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (hasUnread)
+                                      Container(
+                                        margin: const EdgeInsets.only(left: 8),
+                                        width: 10,
+                                        height: 10,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -212,5 +249,23 @@ class ChatListScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _formatTime(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+    DateTime date = timestamp.toDate();
+    DateTime now = DateTime.now();
+
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return DateFormat('HH:mm').format(date);
+    } else if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day - 1) {
+      return 'เมื่อวาน';
+    } else {
+      return DateFormat('dd/MM/yy').format(date);
+    }
   }
 }
