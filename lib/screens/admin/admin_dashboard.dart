@@ -204,8 +204,7 @@ class AdminDashboardContent extends StatelessWidget {
                     mainAxisSpacing: 15,
                     childAspectRatio: 1.4,
                     children: [
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "หมวดหมู่",
                         icon: CupertinoIcons.square_grid_2x2,
                         collection: 'categories',
@@ -216,8 +215,7 @@ class AdminDashboardContent extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "ประเภท",
                         icon: CupertinoIcons.tag,
                         collection: 'types',
@@ -228,30 +226,26 @@ class AdminDashboardContent extends StatelessWidget {
                           ),
                         ),
                       ),
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "ขนส่ง",
                         icon: CupertinoIcons.cube_box,
                         collection: 'shipping',
                         onTap: () => Get.to(() => const ManageShippingScreen()),
                       ),
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "คูปอง",
                         icon: CupertinoIcons.ticket,
                         collection: 'coupons',
                         onTap: () => Get.to(() => const ManageCouponScreen()),
                       ),
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "ประกาศ",
                         icon: CupertinoIcons.news,
                         collection: 'announcements',
                         onTap: () =>
                             Get.to(() => const ManageAnnouncementScreen()),
                       ),
-                      _buildDashboardCard(
-                        context,
+                      _AnimatedDashboardCard(
                         title: "รายงานผู้ใช้",
                         icon: CupertinoIcons.exclamationmark_bubble,
                         collection: 'reports',
@@ -323,89 +317,6 @@ class AdminDashboardContent extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDashboardCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required String collection,
-    required VoidCallback onTap,
-    bool isReport = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isReport
-        ? (isDark ? Colors.brown.withOpacity(0.3) : const Color(0xFFFFE0B2))
-        : (isDark
-              ? const Color(0xFF1B5E20).withOpacity(0.6)
-              : const Color(0xFFC1F7C3));
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: isDark
-              ? []
-              : [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(icon, size: 35, color: textColor),
-                Expanded(
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection(collection)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                String count = "-";
-                if (snapshot.hasData) {
-                  count = snapshot.data!.docs.length.toString();
-                }
-                return Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text(
-                    count,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: textColor,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -513,6 +424,166 @@ class AdminDashboardContent extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedDashboardCard extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final String collection;
+  final VoidCallback onTap;
+  final bool isReport;
+
+  const _AnimatedDashboardCard({
+    required this.title,
+    required this.icon,
+    required this.collection,
+    required this.onTap,
+    this.isReport = false,
+  });
+
+  @override
+  State<_AnimatedDashboardCard> createState() => _AnimatedDashboardCardState();
+}
+
+class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final baseColor = widget.isReport
+        ? (isDark ? const Color(0xFF3E2723) : const Color(0xFFFFE0B2))
+        : (isDark ? const Color(0xFF1B5E20) : const Color(0xFFC1F7C3));
+
+    final textColor = isDark ? Colors.white : Colors.black87;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeInOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                isDark
+                    ? baseColor.withOpacity(0.8)
+                    : Colors.white.withOpacity(0.9),
+                baseColor,
+              ],
+            ),
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.6)
+                          : Colors.black.withOpacity(0.15),
+                      offset: const Offset(1, 1),
+                      blurRadius: 2,
+                    ),
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.02)
+                          : Colors.white,
+                      offset: const Offset(-1, -1),
+                      blurRadius: 2,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.6)
+                          : Colors.black.withOpacity(0.15),
+                      offset: const Offset(5, 5),
+                      blurRadius: 10,
+                    ),
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.white,
+                      offset: const Offset(-5, -5),
+                      blurRadius: 10,
+                    ),
+                  ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black26 : Colors.white54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(widget.icon, size: 24, color: textColor),
+                  ),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: textColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection(widget.collection)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  String count = "-";
+                  if (snapshot.hasData) {
+                    count = snapshot.data!.docs.length.toString();
+                  }
+                  return Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text(
+                      count,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: textColor,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(isDark ? 0.5 : 0.1),
+                            offset: const Offset(1, 2),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
