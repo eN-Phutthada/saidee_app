@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
@@ -421,6 +422,24 @@ class _LoginScreenState extends State<LoginScreen> {
             _showBannedPopup();
             return;
           }
+        }
+
+        try {
+          await FirebaseMessaging.instance.requestPermission();
+
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .set({
+                  'fcmToken': fcmToken,
+                  'lastLogin': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+            debugPrint("FCM Token Saved: $fcmToken");
+          }
+        } catch (tokenError) {
+          debugPrint("Failed to fetch or save FCM Token: $tokenError");
         }
 
         DocumentSnapshot adminDoc = await FirebaseFirestore.instance

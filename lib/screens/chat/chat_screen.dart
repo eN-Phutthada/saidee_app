@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:intl/intl.dart';
 
@@ -32,19 +33,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // สำหรับดักจับการพับแอป
+    WidgetsBinding.instance.addObserver(this);
     chatRoomId = _getChatRoomId(currentUserId, widget.targetUserId);
-    _setUserActiveStatus(true); // ตั้งสถานะว่าเราเข้ามาในห้องแชทนี้แล้ว
+    _setUserActiveStatus(true);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _setUserActiveStatus(false); // ออกจากห้องแชทให้ตั้งสถานะเป็นออฟไลน์
+    _setUserActiveStatus(false);
     super.dispose();
   }
 
-  // ดักจับการสลับแอป (พับจอ/ปิดจอ)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -54,7 +54,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ฟังก์ชันอัปเดตสถานะการอยู่ในห้องแชทของเรา
   Future<void> _setUserActiveStatus(bool isActive) async {
     try {
       await FirebaseFirestore.instance.collection('chats').doc(chatRoomId).set({
@@ -123,6 +122,49 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }, SetOptions(merge: true));
 
     await batch.commit();
+
+    _checkAndSendNotification(text);
+  }
+
+  Future<void> _checkAndSendNotification(String messageText) async {
+    try {
+      DocumentSnapshot chatSnap = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(chatRoomId)
+          .get();
+      bool isTargetActive = false;
+
+      if (chatSnap.exists) {
+        var data = chatSnap.data() as Map<String, dynamic>;
+        isTargetActive = data['user_${widget.targetUserId}_active'] ?? false;
+      }
+
+      if (!isTargetActive) {
+        DocumentSnapshot myDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUserId)
+            .get();
+        String myName = "ผู้ใช้งาน";
+        if (myDoc.exists) {
+          myName =
+              (myDoc.data() as Map<String, dynamic>)['name'] ?? "ผู้ใช้งาน";
+        }
+
+        final HttpsCallable callable = FirebaseFunctions.instanceFor(
+          region: 'asia-southeast1',
+        ).httpsCallable('sendChatNotification');
+        await callable.call({
+          'targetUserId': widget.targetUserId,
+          'senderId': currentUserId,
+          'senderName': myName,
+          'message': messageText,
+        });
+
+        debugPrint("Push notification request sent to Cloud Functions");
+      }
+    } catch (e) {
+      debugPrint("Error sending push notification: $e");
+    }
   }
 
   @override
