@@ -480,7 +480,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // --- อัปเดตฟังก์ชัน Logout ให้เป็น Popup แอนิเมชันเด้งดึ๋ง ---
   void _confirmLogout(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -495,9 +494,8 @@ class ProfileScreen extends StatelessWidget {
       showCancel: true,
       isDestructive: true,
       onConfirm: () async {
-        Get.back(); // ปิด Popup ยืนยัน
+        Get.back();
 
-        // โชว์ Popup โบกมือลา แอนิเมชัน
         Get.dialog(
           PopScope(
             canPop: false,
@@ -535,7 +533,7 @@ class ProfileScreen extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
-                              Icons.waving_hand_rounded, // ไอคอนโบกมือ
+                              Icons.waving_hand_rounded,
                               color: AppTheme.primaryColor,
                               size: 55,
                             ),
@@ -580,10 +578,8 @@ class ProfileScreen extends StatelessWidget {
           barrierDismissible: false,
         );
 
-        // ดำเนินการ Logout จริง
         await FirebaseAuth.instance.signOut();
 
-        // หน่วงเวลา 1.5 วินาทีให้เห็นแอนิเมชันก่อนเด้งไปหน้าโฮม (Guest mode)
         Future.delayed(const Duration(milliseconds: 1500), () {
           Get.offAll(() => const HomeScreen());
         });

@@ -10,6 +10,7 @@ import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
 import '../cart/cart_screen.dart';
 import '../auth/login_screen.dart';
+import '../home/search_results_screen.dart';
 import 'add_product_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -68,7 +69,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _incrementViewCount() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      // ไม่เพิ่มยอดวิวถ้าเป็นเจ้าของสินค้าเข้ามาดูเอง
       if (user != null && user.uid == widget.product.sellerId) return;
 
       await FirebaseFirestore.instance
@@ -121,69 +121,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       colorText: Colors.white,
       icon: const Icon(CupertinoIcons.info_circle_fill, color: Colors.white),
       duration: const Duration(seconds: 3),
-    );
-  }
-
-  void _showInfoSheet(String title, String description) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: 14,
-                color: isDark ? Colors.grey[400] : Colors.grey[700],
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Get.back(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "เข้าใจแล้ว",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -644,8 +581,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           color: isDark ? Colors.grey[800] : Colors.grey[200],
                         ),
                 ),
-
-                // ปุ่มย้อนกลับ
                 Positioned(
                   top: 50,
                   left: 15,
@@ -661,8 +596,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                   ),
                 ),
-
-                // ปุ่มตะกร้าและแชร์ (นำปุ่มหัวใจออก)
                 Positioned(
                   top: 50,
                   right: 15,
@@ -817,7 +750,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                   const SizedBox(height: 10),
 
-                  // แสดงเฉพาะยอด View อย่างเดียว (นำจำนวน Like ออก)
                   StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('products')
@@ -1065,9 +997,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     widget.product.category,
                     context,
                     showArrow: true,
-                    onTap: () => _showInfoSheet(
-                      "หมวดหมู่สินค้า",
-                      "สินค้านี้จัดอยู่ในหมวดหมู่ผู้สวมใส่ประเภท '${widget.product.category}' ช่วยให้คุณหาเสื้อผ้าที่เข้ากับคุณได้ง่ายขึ้น",
+                    onTap: () => Get.to(
+                      () => SearchResultsScreen(
+                        keyword: "",
+                        categories: [widget.product.category],
+                      ),
                     ),
                   ),
                   _buildDetailRow(
@@ -1075,9 +1009,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     widget.product.type,
                     context,
                     showArrow: true,
-                    onTap: () => _showInfoSheet(
-                      "ประเภทสินค้า",
-                      "สินค้านี้จัดอยู่ในประเภท '${widget.product.type}'",
+                    onTap: () => Get.to(
+                      () => SearchResultsScreen(
+                        keyword: "",
+                        types: [widget.product.type],
+                      ),
                     ),
                   ),
                   _buildDetailRow(

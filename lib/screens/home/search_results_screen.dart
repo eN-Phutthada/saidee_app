@@ -69,6 +69,39 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return validProducts;
   }
 
+  String get _appBarTitle {
+    if (widget.keyword.isNotEmpty) {
+      return "'${widget.keyword}'";
+    }
+
+    int catCount = widget.categories?.length ?? 0;
+    int typeCount = widget.types?.length ?? 0;
+    int sizeCount = widget.sizes?.length ?? 0;
+
+    int activeFilterGroups =
+        (catCount > 0 ? 1 : 0) +
+        (typeCount > 0 ? 1 : 0) +
+        (sizeCount > 0 ? 1 : 0);
+
+    if (activeFilterGroups == 0) return "สินค้าทั้งหมด";
+
+    if (activeFilterGroups == 1) {
+      if (catCount > 0) {
+        return catCount == 1
+            ? widget.categories!.first
+            : "หมวดหมู่ ($catCount)";
+      } else if (typeCount > 0) {
+        return typeCount == 1 ? widget.types!.first : "ประเภท ($typeCount)";
+      } else if (sizeCount > 0) {
+        return sizeCount == 1
+            ? "ไซส์: ${widget.sizes!.first}"
+            : "หลายไซส์ ($sizeCount)";
+      }
+    }
+
+    return "ผลลัพธ์การกรอง";
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -91,9 +124,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          "ผลลัพธ์การค้นหา",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          _appBarTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         centerTitle: true,
         backgroundColor: AppTheme.primaryColor,
@@ -226,7 +261,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              // นำ Stack และ Icon หัวใจออกไปแล้ว
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[800] : Colors.grey[200],

@@ -388,7 +388,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     );
   }
 
-  // --- ปรับปรุงดีไซน์ปุ่มเป็นสีขาวนูน ---
   Widget _buildButtonContainer(
     String title,
     IconData icon,
@@ -401,16 +400,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[800] : Colors.white, // ใช้สีขาวนูน
+          color: isDark ? Colors.grey[800] : Colors.white,
           borderRadius: BorderRadius.circular(12),
-          // ไม่มี Border แล้ว แต่ใช้เงาช่วยสร้างมิติแทน
           boxShadow: [
             BoxShadow(
               color: isDark ? Colors.black45 : Colors.grey.withOpacity(0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
-            // เงาสีขาวด้านบนเพื่อให้ดูเป็น 3D (Neumorphism อ่อนๆ)
             if (!isDark)
               BoxShadow(
                 color: Colors.white,
@@ -437,10 +434,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 textAlign: TextAlign.start,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: isDark
-                      ? Colors.white
-                      : Colors
-                            .black87, // เปลี่ยนสีตัวอักษรให้เข้ากับพื้นหลังขาว
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: 13,
                 ),
                 maxLines: 1,
