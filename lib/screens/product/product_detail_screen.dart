@@ -30,7 +30,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   bool _isSellerValid = true;
   bool _isCheckingSeller = true;
-  bool _isFavorite = false;
 
   @override
   void initState() {
@@ -58,7 +57,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     _checkSellerStatus();
     _incrementViewCount();
-    _checkFavoriteStatus();
   }
 
   @override
@@ -70,6 +68,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _incrementViewCount() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
+      // ไม่เพิ่มยอดวิวถ้าเป็นเจ้าของสินค้าเข้ามาดูเอง
       if (user != null && user.uid == widget.product.sellerId) return;
 
       await FirebaseFirestore.instance
@@ -78,90 +77,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .update({'views': FieldValue.increment(1)});
     } catch (e) {
       debugPrint("Error incrementing view: $e");
-    }
-  }
-
-  Future<void> _checkFavoriteStatus() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      var doc = await FirebaseFirestore.instance
-          .collection('products')
-          .doc(widget.product.id)
-          .get();
-
-      if (mounted && doc.exists) {
-        var data = doc.data() as Map<String, dynamic>;
-        List<dynamic> likedBy = data['likedBy'] ?? [];
-        setState(() {
-          _isFavorite = likedBy.contains(user.uid);
-        });
-      }
-    } catch (e) {
-      debugPrint("Error checking favorite status: $e");
-    }
-  }
-
-  Future<void> _toggleFavorite() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      AppDialog.showCustomDialog(
-        title: "กรุณาเข้าสู่ระบบ",
-        message: "คุณต้องเข้าสู่ระบบก่อนจึงจะสามารถกดถูกใจสินค้าได้",
-        icon: CupertinoIcons.person_crop_circle_badge_exclam,
-        iconColor: Colors.orange,
-        confirmText: "เข้าสู่ระบบ",
-        onConfirm: () {
-          Get.back();
-          Get.to(() => const LoginScreen());
-        },
-        showCancel: true,
-      );
-      return;
-    }
-
-    setState(() {
-      _isFavorite = !_isFavorite;
-    });
-
-    try {
-      final favRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('favorites')
-          .doc(widget.product.id);
-
-      final prodRef = FirebaseFirestore.instance
-          .collection('products')
-          .doc(widget.product.id);
-
-      if (_isFavorite) {
-        await favRef.set({
-          'productId': widget.product.id,
-          'addedAt': FieldValue.serverTimestamp(),
-        });
-        await prodRef.update({
-          'likes': FieldValue.increment(1),
-          'likedBy': FieldValue.arrayUnion([user.uid]),
-        });
-      } else {
-        await favRef.delete();
-        await prodRef.update({
-          'likes': FieldValue.increment(-1),
-          'likedBy': FieldValue.arrayRemove([user.uid]),
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isFavorite = !_isFavorite;
-      });
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถทำรายการได้ กรุณาลองใหม่",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
     }
   }
 
@@ -730,6 +645,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                 ),
 
+                // ปุ่มย้อนกลับ
                 Positioned(
                   top: 50,
                   left: 15,
@@ -746,6 +662,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   ),
                 ),
 
+                // ปุ่มตะกร้าและแชร์ (นำปุ่มหัวใจออก)
                 Positioned(
                   top: 50,
                   right: 15,
@@ -807,20 +724,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ],
                             );
                           },
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      CircleAvatar(
-                        backgroundColor: isDark
-                            ? Colors.black54
-                            : Colors.white70,
-                        child: IconButton(
-                          icon: Icon(
-                            CupertinoIcons.heart_fill,
-                            color: _isFavorite ? Colors.red : Colors.grey[400],
-                            size: 24,
-                          ),
-                          onPressed: _toggleFavorite,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -914,6 +817,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                   const SizedBox(height: 10),
 
+                  // แสดงเฉพาะยอด View อย่างเดียว (นำจำนวน Like ออก)
                   StreamBuilder<DocumentSnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('products')
@@ -921,12 +825,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         .snapshots(),
                     builder: (context, snapshot) {
                       int views = 0;
-                      int likes = 0;
                       if (snapshot.hasData && snapshot.data!.exists) {
                         var data =
                             snapshot.data!.data() as Map<String, dynamic>;
                         views = data['views'] ?? 0;
-                        likes = data['likes'] ?? 0;
                       }
                       return Row(
                         children: [
@@ -938,20 +840,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           const SizedBox(width: 4),
                           Text(
                             "$views เข้าชม",
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          const Icon(
-                            CupertinoIcons.heart_fill,
-                            size: 16,
-                            color: Colors.redAccent,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            "$likes ถูกใจ",
                             style: const TextStyle(
                               color: Colors.grey,
                               fontSize: 13,

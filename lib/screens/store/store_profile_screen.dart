@@ -366,7 +366,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           Expanded(
             child: _buildButtonContainer(
               "เลือกขนส่ง",
-              Icons.local_shipping_outlined,
+              Icons.local_shipping_rounded,
               theme,
               isDark,
               () =>
@@ -377,7 +377,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           Expanded(
             child: _buildButtonContainer(
               "สถานะการขาย",
-              Icons.receipt_long_outlined,
+              Icons.receipt_long_rounded,
               theme,
               isDark,
               () => Get.to(() => const SellerOrdersScreen()),
@@ -388,6 +388,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     );
   }
 
+  // --- ปรับปรุงดีไซน์ปุ่มเป็นสีขาวนูน ---
   Widget _buildButtonContainer(
     String title,
     IconData icon,
@@ -400,29 +401,46 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.5)),
+          color: isDark ? Colors.grey[800] : Colors.white, // ใช้สีขาวนูน
+          borderRadius: BorderRadius.circular(12),
+          // ไม่มี Border แล้ว แต่ใช้เงาช่วยสร้างมิติแทน
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
+              color: isDark ? Colors.black45 : Colors.grey.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
+            // เงาสีขาวด้านบนเพื่อให้ดูเป็น 3D (Neumorphism อ่อนๆ)
+            if (!isDark)
+              BoxShadow(
+                color: Colors.white,
+                blurRadius: 10,
+                offset: const Offset(-2, -2),
+              ),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: AppTheme.primaryColor),
-            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 18, color: AppTheme.primaryColor),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
                 title,
-                textAlign: TextAlign.center,
+                textAlign: TextAlign.start,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
+                  color: isDark
+                      ? Colors.white
+                      : Colors
+                            .black87, // เปลี่ยนสีตัวอักษรให้เข้ากับพื้นหลังขาว
                   fontSize: 13,
                 ),
                 maxLines: 1,
@@ -476,7 +494,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             String imgUrl = product.images.isNotEmpty ? product.images[0] : '';
 
             int views = data['views'] ?? 0;
-            int likes = data['likes'] ?? 0;
             bool isSold = data['status'] == 'sold';
 
             return GestureDetector(
@@ -578,20 +595,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                   const SizedBox(width: 4),
                                   Text(
                                     views.toString(),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(
-                                    CupertinoIcons.heart,
-                                    size: 12,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    likes.toString(),
                                     style: const TextStyle(
                                       fontSize: 10,
                                       color: Colors.grey,
