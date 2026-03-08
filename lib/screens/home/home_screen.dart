@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
+import 'package:saidee_app/screens/chat/chat_list_screen.dart';
 import 'package:saidee_app/screens/profile/profile_screen.dart';
 import 'package:saidee_app/screens/cart/cart_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
@@ -235,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
               actions: [
                 if (user == null)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
+                    padding: const EdgeInsets.only(right: 12.0),
                     child: FilledButton.tonal(
                       onPressed: () => Get.to(() => const LoginScreen()),
                       style: FilledButton.styleFrom(
@@ -250,7 +251,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   )
-                else
+                else ...[
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.chat_bubble_text_fill,
+                        color: AppTheme.primaryColor,
+                        size: 22,
+                      ),
+                    ),
+                    onPressed: () {
+                      Get.to(() => const ChatListScreen());
+                    },
+                  ),
                   Padding(
                     padding: const EdgeInsets.only(right: 12.0),
                     child: IconButton(
@@ -263,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const Icon(
                           CupertinoIcons.bell_fill,
                           color: AppTheme.primaryColor,
-                          size: 24,
+                          size: 22,
                         ),
                       ),
                       onPressed: () {
@@ -274,6 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ),
+                ],
               ],
             )
           : null,

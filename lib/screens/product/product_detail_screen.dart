@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
@@ -1138,8 +1139,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             child: OutlinedButton(
               onPressed: !_isSellerValid
                   ? null
-                  : () {
-                      _showNotImplementedSnackbar("แชทกับร้านค้า");
+                  : () async {
+                      final user = FirebaseAuth.instance.currentUser;
+                      if (user == null) {
+                        Get.to(() => const LoginScreen());
+                        return;
+                      }
+
+                      var sellerDoc = await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(widget.product.sellerId)
+                          .get();
+                      String sName = "ร้านค้า";
+                      String sImg = "";
+                      if (sellerDoc.exists) {
+                        sName = sellerDoc.data()?['name'] ?? "ร้านค้า";
+                        sImg = sellerDoc.data()?['profileImage'] ?? "";
+                      }
+
+                      Get.to(
+                        () => ChatScreen(
+                          targetUserId: widget.product.sellerId,
+                          targetUserName: sName,
+                          targetUserImage: sImg,
+                        ),
+                      );
                     },
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
