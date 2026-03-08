@@ -22,7 +22,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
@@ -32,8 +32,37 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // สำหรับดักจับการพับแอป
     chatRoomId = _getChatRoomId(currentUserId, widget.targetUserId);
-    _markMessagesAsRead();
+    _setUserActiveStatus(true); // ตั้งสถานะว่าเราเข้ามาในห้องแชทนี้แล้ว
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _setUserActiveStatus(false); // ออกจากห้องแชทให้ตั้งสถานะเป็นออฟไลน์
+    super.dispose();
+  }
+
+  // ดักจับการสลับแอป (พับจอ/ปิดจอ)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _setUserActiveStatus(true);
+    } else {
+      _setUserActiveStatus(false);
+    }
+  }
+
+  // ฟังก์ชันอัปเดตสถานะการอยู่ในห้องแชทของเรา
+  Future<void> _setUserActiveStatus(bool isActive) async {
+    try {
+      await FirebaseFirestore.instance.collection('chats').doc(chatRoomId).set({
+        'user_${currentUserId}_active': isActive,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint("Error updating active status: $e");
+    }
   }
 
   String _getChatRoomId(String a, String b) {
@@ -44,26 +73,23 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _markMessagesAsRead() async {
-    var unreadDocs = await FirebaseFirestore.instance
-        .collection('chats')
-        .doc(chatRoomId)
-        .collection('messages')
-        .where('senderId', isEqualTo: widget.targetUserId)
-        .where('isRead', isEqualTo: false)
-        .get();
+  Future<void> _markMessagesAsRead(List<QueryDocumentSnapshot> docs) async {
+    bool hasUnread = false;
+    WriteBatch batch = FirebaseFirestore.instance.batch();
 
-    if (unreadDocs.docs.isNotEmpty) {
-      WriteBatch batch = FirebaseFirestore.instance.batch();
-      for (var doc in unreadDocs.docs) {
+    for (var doc in docs) {
+      var data = doc.data() as Map<String, dynamic>;
+      if (data['senderId'] == widget.targetUserId && data['isRead'] == false) {
         batch.update(doc.reference, {'isRead': true});
+        hasUnread = true;
       }
+    }
 
+    if (hasUnread) {
       var chatRoomRef = FirebaseFirestore.instance
           .collection('chats')
           .doc(chatRoomId);
       batch.update(chatRoomRef, {'lastMessageRead': true});
-
       await batch.commit();
     }
   }
@@ -146,22 +172,45 @@ class _ChatScreenState extends State<ChatScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        "เชื่อมต่อแล้ว",
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ],
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('chats')
+                        .doc(chatRoomId)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      bool isTargetActive = false;
+                      if (snapshot.hasData && snapshot.data!.exists) {
+                        var data =
+                            snapshot.data!.data() as Map<String, dynamic>;
+                        isTargetActive =
+                            data['user_${widget.targetUserId}_active'] ?? false;
+                      }
+
+                      return Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: isTargetActive
+                                  ? Colors.green
+                                  : Colors.grey[400],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isTargetActive ? "ออนไลน์" : "ออฟไลน์",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isTargetActive
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),
@@ -205,6 +254,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
 
                 var messages = snapshot.data!.docs;
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _markMessagesAsRead(messages);
+                });
 
                 return ListView.builder(
                   controller: _scrollController,
