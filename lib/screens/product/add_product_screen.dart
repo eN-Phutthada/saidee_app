@@ -706,16 +706,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       .orderBy('name')
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData)
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
                     final docs = snapshot.data!.docs;
-                    if (docs.isEmpty)
+                    if (docs.isEmpty) {
                       return Center(
                         child: Text(
                           "ไม่พบข้อมูล",
                           style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                       );
+                    }
 
                     return ListView.separated(
                       itemCount: docs.length,

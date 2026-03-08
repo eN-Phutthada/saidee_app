@@ -855,6 +855,32 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
     return null;
   }
 
+  Widget _buildFallbackBackground(bool isDarkTheme) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDarkTheme
+              ? [const Color(0xFF2C2C2C), const Color(0xFF1A1A1A)]
+              : [
+                  AppTheme.primaryColor.withOpacity(0.6),
+                  AppTheme.primaryColor.withOpacity(0.9),
+                ],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          widget.isCategory
+              ? CupertinoIcons.group_solid
+              : CupertinoIcons.tag_fill,
+          size: 50,
+          color: Colors.white.withOpacity(0.3),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkTheme = Theme.of(context).brightness == Brightness.dark;
@@ -880,24 +906,27 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
               fit: StackFit.expand,
               children: [
                 bgImage != null
-                    ? Image.network(bgImage, fit: BoxFit.cover)
-                    : Container(
-                        color: isDarkTheme
-                            ? Colors.grey[800]
-                            : Colors.grey[300],
-                      ),
+                    ? Image.network(
+                        bgImage,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return _buildFallbackBackground(isDarkTheme);
+                        },
+                      )
+                    : _buildFallbackBackground(isDarkTheme),
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.7),
+                        Colors.black.withOpacity(bgImage != null ? 0.7 : 0.4),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
                   ),
                 ),
+
                 Padding(
                   padding: const EdgeInsets.all(15.0),
                   child: Column(

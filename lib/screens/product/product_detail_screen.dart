@@ -125,36 +125,47 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   void _showConditionInfoSheet() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    String condition = widget.product.condition.split('(')[0].trim();
-    String description =
-        "สภาพสินค้าประเมินโดยผู้ขาย โปรดพิจารณาจากรูปภาพและรายละเอียดเพิ่มเติมประกอบ";
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    if (condition.contains("ของใหม่ป้ายห้อย")) {
-      description =
-          "ไม่เคยผ่านการใช้งาน ป้ายหรือบรรจุภัณฑ์ยังอยู่ครบถ้วนเหมือนซื้อจากร้าน";
-    } else if (condition.contains("เหมือนใหม่")) {
-      description =
-          "ใส่หรือใช้งานแค่ 1-2 ครั้ง ไม่มีตำหนิใดๆ สภาพใกล้เคียงของใหม่มาก";
-    } else if (condition.contains("สภาพดีมาก")) {
-      description =
-          "ใช้งานน้อย สีไม่ซีด ไม่มีรอยขาดหรือเปื้อนที่สังเกตเห็นได้ชัดเจน";
-    } else if (condition.contains("สภาพดี")) {
-      description =
-          "มีร่องรอยการใช้งานทั่วไป สีอาจดรอปลงเล็กน้อย แต่โดยรวมยังดูดีและใช้งานได้ปกติ";
-    } else if (condition.contains("มีตำหนิเล็กน้อย")) {
-      description =
-          "มีจุดเปื้อนจางๆ ขุยผ้า รอยสะกิด หรือตำหนิเล็กน้อย (ควรตรวจสอบรูปภาพหรือสอบถามผู้ขายเพิ่มเติม)";
-    } else if (condition.contains("มีตำหนิชัดเจน")) {
-      description =
-          "มีรอยเปื้อนชัด ซิปแตก ขาด หรือมีผลต่อการใช้งานบางส่วน (ควรสอบถามผู้ขายถึงรายละเอียดตำหนิ)";
-    }
+    final List<Map<String, String>> allConditions = [
+      {
+        'title': 'ของใหม่ป้ายห้อย (New with tags)',
+        'desc': 'ไม่เคยผ่านการใช้งาน ป้ายยังอยู่ครบ',
+      },
+      {
+        'title': 'เหมือนใหม่ (Like New)',
+        'desc': 'ใส่แค่ 1-2 ครั้ง ไม่มีตำหนิใดๆ',
+      },
+      {
+        'title': 'สภาพดีมาก (Excellent)',
+        'desc': 'ใช้งานน้อย สีไม่ซีด ไม่มีรอยขาดหรือเปื้อน',
+      },
+      {'title': 'สภาพดี (Good)', 'desc': 'มีร่องรอยการใช้งานทั่วไป แต่ยังดูดี'},
+      {
+        'title': 'มีตำหนิเล็กน้อย (Fair)',
+        'desc': 'มีจุดเปื้อนจางๆ หรือขุยผ้า (ควรแจ้งในรายละเอียด)',
+      },
+      {
+        'title': 'มีตำหนิชัดเจน (Defect)',
+        'desc': 'มีรอยเปื้อนชัด ซิปแตก ขาด (ต้องระบุให้ชัดเจน)',
+      },
+    ];
+
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.all(25),
+        padding: const EdgeInsets.only(
+          top: 25,
+          left: 20,
+          right: 20,
+          bottom: 20,
+        ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
+        ),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          color: theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -162,74 +173,132 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           children: [
             Center(
               child: Container(
-                width: 40,
+                width: 45,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: isDark ? Colors.grey[700] : Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
             Row(
               children: [
-                const Icon(CupertinoIcons.info_circle_fill, color: Colors.blue),
-                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.info_circle_fill,
+                    color: AppTheme.primaryColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 const Text(
-                  "ความหมายของสภาพสินค้า",
+                  "เกณฑ์สภาพสินค้า",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 15),
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.grey[800]
-                    : Colors.blue.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.blue.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.product.condition,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.blue,
+
+            Expanded(
+              child: ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                itemCount: allConditions.length,
+                itemBuilder: (context, index) {
+                  final item = allConditions[index];
+                  final bool isCurrentCondition = widget.product.condition
+                      .contains(item['title']!.split('(')[0].trim());
+
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: isCurrentCondition
+                          ? AppTheme.primaryColor.withOpacity(
+                              isDark ? 0.15 : 0.08,
+                            )
+                          : (isDark ? Colors.grey[900] : Colors.grey[50]),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: isCurrentCondition
+                            ? AppTheme.primaryColor
+                            : Colors.transparent,
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.grey[300] : Colors.grey[800],
-                      height: 1.5,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isCurrentCondition) ...[
+                          const Icon(
+                            CupertinoIcons.checkmark_alt_circle_fill,
+                            color: AppTheme.primaryColor,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item['title']!,
+                                style: TextStyle(
+                                  fontWeight: isCurrentCondition
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
+                                  color: isCurrentCondition
+                                      ? AppTheme.primaryColor
+                                      : theme.colorScheme.onSurface,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                item['desc']!,
+                                style: TextStyle(
+                                  color: isCurrentCondition
+                                      ? (isDark
+                                            ? Colors.grey[300]
+                                            : Colors.black87)
+                                      : Colors.grey[500],
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 15),
             SizedBox(
               width: double.infinity,
+              height: 55,
               child: ElevatedButton(
                 onPressed: () => Get.back(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: const Text(
-                  "ปิด",
+                  "รับทราบ",
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
               ),
@@ -237,6 +306,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ],
         ),
       ),
+      isScrollControlled: true,
     );
   }
 
