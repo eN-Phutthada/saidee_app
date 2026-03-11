@@ -1,15 +1,21 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'package:saidee_app/screens/splash_screen.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
+
+import 'package:saidee_app/screens/order/seller_orders_screen.dart';
+import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
+import 'package:saidee_app/screens/order/buyer_order_detail_screen.dart';
+
 import 'config/theme.dart';
 import 'providers/theme_provider.dart';
 import 'firebase_options.dart';
@@ -22,6 +28,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +64,18 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
   Future<void> _setupPushNotifications() async {
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
-    await messaging.requestPermission(alert: true, badge: true, sound: true);
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      debugPrint('User granted permission');
+    } else {
+      debugPrint('User declined or has not accepted permission');
+    }
 
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
@@ -78,9 +97,38 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           sound: true,
         );
 
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .set({'fcmToken': newToken}, SetOptions(merge: true));
+        debugPrint("FCM Token Refreshed: $newToken");
+      }
+    });
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint('ได้รับข้อความขณะเปิดแอป!');
+      debugPrint('ได้รับข้อความขณะเปิดแอป! Type: ${message.data['type']}');
+
       if (message.notification != null) {
+        IconData notifIcon = CupertinoIcons.bell_fill;
+        Color notifColor = AppTheme.primaryColor;
+        String? type = message.data['type'];
+
+        if (type == 'chat') {
+          notifIcon = CupertinoIcons.chat_bubble_text_fill;
+        } else if (type == 'new_order') {
+          notifIcon = CupertinoIcons.cube_box_fill;
+          notifColor = Colors.orange;
+        } else if (type == 'order_status') {
+          notifIcon = CupertinoIcons.car_detailed;
+          notifColor = Colors.blue;
+        } else if (type == 'return_status') {
+          notifIcon = CupertinoIcons.exclamationmark_triangle_fill;
+          notifColor = Colors.red;
+        }
+
         Get.snackbar(
           message.notification!.title ?? 'แจ้งเตือนใหม่',
           message.notification!.body ?? '',
@@ -96,10 +144,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
               offset: const Offset(0, 5),
             ),
           ],
-          icon: const Icon(
-            CupertinoIcons.chat_bubble_text_fill,
-            color: AppTheme.primaryColor,
-          ),
+          icon: Icon(notifIcon, color: notifColor),
           onTap: (_) {
             _handleNotificationClick(message);
           },
@@ -122,7 +167,9 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
   }
 
   void _handleNotificationClick(RemoteMessage message) async {
-    if (message.data['type'] == 'chat') {
+    String? type = message.data['type'];
+
+    if (type == 'chat') {
       String senderId = message.data['senderId'] ?? '';
 
       if (senderId.isNotEmpty) {
@@ -134,6 +181,10 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           if (userDoc.exists) {
             String name = userDoc.data()?['name'] ?? 'ผู้ใช้งาน';
             String image = userDoc.data()?['profileImage'] ?? '';
+
+            if (Get.currentRoute.contains('ChatScreen')) {
+              Get.back();
+            }
 
             Get.to(
               () => ChatScreen(
@@ -147,6 +198,43 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           debugPrint("เกิดข้อผิดพลาดในการเปิดแชทจากแจ้งเตือน: $e");
         }
       }
+    } else if (type == 'new_order') {
+      Get.to(() => const SellerOrdersScreen());
+    } else if (type == 'order_status' || type == 'return_status') {
+      String orderId = message.data['orderId'] ?? '';
+      if (orderId.isNotEmpty) {
+        try {
+          var orderDoc = await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId)
+              .get();
+
+          if (orderDoc.exists) {
+            var orderData = orderDoc.data() as Map<String, dynamic>;
+            final currentUser = FirebaseAuth.instance.currentUser;
+
+            if (currentUser != null) {
+              if (orderData['sellerId'] == currentUser.uid) {
+                Get.to(
+                  () => SellerOrderDetailScreen(
+                    orderId: orderId,
+                    orderData: orderData,
+                  ),
+                );
+              } else {
+                Get.to(
+                  () => BuyerOrderDetailScreen(
+                    orderId: orderId,
+                    orderData: orderData,
+                  ),
+                );
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint("เกิดข้อผิดพลาดในการเปิดออเดอร์จากแจ้งเตือน: $e");
+        }
+      }
     }
   }
 
@@ -157,6 +245,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
     return GetMaterialApp(
       title: 'SaiDee Application',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
 
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

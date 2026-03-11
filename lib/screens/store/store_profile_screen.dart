@@ -3,12 +3,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
 import 'package:saidee_app/screens/store/seller_shipping_screen.dart';
 import '../../models/product_model.dart';
+import 'package:saidee_app/screens/chat/chat_screen.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -25,6 +27,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
   bool _isSellerBanned = false;
   bool _isLoadingSeller = true;
+
+  String _filterStatus = 'all';
+  String _sortBy = 'newest';
 
   @override
   void initState() {
@@ -51,6 +56,314 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     } finally {
       setState(() => _isLoadingSeller = false);
     }
+  }
+
+  Future<void> _shareStore() async {
+    try {
+      var sellerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.sellerId)
+          .get();
+
+      String storeName = "ร้านค้า";
+      if (sellerDoc.exists) {
+        storeName = sellerDoc.data()?['name'] ?? "ร้านค้า";
+      }
+
+      String shareText =
+          "🛍️ แวะมาช้อปเสื้อผ้ามือสองสภาพดีที่ร้าน '$storeName' กันเถอะ!\n\n👉 เปิดแอป SAIDEE แล้วพิมพ์ชื่อร้านเพื่อเลือกซื้อสินค้าได้เลย!";
+
+      await Share.share(shareText);
+    } catch (e) {
+      debugPrint("Error sharing store: $e");
+      Get.snackbar("เกิดข้อผิดพลาด", "ไม่สามารถแชร์ร้านค้าได้ในขณะนี้");
+    }
+  }
+
+  void _showStoreSettings() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    String tempFilterStatus = _filterStatus;
+    String tempSortBy = _sortBy;
+
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 15,
+              bottom: MediaQuery.of(context).padding.bottom + 20,
+            ),
+            decoration: BoxDecoration(
+              color: theme.scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 45,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[700] : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "ตั้งค่าการแสดงผล",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Get.back(),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white10 : Colors.grey[200],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            CupertinoIcons.xmark,
+                            size: 16,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 25),
+
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.tag_fill,
+                          size: 16,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "สถานะสินค้า",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        _buildCustomChip('ทั้งหมด', 'all', tempFilterStatus, (
+                          val,
+                        ) {
+                          setModalState(() => tempFilterStatus = val);
+                        }, isDark),
+                        const SizedBox(width: 12),
+                        _buildCustomChip(
+                          'กำลังขาย',
+                          'active',
+                          tempFilterStatus,
+                          (val) {
+                            setModalState(() => tempFilterStatus = val);
+                          },
+                          isDark,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildCustomChip('ขายแล้ว', 'sold', tempFilterStatus, (
+                          val,
+                        ) {
+                          setModalState(() => tempFilterStatus = val);
+                        }, isDark),
+                      ],
+                    ),
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Divider(height: 1),
+                  ),
+
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.arrow_up_arrow_down,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "เรียงลำดับตาม",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildCustomChip('อัปเดตล่าสุด', 'newest', tempSortBy, (
+                        val,
+                      ) {
+                        setModalState(() => tempSortBy = val);
+                      }, isDark),
+                      _buildCustomChip('เก่าสุด', 'oldest', tempSortBy, (val) {
+                        setModalState(() => tempSortBy = val);
+                      }, isDark),
+                      _buildCustomChip(
+                        'ราคาสูง - ต่ำ',
+                        'price_high',
+                        tempSortBy,
+                        (val) {
+                          setModalState(() => tempSortBy = val);
+                        },
+                        isDark,
+                      ),
+                      _buildCustomChip(
+                        'ราคาต่ำ - สูง',
+                        'price_low',
+                        tempSortBy,
+                        (val) {
+                          setModalState(() => tempSortBy = val);
+                        },
+                        isDark,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _filterStatus = tempFilterStatus;
+                          _sortBy = tempSortBy;
+                        });
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 5,
+                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                      ),
+                      child: const Text(
+                        "แสดงผล",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildCustomChip(
+    String label,
+    String value,
+    String groupValue,
+    Function(String) onSelect,
+    bool isDark,
+  ) {
+    bool isSelected = value == groupValue;
+    return GestureDetector(
+      onTap: () => onSelect(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryColor
+              : (isDark ? Colors.grey[800] : Colors.white),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryColor
+                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? Colors.white
+                : (isDark ? Colors.grey[300] : Colors.black87),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -87,10 +400,21 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             ),
           ),
           actions: [
-            if (isOwner)
+            if (!_isSellerBanned)
               IconButton(
-                icon: Icon(Icons.settings, color: theme.colorScheme.onSurface),
-                onPressed: () {},
+                icon: Icon(
+                  CupertinoIcons.share,
+                  color: theme.colorScheme.onSurface,
+                ),
+                onPressed: _shareStore,
+              ),
+            if (isOwner && !_isSellerBanned)
+              IconButton(
+                icon: Icon(
+                  CupertinoIcons.slider_horizontal_3,
+                  color: theme.colorScheme.onSurface,
+                ),
+                onPressed: _showStoreSettings,
               ),
           ],
         ),
@@ -308,7 +632,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         stream: FirebaseFirestore.instance
                             .collection('products')
                             .where('sellerId', isEqualTo: widget.sellerId)
-                            .where('status', isEqualTo: 'active')
                             .snapshots(),
                         builder: (context, prodSnapshot) {
                           int count = prodSnapshot.hasData
@@ -323,7 +646,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                "ขายอยู่ $count รายการ",
+                                "สินค้าทั้งหมด $count รายการ",
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: isDark
                                       ? Colors.grey[400]
@@ -356,7 +679,25 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             CupertinoIcons.chat_bubble_2,
             theme,
             isDark,
-            () {},
+            () async {
+              var sellerDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(widget.sellerId)
+                  .get();
+              String sName = "ร้านค้า";
+              String sImg = "";
+              if (sellerDoc.exists) {
+                sName = sellerDoc.data()?['name'] ?? "ร้านค้า";
+                sImg = sellerDoc.data()?['profileImage'] ?? "";
+              }
+              Get.to(
+                () => ChatScreen(
+                  targetUserId: widget.sellerId,
+                  targetUserName: sName,
+                  targetUserImage: sImg,
+                ),
+              );
+            },
           ),
         ),
       );
@@ -465,12 +806,45 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           );
         }
 
-        var products = snapshot.data!.docs;
+        var products = snapshot.data!.docs.toList();
+
+        if (_filterStatus != 'all') {
+          products = products.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            String pStatus = data['status'] ?? 'active';
+            return pStatus == _filterStatus;
+          }).toList();
+        }
+
+        if (products.isEmpty) {
+          return Center(
+            child: Text(
+              _filterStatus == 'active'
+                  ? "ไม่มีสินค้าที่กำลังขาย"
+                  : "ไม่มีสินค้าที่ขายแล้ว",
+              style: const TextStyle(color: Colors.grey),
+            ),
+          );
+        }
+
         products.sort((a, b) {
-          Timestamp? aTime = (a.data() as Map<String, dynamic>)['createdAt'];
-          Timestamp? bTime = (b.data() as Map<String, dynamic>)['createdAt'];
-          if (aTime == null || bTime == null) return 0;
-          return bTime.compareTo(aTime);
+          var dataA = a.data() as Map<String, dynamic>;
+          var dataB = b.data() as Map<String, dynamic>;
+
+          if (_sortBy == 'newest' || _sortBy == 'oldest') {
+            Timestamp? timeA = dataA['createdAt'];
+            Timestamp? timeB = dataB['createdAt'];
+            if (timeA == null || timeB == null) return 0;
+            return _sortBy == 'newest'
+                ? timeB.compareTo(timeA)
+                : timeA.compareTo(timeB);
+          } else {
+            double priceA = (dataA['price'] ?? 0).toDouble();
+            double priceB = (dataB['price'] ?? 0).toDouble();
+            return _sortBy == 'price_high'
+                ? priceB.compareTo(priceA)
+                : priceA.compareTo(priceB);
+          }
         });
 
         return GridView.builder(
@@ -633,9 +1007,8 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .where('sellerId', isEqualTo: widget.sellerId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting)
           return const Center(child: CircularProgressIndicator());
-        }
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
             child: Column(
@@ -738,21 +1111,21 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                             ),
                           ),
                           Row(
-                            children: List.generate(5, (starIndex) {
-                              return Icon(
+                            children: List.generate(
+                              5,
+                              (starIndex) => Icon(
                                 starIndex < rating
                                     ? Icons.star
                                     : Icons.star_border,
                                 color: Colors.amber,
                                 size: 16,
-                              );
-                            }),
+                              ),
+                            ),
                           ),
                         ],
                       );
                     },
                   ),
-
                   const SizedBox(height: 10),
                   Text(
                     comment,
@@ -762,7 +1135,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-
                   if (orderId.isNotEmpty)
                     FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
@@ -770,15 +1142,12 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                           .doc(orderId)
                           .get(),
                       builder: (context, orderSnap) {
-                        if (!orderSnap.hasData || !orderSnap.data!.exists) {
+                        if (!orderSnap.hasData || !orderSnap.data!.exists)
                           return const SizedBox();
-                        }
-
                         var oData =
                             orderSnap.data!.data() as Map<String, dynamic>;
                         List items = oData['items'] ?? [];
                         if (items.isEmpty) return const SizedBox();
-
                         var firstItem = items.first;
 
                         return Container(
