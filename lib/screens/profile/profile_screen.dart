@@ -674,18 +674,24 @@ class ProfileScreen extends StatelessWidget {
                                 'message': feedbackCtrl.text.trim(),
                                 'createdAt': FieldValue.serverTimestamp(),
                               });
-                          _showCustomSnackbar(
-                            "ขอบคุณครับ! 🎉",
-                            "เราได้รับข้อเสนอแนะของคุณเรียบร้อยแล้ว",
-                            CupertinoIcons.heart_fill,
-                            Colors.green,
+
+                          AppDialog.showCustomDialog(
+                            title: "ขอบคุณครับ! 🎉",
+                            message: "เราได้รับข้อเสนอแนะของคุณเรียบร้อยแล้ว",
+                            icon: CupertinoIcons.heart_fill,
+                            iconColor: Colors.green,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         } catch (e) {
-                          _showCustomSnackbar(
-                            "ผิดพลาด",
-                            "ไม่สามารถส่งข้อมูลได้",
-                            CupertinoIcons.xmark_circle_fill,
-                            Colors.red,
+                          AppDialog.showCustomDialog(
+                            title: "ผิดพลาด",
+                            message:
+                                "ไม่สามารถส่งข้อมูลได้ กรุณาลองใหม่อีกครั้ง",
+                            icon: CupertinoIcons.xmark_circle_fill,
+                            iconColor: Colors.red,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         }
                       },
@@ -805,37 +811,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showCustomSnackbar(
-    String title,
-    String message,
-    IconData icon,
-    Color backgroundColor,
-  ) {
-    Get.snackbar(
-      title,
-      message,
-      icon: Icon(icon, color: Colors.white, size: 28),
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: backgroundColor.withOpacity(0.9),
-      colorText: Colors.white,
-      borderRadius: 16,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      duration: const Duration(seconds: 3),
-      isDismissible: true,
-      dismissDirection: DismissDirection.horizontal,
-      forwardAnimationCurve: Curves.easeOutBack,
-      barBlur: 20,
-      boxShadows: [
-        BoxShadow(
-          color: backgroundColor.withOpacity(0.4),
-          blurRadius: 15,
-          offset: const Offset(0, 5),
-        ),
-      ],
     );
   }
 }

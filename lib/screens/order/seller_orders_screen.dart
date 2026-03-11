@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class SellerOrdersScreen extends StatefulWidget {
   const SellerOrdersScreen({super.key});
@@ -216,12 +217,12 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                           .toUpperCase();
 
                                       if (finalTracking.isEmpty) {
-                                        _showErrorSnackbar("กรุณากรอกเลขพัสดุ");
+                                        _showErrorDialog("กรุณากรอกเลขพัสดุ");
                                         return;
                                       }
                                       if (finalTracking.length < 10 ||
                                           finalTracking.length > 18) {
-                                        _showErrorSnackbar(
+                                        _showErrorDialog(
                                           "เลขพัสดุมักจะมีความยาวระหว่าง 10-18 ตัวอักษร",
                                         );
                                         return;
@@ -229,7 +230,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                       if (!finalTracking.contains(
                                         RegExp(r'[0-9]'),
                                       )) {
-                                        _showErrorSnackbar(
+                                        _showErrorDialog(
                                           "เลขพัสดุที่ไม่ถูกต้อง (ต้องมีตัวเลขประกอบ)",
                                         );
                                         return;
@@ -237,7 +238,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                       if (RegExp(
                                         r'^(.)\1+$',
                                       ).hasMatch(finalTracking)) {
-                                        _showErrorSnackbar(
+                                        _showErrorDialog(
                                           "ไม่อนุญาตให้ใช้ตัวอักษรซ้ำกันทั้งหมด",
                                         );
                                         return;
@@ -378,16 +379,20 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                                   FieldValue.serverTimestamp(),
                                             });
                                         Get.back();
-                                        Get.snackbar(
-                                          "สำเร็จ",
-                                          "อัปเดตสถานะเป็นกำลังจัดส่งแล้ว",
-                                          backgroundColor: Colors.green,
-                                          colorText: Colors.white,
+                                        AppDialog.showCustomDialog(
+                                          title: "สำเร็จ",
+                                          message:
+                                              "อัปเดตสถานะออเดอร์เป็น 'กำลังจัดส่ง' พร้อมเลขพัสดุเรียบร้อยแล้ว",
+                                          icon: CupertinoIcons
+                                              .check_mark_circled_solid,
+                                          iconColor: Colors.green,
+                                          confirmText: "ตกลง",
+                                          onConfirm: () => Get.back(),
                                         );
                                       } catch (e) {
                                         Get.back();
-                                        _showErrorSnackbar(
-                                          "ไม่สามารถอัปเดตข้อมูลได้",
+                                        _showErrorDialog(
+                                          "ไม่สามารถอัปเดตข้อมูลได้ กรุณาลองใหม่",
                                         );
                                       }
                                     },
@@ -423,17 +428,14 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     );
   }
 
-  void _showErrorSnackbar(String message) {
-    Get.snackbar(
-      "ข้อมูลไม่ถูกต้อง",
-      message,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      icon: const Icon(
-        CupertinoIcons.exclamationmark_circle,
-        color: Colors.white,
-      ),
-      snackPosition: SnackPosition.TOP,
+  void _showErrorDialog(String message) {
+    AppDialog.showCustomDialog(
+      title: "ข้อมูลไม่ถูกต้อง",
+      message: message,
+      icon: CupertinoIcons.exclamationmark_circle_fill,
+      iconColor: Colors.red,
+      confirmText: "เข้าใจแล้ว",
+      onConfirm: () => Get.back(),
     );
   }
 

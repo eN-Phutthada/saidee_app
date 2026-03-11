@@ -189,13 +189,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      Get.snackbar(
-        "Error",
-        "เกิดข้อผิดพลาดในการโหลดข้อมูล",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
       Get.back();
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถโหลดข้อมูลตะกร้าสินค้าได้ กรุณาลองใหม่อีกครั้ง",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
+      );
     }
   }
 
@@ -239,11 +241,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       Get.back();
 
       if (snap.docs.isEmpty) {
-        Get.snackbar(
-          "ไม่พบโค้ด",
-          "โค้ดส่วนลดนี้ไม่มีในระบบ หรืออาจหมดอายุไปแล้ว",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        AppDialog.showCustomDialog(
+          title: "ไม่พบโค้ดส่วนลด",
+          message: "โค้ดส่วนลดนี้ไม่มีในระบบ หรืออาจหมดอายุไปแล้ว",
+          icon: CupertinoIcons.ticket_fill,
+          iconColor: Colors.red,
+          confirmText: "ตกลง",
+          onConfirm: () => Get.back(),
         );
         return;
       }
@@ -252,11 +256,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       double minOrder = (couponData['min_order'] ?? 0).toDouble();
 
       if (_itemsTotalAll < minOrder) {
-        Get.snackbar(
-          "ไม่สามารถใช้ได้",
-          "โค้ดนี้ต้องมียอดซื้อสินค้าขั้นต่ำ $minOrder บาท",
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
+        AppDialog.showCustomDialog(
+          title: "ไม่สามารถใช้โค้ดได้",
+          message: "โค้ดส่วนลดนี้ต้องมียอดสั่งซื้อสินค้าขั้นต่ำ $minOrder บาท",
+          icon: CupertinoIcons.exclamationmark_circle_fill,
+          iconColor: Colors.orange,
+          confirmText: "ตกลง",
+          onConfirm: () => Get.back(),
         );
         return;
       }
@@ -266,19 +272,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _calculateGrandTotal();
       });
       FocusScope.of(context).unfocus();
-      Get.snackbar(
-        "สำเร็จ",
-        "ใช้โค้ดส่วนลดเรียบร้อยแล้ว",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+
+      AppDialog.showCustomDialog(
+        title: "ใช้โค้ดสำเร็จ",
+        message: "คุณได้รับส่วนลดเรียบร้อยแล้ว",
+        icon: CupertinoIcons.checkmark_seal_fill,
+        iconColor: Colors.green,
+        confirmText: "เยี่ยมเลย",
+        onConfirm: () => Get.back(),
       );
     } catch (e) {
       Get.back();
-      Get.snackbar(
-        "Error",
-        "เกิดข้อผิดพลาดในการตรวจสอบคูปอง",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ข้อผิดพลาด",
+        message: "เกิดข้อผิดพลาดในการตรวจสอบคูปอง กรุณาลองใหม่",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     }
   }
@@ -430,11 +441,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   void _showConfirmationDialog() {
     if (_selectedAddress == null) {
-      Get.snackbar(
-        "แจ้งเตือน",
-        "กรุณาเลือกที่อยู่สำหรับจัดส่ง",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "กรุณาเลือกที่อยู่",
+        message: "คุณจำเป็นต้องระบุที่อยู่สำหรับจัดส่งสินค้าก่อนทำการชำระเงิน",
+        icon: CupertinoIcons.location_solid,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
@@ -444,21 +457,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (group.selectedShipping == null) hasError = true;
     }
     if (hasError) {
-      Get.snackbar(
-        "แจ้งเตือน",
-        "บางร้านค้าไม่รองรับการจัดส่งตามน้ำหนักนี้ กรุณาแก้ไขตะกร้าสินค้า",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ไม่สามารถจัดส่งได้",
+        message:
+            "บางร้านค้าในตะกร้าของคุณไม่รองรับการจัดส่งน้ำหนักนี้ กรุณาแก้ไขตะกร้าสินค้าก่อนทำรายการ",
+        icon: CupertinoIcons.cube_box_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     if (_walletBalance < _grandTotal) {
-      Get.snackbar(
-        "ยอดเงินไม่เพียงพอ",
-        "กรุณาเติมเงินเข้าวอลเล็ทของคุณก่อนชำระเงิน",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ยอดเงินไม่เพียงพอ",
+        message: "กรุณาเติมเงินเข้า SAIDEE Wallet ของคุณก่อนทำการชำระเงิน",
+        icon: CupertinoIcons.money_dollar_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
@@ -729,11 +747,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
       );
     } catch (e) {
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถทำรายการได้",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถทำรายการสั่งซื้อได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } finally {
       setState(() => _isProcessing = false);

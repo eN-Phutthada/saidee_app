@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/wallet/slip_payment_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class WalletTopUpScreen extends StatefulWidget {
   const WalletTopUpScreen({super.key});
@@ -23,54 +24,31 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
   Future<void> _processTopUp() async {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
-      _showCustomSnackbar(
-        "แจ้งเตือน",
-        "กรุณาระบุจำนวนเงิน",
-        CupertinoIcons.exclamationmark_triangle_fill,
-        Colors.orange[800]!,
+      AppDialog.showCustomDialog(
+        title: "แจ้งเตือน",
+        message: "กรุณาระบุจำนวนเงินที่ต้องการเติม",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     final double? amount = double.tryParse(amountText);
-    if (amount == null) {
-      _showCustomSnackbar(
-        "แจ้งเตือน",
-        "กรุณาระบุจำนวนเงิน",
-        CupertinoIcons.info_circle_fill,
-        Colors.orange[800]!,
+    if (amount == null || amount <= 0) {
+      AppDialog.showCustomDialog(
+        title: "แจ้งเตือน",
+        message: "กรุณาระบุจำนวนเงินให้ถูกต้อง (ต้องมากกว่า 0 บาท)",
+        icon: CupertinoIcons.info_circle_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     Get.to(() => SlipPaymentScreen(amount: amount));
-  }
-
-  void _showCustomSnackbar(
-    String title,
-    String message,
-    IconData icon,
-    Color bg,
-  ) {
-    Get.snackbar(
-      title,
-      message,
-      icon: Icon(icon, color: Colors.white, size: 28),
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: bg.withOpacity(0.9),
-      colorText: Colors.white,
-      borderRadius: 16,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      duration: const Duration(seconds: 3),
-      barBlur: 20,
-      boxShadows: [
-        BoxShadow(
-          color: bg.withOpacity(0.4),
-          blurRadius: 15,
-          offset: const Offset(0, 5),
-        ),
-      ],
-    );
   }
 
   Widget _buildBgCircle(

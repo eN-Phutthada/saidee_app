@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -56,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         });
       }
     } catch (e) {
-      print("Error picking image: $e");
+      debugPrint("Error picking image: $e");
     }
   }
 
@@ -172,19 +173,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             'profileImage': imageUrl,
           });
 
-      Get.back();
-      Get.snackbar(
-        "สำเร็จ",
-        "บันทึกข้อมูลเรียบร้อย",
-        backgroundColor: const Color(0xFF1E5B3D).withOpacity(0.8),
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "สำเร็จ",
+        message: "บันทึกข้อมูลโปรไฟล์เรียบร้อยแล้ว",
+        icon: CupertinoIcons.checkmark_alt_circle_fill,
+        iconColor: Colors.green,
+        confirmText: "ตกลง",
+        onConfirm: () {
+          Get.back();
+          Get.back();
+        },
       );
     } catch (e) {
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        e.toString(),
-        backgroundColor: AppTheme.errorColor.withOpacity(0.8),
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง\n\n$e",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } finally {
       setState(() => _isLoading = false);

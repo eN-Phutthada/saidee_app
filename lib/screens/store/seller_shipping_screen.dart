@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class SellerShippingScreen extends StatefulWidget {
   final String sellerId;
@@ -77,11 +78,13 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถโหลดข้อมูลขนส่งได้",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถโหลดข้อมูลขนส่งได้",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       setState(() => _isLoading = false);
     }
@@ -99,19 +102,25 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
           .doc(widget.sellerId)
           .update({'enabled_shipping': dataToSave});
 
-      Get.back();
-      Get.snackbar(
-        "บันทึกสำเร็จ",
-        "อัปเดตบริการขนส่งของร้านคุณเรียบร้อยแล้ว",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "บันทึกสำเร็จ",
+        message: "อัปเดตบริการขนส่งของร้านคุณเรียบร้อยแล้ว",
+        icon: CupertinoIcons.check_mark_circled_solid,
+        iconColor: Colors.green,
+        confirmText: "ตกลง",
+        onConfirm: () {
+          Get.back();
+          Get.back();
+        },
       );
     } catch (e) {
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถบันทึกข้อมูลได้",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถบันทึกข้อมูลได้",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

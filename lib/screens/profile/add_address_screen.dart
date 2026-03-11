@@ -174,11 +174,13 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 
   Future<void> _saveAddress() async {
     if (!_formKey.currentState!.validate()) {
-      Get.snackbar(
-        "ข้อมูลไม่ครบถ้วน",
-        "กรุณากรอกข้อมูลที่จำเป็นให้ครบ",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ข้อมูลไม่ครบถ้วน",
+        message: "กรุณากรอกข้อมูลที่อยู่จัดส่งให้ครบถ้วนก่อนบันทึก",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
@@ -245,14 +247,16 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         },
       );
     } catch (e) {
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        e.toString(),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถบันทึกที่อยู่ได้: ${e.toString()}",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -271,15 +275,26 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         setState(() => _isLoading = true);
         final user = FirebaseAuth.instance.currentUser;
         if (user != null && widget.docId != null) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('addresses')
-              .doc(widget.docId)
-              .delete();
-          Get.back();
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('addresses')
+                .doc(widget.docId)
+                .delete();
+            Get.back();
+          } catch (e) {
+            AppDialog.showCustomDialog(
+              title: "เกิดข้อผิดพลาด",
+              message: "ไม่สามารถลบที่อยู่ได้: ${e.toString()}",
+              icon: CupertinoIcons.xmark_circle_fill,
+              iconColor: Colors.red,
+              confirmText: "ตกลง",
+              onConfirm: () => Get.back(),
+            );
+          }
         }
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       },
     );
   }

@@ -37,17 +37,14 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
   void _copyTrackingNumber(String trackingNumber) {
     if (trackingNumber.isEmpty || trackingNumber == '-') return;
     Clipboard.setData(ClipboardData(text: trackingNumber));
-    Get.snackbar(
-      "คัดลอกแล้ว",
-      "คัดลอกหมายเลขพัสดุ $trackingNumber เรียบร้อยแล้ว",
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: Colors.black87,
-      colorText: Colors.white,
-      icon: const Icon(
-        CupertinoIcons.doc_on_clipboard_fill,
-        color: Colors.white,
-      ),
-      duration: const Duration(seconds: 2),
+
+    AppDialog.showCustomDialog(
+      title: "คัดลอกแล้ว",
+      message: "คัดลอกหมายเลขพัสดุ $trackingNumber เรียบร้อยแล้ว",
+      icon: CupertinoIcons.doc_on_clipboard_fill,
+      iconColor: Colors.blue,
+      confirmText: "ตกลง",
+      onConfirm: () => Get.back(),
     );
   }
 
@@ -103,19 +100,24 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
           Get.back();
           Get.back();
-          Get.snackbar(
-            "สำเร็จ",
-            "ยืนยันการรับสินค้าเรียบร้อยแล้ว",
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
+
+          AppDialog.showCustomDialog(
+            title: "สำเร็จ",
+            message: "ยืนยันการรับสินค้าเรียบร้อยแล้ว",
+            icon: CupertinoIcons.check_mark_circled_solid,
+            iconColor: Colors.green,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
           );
         } catch (e) {
           Get.back();
-          Get.snackbar(
-            "เกิดข้อผิดพลาด",
-            "ไม่สามารถทำรายการได้ กรุณาลองใหม่",
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
+          AppDialog.showCustomDialog(
+            title: "เกิดข้อผิดพลาด",
+            message: "ไม่สามารถทำรายการได้ กรุณาลองใหม่",
+            icon: CupertinoIcons.xmark_circle_fill,
+            iconColor: Colors.red,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
           );
         }
       },
@@ -192,19 +194,24 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
       Get.back();
       Get.back();
-      Get.snackbar(
-        "สำเร็จ",
-        "ยกเลิกคำสั่งซื้อและคืนเงินเรียบร้อย",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+
+      AppDialog.showCustomDialog(
+        title: "สำเร็จ",
+        message: "ยกเลิกคำสั่งซื้อและคืนเงินเรียบร้อย",
+        icon: CupertinoIcons.check_mark_circled_solid,
+        iconColor: Colors.green,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } catch (e) {
       Get.back();
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "ไม่สามารถยกเลิกได้ กรุณาลองใหม่",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message: "ไม่สามารถยกเลิกได้ กรุณาลองใหม่",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     }
   }
@@ -327,19 +334,23 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                             _isReviewed = true;
                           });
 
-                          Get.snackbar(
-                            "สำเร็จ",
-                            "ขอบคุณสำหรับการประเมิน!",
-                            backgroundColor: Colors.green,
-                            colorText: Colors.white,
+                          AppDialog.showCustomDialog(
+                            title: "สำเร็จ",
+                            message: "ขอบคุณสำหรับการประเมิน!",
+                            icon: CupertinoIcons.star_circle_fill,
+                            iconColor: Colors.amber,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         } catch (e) {
                           Get.back();
-                          Get.snackbar(
-                            "ข้อผิดพลาด",
-                            "ไม่สามารถส่งรีวิวได้",
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                          AppDialog.showCustomDialog(
+                            title: "ข้อผิดพลาด",
+                            message: "ไม่สามารถส่งรีวิวได้",
+                            icon: CupertinoIcons.xmark_circle_fill,
+                            iconColor: Colors.red,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         }
                       },
@@ -570,11 +581,13 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                     child: ElevatedButton(
                       onPressed: () async {
                         if (topicCtrl.text.isEmpty) {
-                          Get.snackbar(
-                            "แจ้งเตือน",
-                            "กรุณาระบุหัวข้อปัญหา",
-                            backgroundColor: Colors.orange,
-                            colorText: Colors.white,
+                          AppDialog.showCustomDialog(
+                            title: "แจ้งเตือน",
+                            message: "กรุณาระบุหัวข้อปัญหา",
+                            icon: CupertinoIcons.exclamationmark_triangle_fill,
+                            iconColor: Colors.orange,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                           return;
                         }
@@ -629,20 +642,24 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                               });
 
                           Get.back();
-                          Get.snackbar(
-                            "ส่งรายงานสำเร็จ",
-                            "ระบบได้รับข้อมูลของคุณแล้ว ทีมงานจะดำเนินการตรวจสอบโดยเร็วที่สุด",
-                            backgroundColor: Colors.green,
-                            colorText: Colors.white,
-                            duration: const Duration(seconds: 4),
+                          AppDialog.showCustomDialog(
+                            title: "ส่งรายงานสำเร็จ",
+                            message:
+                                "ระบบได้รับข้อมูลของคุณแล้ว ทีมงานจะดำเนินการตรวจสอบโดยเร็วที่สุด",
+                            icon: CupertinoIcons.check_mark_circled_solid,
+                            iconColor: Colors.green,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         } catch (e) {
                           Get.back();
-                          Get.snackbar(
-                            "ข้อผิดพลาด",
-                            "ไม่สามารถส่งรายงานได้",
-                            backgroundColor: Colors.red,
-                            colorText: Colors.white,
+                          AppDialog.showCustomDialog(
+                            title: "ข้อผิดพลาด",
+                            message: "ไม่สามารถส่งรายงานได้",
+                            icon: CupertinoIcons.xmark_circle_fill,
+                            iconColor: Colors.red,
+                            confirmText: "ตกลง",
+                            onConfirm: () => Get.back(),
                           );
                         }
                       },
