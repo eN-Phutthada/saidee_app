@@ -759,7 +759,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                "Version 1.0.0 (Beta)",
+                "Version 1.1.0 (Beta)",
                 style: TextStyle(
                   fontSize: 14,
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
