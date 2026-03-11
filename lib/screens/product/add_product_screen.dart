@@ -2,16 +2,20 @@ import 'dart:io';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_compress/video_compress.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
+import '../../widgets/custom_dialog.dart';
 import '../../widgets/guest_view.dart';
+import '../store/seller_shipping_screen.dart';
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? product;
@@ -308,11 +312,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         }).toList();
 
         if (validFiles.length != photos.length) {
-          Get.snackbar(
-            "แจ้งเตือน",
-            "ระบบรองรับเฉพาะไฟล์ .jpg และ .png",
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
+          AppDialog.showCustomDialog(
+            title: "ไฟล์ไม่รองรับ",
+            message: "ระบบรองรับเฉพาะไฟล์รูปภาพ .jpg และ .png เท่านั้น",
+            icon: CupertinoIcons.exclamationmark_triangle_fill,
+            iconColor: Colors.orange,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
           );
         }
 
@@ -320,11 +326,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         int spaceLeft = 5 - currentTotal;
 
         if (spaceLeft <= 0) {
-          Get.snackbar(
-            "เต็มแล้ว",
-            "คุณสามารถอัปโหลดรูปได้สูงสุด 5 รูปเท่านั้น",
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
+          AppDialog.showCustomDialog(
+            title: "จำนวนรูปภาพเต็มแล้ว",
+            message: "คุณสามารถอัปโหลดรูปภาพสินค้าได้สูงสุด 5 รูปเท่านั้น",
+            icon: CupertinoIcons.photo_on_rectangle,
+            iconColor: Colors.orange,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
           );
           return;
         }
@@ -353,11 +361,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       await tempController.initialize();
 
       if (tempController.value.duration.inSeconds > 15) {
-        Get.snackbar(
-          "วิดีโอเกินกำหนด",
-          "กรุณาใช้วิดีโอความยาวไม่เกิน 15 วินาที",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+        AppDialog.showCustomDialog(
+          title: "วิดีโอยาวเกินไป",
+          message: "กรุณาใช้วิดีโอที่มีความยาวไม่เกิน 15 วินาที",
+          icon: CupertinoIcons.time,
+          iconColor: Colors.red,
+          confirmText: "เข้าใจแล้ว",
+          onConfirm: () => Get.back(),
         );
         await tempController.dispose();
         return;
@@ -402,8 +412,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
             deleteOrigin: false,
           );
           Get.back();
-          if (mediaInfo != null && mediaInfo.file != null)
+          if (mediaInfo != null && mediaInfo.file != null) {
             videoFile = mediaInfo.file!;
+          }
         } catch (e) {
           Get.back();
         }
@@ -438,19 +449,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       SizedBox(
                         height: 80,
                         width: 80,
-                        child: CircularProgressIndicator(
-                          value: _uploadProgress,
-                          strokeWidth: 8,
-                          backgroundColor: Colors.grey[200],
-                          color: AppTheme.primaryColor,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: 0.0,
+                            end: _uploadProgress,
+                          ),
+                          duration: const Duration(milliseconds: 500),
+                          builder: (context, value, _) {
+                            return CircularProgressIndicator(
+                              value: value,
+                              strokeWidth: 8,
+                              backgroundColor: Colors.grey[200],
+                              color: AppTheme.primaryColor,
+                            );
+                          },
                         ),
                       ),
-                      Text(
-                        "${(_uploadProgress * 100).toStringAsFixed(0)}%",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(
+                          begin: 0.0,
+                          end: _uploadProgress * 100,
                         ),
+                        duration: const Duration(milliseconds: 500),
+                        builder: (context, value, _) {
+                          return Text(
+                            "${value.toStringAsFixed(0)}%",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -475,13 +504,35 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
   }
 
+  Future<bool> _checkShippingIsSet(String uid) async {
+    try {
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
+        List enabledShipping = data['enabled_shipping'] ?? [];
+        if (enabledShipping.isNotEmpty) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Error checking shipping: $e");
+      return false;
+    }
+  }
+
   Future<void> _uploadAndSave() async {
     if (!_formKey.currentState!.validate()) {
-      Get.snackbar(
-        "ข้อมูลไม่ครบ",
-        "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ข้อมูลไม่ถูกต้อง",
+        message: "กรุณาตรวจสอบและกรอกข้อมูลบังคับ (*) ให้ครบถ้วน",
+        icon: CupertinoIcons.doc_text_search,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
@@ -490,35 +541,65 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _selectedCategory == null ||
         _selectedSize == null ||
         _selectedCondition == null) {
-      Get.snackbar(
-        "ข้อมูลไม่ครบ",
-        "กรุณาเลือก ประเภท, หมวดหมู่, ไซส์ และสภาพสินค้า",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ข้อมูลไม่ครบถ้วน",
+        message: "กรุณาเลือก ประเภท, หมวดหมู่, ไซส์ และสภาพสินค้า ให้ครบถ้วน",
+        icon: CupertinoIcons.square_list,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     int totalImages = _existingImages.length + _selectedImages.length;
     if (totalImages < 3 || totalImages > 5) {
-      Get.snackbar(
-        "รูปภาพไม่ถูกต้อง",
-        "กรุณาอัปโหลดรูปภาพ 3 ถึง 5 รูป",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "จำนวนรูปภาพไม่ถูกต้อง",
+        message: "กรุณาอัปโหลดรูปภาพสินค้าระหว่าง 3 ถึง 5 รูป",
+        icon: CupertinoIcons.photo_on_rectangle,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
     }
 
     if (_selectedVideo == null &&
         (_existingVideoUrl == null || _existingVideoUrl!.isEmpty)) {
-      Get.snackbar(
-        "ขาดวิดีโอ",
-        "กรุณาอัปโหลดวิดีโอสินค้า (ไม่เกิน 15 วินาที)",
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "ขาดวิดีโอสินค้า",
+        message: "กรุณาอัปโหลดวิดีโอแสดงสินค้า (ความยาวไม่เกิน 15 วินาที)",
+        icon: CupertinoIcons.video_camera,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
       return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    if (!_isEditing) {
+      bool isShippingSet = await _checkShippingIsSet(user.uid);
+      if (!isShippingSet) {
+        AppDialog.showCustomDialog(
+          title: "ยังไม่ได้ตั้งค่าการขนส่ง",
+          message:
+              "คุณต้องเลือกบริการขนส่งที่ร้านคุณรองรับก่อน จึงจะสามารถลงขายสินค้าได้ เพื่อให้ระบบคำนวณค่าจัดส่งได้ถูกต้อง",
+          icon: CupertinoIcons.cube_box,
+          iconColor: Colors.orange,
+          confirmText: "ไปตั้งค่าตอนนี้",
+          cancelText: "ไว้ทีหลัง",
+          showCancel: true,
+          onConfirm: () {
+            Get.back();
+            Get.to(() => SellerShippingScreen(sellerId: user.uid));
+          },
+        );
+        return;
+      }
     }
 
     setState(() {
@@ -528,8 +609,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
 
     _showProgressDialog();
-
-    final user = FirebaseAuth.instance.currentUser;
 
     try {
       List<String> finalImageUrls = List.from(_existingImages);
@@ -573,15 +652,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (_selectedVideo != null) {
         setState(() => _uploadStatusText = "กำลังอัปโหลดวิดีโอ...");
         if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
-
         SettableMetadata metadata = SettableMetadata(contentType: 'video/mp4');
         String videoName = 'vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
         Reference videoRef = FirebaseStorage.instance.ref().child(
           'products/videos/$videoName',
         );
-
         UploadTask videoTask = videoRef.putFile(_selectedVideo!, metadata);
-
         videoTask.snapshotEvents.listen((TaskSnapshot snapshot) {
           double taskProgress = snapshot.bytesTransferred / snapshot.totalBytes;
           setState(() {
@@ -589,7 +665,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
           });
           if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
         });
-
         await videoTask;
         finalVideoUrl = await videoRef.getDownloadURL();
       }
@@ -601,7 +676,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
 
       Map<String, dynamic> productData = {
-        'sellerId': user!.uid,
+        'sellerId': user.uid,
         'name': _nameController.text.trim(),
         'type': _selectedType,
         'category': _selectedCategory,
@@ -621,21 +696,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
             .collection('products')
             .doc(widget.product!.id)
             .update(productData);
+
         Get.back();
-        Get.back();
-        Get.snackbar(
-          "สำเร็จ",
-          "แก้ไขสินค้าเรียบร้อยแล้ว",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
+
+        ProductModel updatedProduct = ProductModel.fromMap(
+          productData,
+          widget.product!.id,
+        );
+
+        AppDialog.showCustomDialog(
+          title: "แก้ไขสำเร็จ",
+          message: "ระบบได้ทำการอัปเดตข้อมูลสินค้าของคุณเรียบร้อยแล้ว",
+          icon: CupertinoIcons.check_mark_circled_solid,
+          iconColor: Colors.green,
+          confirmText: "ดูสินค้า",
+          showCancel: false,
+          onConfirm: () {
+            Get.back();
+            Get.back();
+            Get.off(() => ProductDetailScreen(product: updatedProduct));
+          },
         );
       } else {
         productData['createdAt'] = FieldValue.serverTimestamp();
         productData['status'] = 'active';
-        await FirebaseFirestore.instance
+        var docRef = await FirebaseFirestore.instance
             .collection('products')
             .add(productData);
+
         Get.back();
+
+        ProductModel newProduct = ProductModel.fromMap(productData, docRef.id);
 
         setState(() {
           _selectedImages.clear();
@@ -653,20 +744,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
           _selectedSize = null;
           _selectedCondition = null;
         });
-        Get.snackbar(
-          "สำเร็จ",
-          "ลงขายสินค้าเรียบร้อยแล้ว",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
+
+        AppDialog.showCustomDialog(
+          title: "ลงขายสำเร็จ!",
+          message: "สินค้าของคุณถูกนำขึ้นระบบและพร้อมจำหน่ายแล้ว",
+          icon: CupertinoIcons.checkmark_seal_fill,
+          iconColor: Colors.green,
+          confirmText: "ดูสินค้าที่ลงขาย",
+          cancelText: "ลงเพิ่มต่อ",
+          showCancel: true,
+          onConfirm: () {
+            Get.back();
+            Get.to(() => ProductDetailScreen(product: newProduct));
+          },
         );
       }
     } catch (e) {
       Get.back();
-      Get.snackbar(
-        "เกิดข้อผิดพลาด",
-        "การอัปโหลดล้มเหลว กรุณาลองใหม่: $e",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+      AppDialog.showCustomDialog(
+        title: "เกิดข้อผิดพลาด",
+        message:
+            "การอัปโหลดล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
+        icon: CupertinoIcons.wifi_exclamationmark,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -1153,7 +1255,15 @@ class _AddProductScreenState extends State<AddProductScreen> {
               _buildTextField(
                 label: "ชื่อสินค้า *",
                 controller: _nameController,
-                validator: (v) => v!.isEmpty ? "กรุณาระบุชื่อสินค้า" : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return "กรุณาระบุชื่อสินค้า";
+                  }
+                  if (v.trim().length < 5) {
+                    return "ชื่อสินค้าควรมีความยาวอย่างน้อย 5 ตัวอักษร";
+                  }
+                  return null;
+                },
               ),
               _buildTextField(
                 label: "รายละเอียดเพิ่มเติม",
@@ -1166,14 +1276,31 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 label: "ราคา (บาท) *",
                 controller: _priceController,
                 isNumber: true,
-                validator: (v) => v!.isEmpty ? "กรุณาระบุราคา" : null,
+                hint: "เช่น 150",
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "กรุณาระบุราคา";
+                  final price = double.tryParse(v.trim());
+                  if (price == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
+                  if (price <= 0) return "ราคาต้องมากกว่า 0 บาท";
+                  if (price > 100000) return "ราคาไม่ควรเกิน 100,000 บาท";
+                  return null;
+                },
               ),
               _buildTextField(
                 label: "น้ำหนักรวมกล่องพัสดุ (กรัม) *",
                 controller: _weightController,
                 isNumber: true,
                 hint: "เช่น เสื้อยืด=200, กางเกงยีนส์=500",
-                validator: (v) => v!.isEmpty ? "ระบุน้ำหนัก" : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return "กรุณาระบุน้ำหนัก";
+                  final double? weight = double.tryParse(v.trim());
+                  if (weight == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
+                  if (weight <= 0) return "น้ำหนักต้องมากกว่า 0 กรัม";
+                  if (weight > 20000) {
+                    return "น้ำหนักเกินกำหนด (สูงสุด 20,000 กรัม)";
+                  }
+                  return null;
+                },
               ),
 
               const SizedBox(height: 30),
@@ -1284,6 +1411,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       child: TextFormField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        inputFormatters: isNumber
+            ? [FilteringTextInputFormatter.digitsOnly]
+            : [],
         maxLines: maxLines,
         style: theme.textTheme.bodyLarge,
         decoration: InputDecoration(

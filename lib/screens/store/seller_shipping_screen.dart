@@ -313,14 +313,14 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                                       ],
                                     ),
                                   );
-                                }).toList(),
+                                }),
                               ],
                             ),
                           ),
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),

@@ -12,9 +12,8 @@ class AppDialog {
     required VoidCallback onConfirm,
     bool showCancel = false,
     String cancelText = "ยกเลิก",
-    bool isDestructive = false, // สำหรับปุ่มลบ (สีแดง)
+    bool isDestructive = false,
   }) {
-    // ดึง Theme จาก GetX context โดยตรง
     final context = Get.context!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;

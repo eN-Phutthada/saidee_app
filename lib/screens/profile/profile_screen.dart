@@ -7,6 +7,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/account_security_screen.dart';
+import 'package:saidee_app/screens/profile/user_guide_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
@@ -227,6 +228,13 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         child: Column(
                           children: [
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.book_solid,
+                              title: "คู่มือการใช้งาน",
+                              hasBorder: true,
+                              onTap: () => Get.to(() => UserGuideScreen()),
+                            ),
                             _buildMenuTile(
                               context,
                               icon: CupertinoIcons.chat_bubble_text,

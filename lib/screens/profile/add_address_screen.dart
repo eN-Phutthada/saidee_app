@@ -88,10 +88,12 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           final data = userDoc.data() as Map<String, dynamic>;
           if (!mounted) return;
           setState(() {
-            if (_nameController.text.isEmpty)
+            if (_nameController.text.isEmpty) {
               _nameController.text = data['name'] ?? '';
-            if (_phoneController.text.isEmpty)
+            }
+            if (_phoneController.text.isEmpty) {
               _phoneController.text = data['phone'] ?? '';
+            }
           });
         }
       } catch (e) {
