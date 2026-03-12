@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
@@ -560,7 +561,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         } else if (!isAvailable) {
           buttonText = displayProduct.status == 'sold'
               ? "ขายแล้ว"
-              : "ไม่พร้อมขาย";
+              : "ระงับการขาย";
         }
 
         List<Widget> mediaPages = [];
@@ -741,31 +742,58 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (!isAvailable)
                       Positioned.fill(
                         child: IgnorePointer(
-                          child: Container(
-                            color: Colors.black.withOpacity(0.5),
-                            child: Center(
+                          child: ClipRRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: 4.0,
+                                sigmaY: 4.0,
+                              ),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 30,
-                                  vertical: 15,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.7),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Text(
-                                  displayProduct.status == 'sold'
-                                      ? "ขายแล้ว"
-                                      : "ระงับการขาย",
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 2.0,
+                                color: Colors.black.withOpacity(0.4),
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 25,
+                                      vertical: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: displayProduct.status == 'sold'
+                                          ? Colors.redAccent.withOpacity(0.9)
+                                          : Colors.orange.withOpacity(0.9),
+                                      borderRadius: BorderRadius.circular(30),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 15,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          displayProduct.status == 'sold'
+                                              ? CupertinoIcons
+                                                    .bag_fill_badge_minus
+                                              : CupertinoIcons.nosign,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          displayProduct.status == 'sold'
+                                              ? "ขายแล้ว"
+                                              : "ระงับการขาย",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1191,14 +1219,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                             disabledBackgroundColor: isDark
                                 ? Colors.grey[800]
-                                : Colors.grey[400],
+                                : Colors.grey[300],
                           ),
                           child: Text(
                             buttonText,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: canAddToCart
+                                  ? Colors.white
+                                  : (isDark
+                                        ? Colors.grey[500]
+                                        : Colors.grey[600]),
                             ),
                           ),
                         ),
@@ -1366,14 +1398,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 ),
                 disabledBackgroundColor: isDark
                     ? Colors.grey[800]
-                    : Colors.grey[400],
+                    : Colors.grey[300],
               ),
               child: Text(
                 buttonText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  color: Colors.white,
+                  color: canAddToCart
+                      ? Colors.white
+                      : (isDark ? Colors.grey[500] : Colors.grey[600]),
                 ),
               ),
             ),

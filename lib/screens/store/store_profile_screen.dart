@@ -9,6 +9,8 @@ import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
 import 'package:saidee_app/screens/store/seller_shipping_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/screens/auth/login_screen.dart';
 import '../../models/product_model.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 
@@ -28,12 +30,15 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   bool _isSellerBanned = false;
   bool _isLoadingSeller = true;
 
-  String _filterStatus = 'all';
+  String _filterStatus = 'active';
   String _sortBy = 'newest';
 
   @override
   void initState() {
     super.initState();
+    if (isOwner) {
+      _filterStatus = 'all';
+    }
     _checkSellerStatus();
   }
 
@@ -46,15 +51,15 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       if (sellerDoc.exists) {
         String status = sellerDoc.data()?['status'] ?? 'active';
         if (status == 'banned' || status == 'suspended') {
-          setState(() => _isSellerBanned = true);
+          if (mounted) setState(() => _isSellerBanned = true);
         }
       } else {
-        setState(() => _isSellerBanned = true);
+        if (mounted) setState(() => _isSellerBanned = true);
       }
     } catch (e) {
       debugPrint("Error checking seller status: $e");
     } finally {
-      setState(() => _isLoadingSeller = false);
+      if (mounted) setState(() => _isLoadingSeller = false);
     }
   }
 
@@ -76,7 +81,67 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       await Share.share(shareText);
     } catch (e) {
       debugPrint("Error sharing store: $e");
-      Get.snackbar("เกิดข้อผิดพลาด", "ไม่สามารถแชร์ร้านค้าได้ในขณะนี้");
+      Get.snackbar(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถแชร์ร้านค้าได้ในขณะนี้",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Future<void> _startChat() async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      AppDialog.showCustomDialog(
+        title: "กรุณาเข้าสู่ระบบ",
+        message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถแชทกับร้านค้าได้",
+        icon: CupertinoIcons.person_crop_circle_badge_exclam,
+        iconColor: Colors.orange,
+        confirmText: "เข้าสู่ระบบ",
+        cancelText: "ยกเลิก",
+        showCancel: true,
+        onConfirm: () {
+          Get.back();
+          Get.to(() => const LoginScreen());
+        },
+      );
+      return;
+    }
+
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      var sellerDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.sellerId)
+          .get();
+
+      String sName = "ร้านค้า";
+      String sImg = "";
+      if (sellerDoc.exists) {
+        sName = sellerDoc.data()?['name'] ?? "ร้านค้า";
+        sImg = sellerDoc.data()?['profileImage'] ?? "";
+      }
+
+      Get.back();
+      Get.to(
+        () => ChatScreen(
+          targetUserId: widget.sellerId,
+          targetUserName: sName,
+          targetUserImage: sImg,
+        ),
+      );
+    } catch (e) {
+      Get.back();
+      Get.snackbar(
+        "แจ้งเตือน",
+        "ไม่สามารถเปิดห้องแชทได้ในขณะนี้",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -131,10 +196,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "ตั้งค่าการแสดงผล",
-                        style: TextStyle(
-                          fontSize: 22,
+                      Text(
+                        isOwner ? "ตั้งค่าการแสดงผล" : "ตัวกรองและจัดเรียง",
+                        style: const TextStyle(
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -297,7 +362,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         shadowColor: AppTheme.primaryColor.withOpacity(0.4),
                       ),
                       child: const Text(
-                        "แสดงผล",
+                        "ใช้ตัวกรอง",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -394,13 +459,13 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             onPressed: () => Get.back(),
           ),
           title: Text(
-            isOwner ? "การขาย" : "ร้านค้า",
+            isOwner ? "การขาย" : "หน้าร้านค้า",
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           actions: [
-            if (!_isSellerBanned)
+            if (isOwner && !_isSellerBanned)
               IconButton(
                 icon: Icon(
                   CupertinoIcons.share,
@@ -408,7 +473,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 ),
                 onPressed: _shareStore,
               ),
-            if (isOwner && !_isSellerBanned)
+            if (!_isSellerBanned)
               IconButton(
                 icon: Icon(
                   CupertinoIcons.slider_horizontal_3,
@@ -504,6 +569,18 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .doc(widget.sellerId)
           .get(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Center(
+              child: Text(
+                "ไม่สามารถโหลดข้อมูลร้านค้าได้",
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          );
+        }
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Padding(
             padding: EdgeInsets.all(20.0),
@@ -541,126 +618,179 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 35,
-                backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                backgroundImage: (profileImage.isNotEmpty && !_isSellerBanned)
-                    ? NetworkImage(profileImage)
-                    : null,
-                child: (profileImage.isEmpty || _isSellerBanned)
-                    ? Icon(
-                        _isSellerBanned ? CupertinoIcons.nosign : Icons.person,
-                        size: 35,
-                        color: _isSellerBanned ? Colors.red : Colors.grey,
-                      )
-                    : null,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 35,
+                    backgroundColor: isDark
+                        ? Colors.grey[800]
+                        : Colors.grey[200],
+                    backgroundImage:
+                        (profileImage.isNotEmpty && !_isSellerBanned)
+                        ? NetworkImage(profileImage)
+                        : null,
+                    child: (profileImage.isEmpty || _isSellerBanned)
+                        ? Icon(
+                            _isSellerBanned
+                                ? CupertinoIcons.nosign
+                                : Icons.storefront,
+                            size: 30,
+                            color: _isSellerBanned ? Colors.red : Colors.grey,
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: _isSellerBanned ? Colors.red : null,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          bio,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: _isSellerBanned ? Colors.red : null,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      bio,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ),
 
-                    if (!_isSellerBanned) ...[
-                      const SizedBox(height: 8),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('reviews')
-                            .where('sellerId', isEqualTo: widget.sellerId)
-                            .snapshots(),
-                        builder: (context, reviewSnap) {
-                          double avgRating = 5.0;
-                          int reviewCount = 0;
+              if (!_isSellerBanned) ...[
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('reviews')
+                              .where('sellerId', isEqualTo: widget.sellerId)
+                              .snapshots(),
+                          builder: (context, reviewSnap) {
+                            double avgRating = 0.0;
+                            int reviewCount = 0;
 
-                          if (reviewSnap.hasData &&
-                              reviewSnap.data!.docs.isNotEmpty) {
-                            reviewCount = reviewSnap.data!.docs.length;
-                            double totalRating = 0;
-                            for (var doc in reviewSnap.data!.docs) {
-                              totalRating +=
-                                  (doc.data()
-                                      as Map<String, dynamic>)['rating'] ??
-                                  5.0;
+                            if (reviewSnap.hasData &&
+                                reviewSnap.data!.docs.isNotEmpty) {
+                              reviewCount = reviewSnap.data!.docs.length;
+                              double totalRating = 0;
+                              for (var doc in reviewSnap.data!.docs) {
+                                totalRating +=
+                                    (doc.data()
+                                        as Map<String, dynamic>)['rating'] ??
+                                    5.0;
+                              }
+                              avgRating = totalRating / reviewCount;
                             }
-                            avgRating = totalRating / reviewCount;
-                          }
 
-                          return Row(
-                            children: [
-                              Icon(
-                                Icons.star,
-                                size: 16,
-                                color: Colors.amber[600],
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                reviewCount > 0
-                                    ? "${avgRating.toStringAsFixed(1)} / 5 ($reviewCount รีวิว)"
-                                    : "ยังไม่มีคะแนนรีวิว",
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[700],
-                                  fontWeight: FontWeight.bold,
+                            return Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.star_rounded,
+                                      size: 20,
+                                      color: Colors.amber[600],
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      reviewCount > 0
+                                          ? "${avgRating.toStringAsFixed(1)} / 5.0"
+                                          : "-",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                                const SizedBox(height: 4),
+                                Text(
+                                  "$reviewCount รีวิว",
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
 
-                      const SizedBox(height: 6),
+                      Container(height: 30, width: 1, color: Colors.grey[300]),
 
-                      StreamBuilder<QuerySnapshot>(
-                        stream: FirebaseFirestore.instance
-                            .collection('products')
-                            .where('sellerId', isEqualTo: widget.sellerId)
-                            .snapshots(),
-                        builder: (context, prodSnapshot) {
-                          int count = prodSnapshot.hasData
-                              ? prodSnapshot.data!.docs.length
-                              : 0;
-                          return Row(
-                            children: [
-                              const Icon(
-                                CupertinoIcons.cube_box,
-                                size: 14,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                "สินค้าทั้งหมด $count รายการ",
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isDark
-                                      ? Colors.grey[400]
-                                      : Colors.grey[700],
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance
+                              .collection('products')
+                              .where('sellerId', isEqualTo: widget.sellerId)
+                              .where('status', isEqualTo: 'active')
+                              .snapshots(),
+                          builder: (context, prodSnapshot) {
+                            int count = prodSnapshot.hasData
+                                ? prodSnapshot.data!.docs.length
+                                : 0;
+
+                            return Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.cube_box_fill,
+                                      size: 18,
+                                      color: AppTheme.primaryColor.withOpacity(
+                                        0.8,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      count.toString(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                                const SizedBox(height: 4),
+                                Text(
+                                  "สินค้าที่ลงขาย",
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         );
@@ -672,36 +802,55 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     if (!isOwner) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: SizedBox(
-          width: double.infinity,
-          child: _buildButtonContainer(
-            "แชทกับร้านค้า",
-            CupertinoIcons.chat_bubble_2,
-            theme,
-            isDark,
-            () async {
-              var sellerDoc = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(widget.sellerId)
-                  .get();
-              String sName = "ร้านค้า";
-              String sImg = "";
-              if (sellerDoc.exists) {
-                sName = sellerDoc.data()?['name'] ?? "ร้านค้า";
-                sImg = sellerDoc.data()?['profileImage'] ?? "";
-              }
-              Get.to(
-                () => ChatScreen(
-                  targetUserId: widget.sellerId,
-                  targetUserName: sName,
-                  targetUserImage: sImg,
+        child: Row(
+          children: [
+            Expanded(
+              flex: 5,
+              child: ElevatedButton.icon(
+                onPressed: _startChat,
+                icon: const Icon(
+                  CupertinoIcons.chat_bubble_text_fill,
+                  size: 20,
                 ),
-              );
-            },
-          ),
+                label: const Text(
+                  "พูดคุยกับร้านค้า",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: OutlinedButton.icon(
+                onPressed: _shareStore,
+                icon: const Icon(CupertinoIcons.share, size: 18),
+                label: const Text("แชร์"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.onSurface,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(
+                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -752,10 +901,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               offset: const Offset(0, 4),
             ),
             if (!isDark)
-              BoxShadow(
+              const BoxShadow(
                 color: Colors.white,
                 blurRadius: 10,
-                offset: const Offset(-2, -2),
+                offset: Offset(-2, -2),
               ),
           ],
         ),
@@ -797,6 +946,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .where('sellerId', isEqualTo: widget.sellerId)
           .snapshots(),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              "เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า",
+              style: TextStyle(color: Colors.red),
+            ),
+          );
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -909,18 +1066,28 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                           if (isSold)
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.6),
+                                color: Colors.white.withOpacity(0.7),
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(15),
                                 ),
                               ),
-                              child: const Center(
-                                child: Text(
-                                  "ขายแล้ว",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    "ขายแล้ว",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -948,7 +1115,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                             "${product.price.toStringAsFixed(0)} ฿",
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w900,
-                              color: AppTheme.primaryColor,
+                              color: isSold
+                                  ? Colors.grey
+                                  : AppTheme.primaryColor,
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -1007,8 +1176,18 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .where('sellerId', isEqualTo: widget.sellerId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.hasError) {
+          return const Center(
+            child: Text(
+              "เกิดข้อผิดพลาดในการโหลดรีวิว",
+              style: TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
+        }
+
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return Center(
             child: Column(
@@ -1021,7 +1200,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  "ยังไม่มีรีวิว",
+                  "ร้านค้านี้ยังไม่มีรีวิว",
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.grey,
                   ),
@@ -1115,8 +1294,8 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                               5,
                               (starIndex) => Icon(
                                 starIndex < rating
-                                    ? Icons.star
-                                    : Icons.star_border,
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
                                 color: Colors.amber,
                                 size: 16,
                               ),
@@ -1134,86 +1313,135 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  if (orderId.isNotEmpty)
+                  if (orderId.isNotEmpty) ...[
+                    const SizedBox(height: 12),
                     FutureBuilder<DocumentSnapshot>(
                       future: FirebaseFirestore.instance
                           .collection('orders')
                           .doc(orderId)
                           .get(),
                       builder: (context, orderSnap) {
-                        if (!orderSnap.hasData || !orderSnap.data!.exists)
+                        if (!orderSnap.hasData || !orderSnap.data!.exists) {
                           return const SizedBox();
+                        }
                         var oData =
                             orderSnap.data!.data() as Map<String, dynamic>;
                         List items = oData['items'] ?? [];
                         if (items.isEmpty) return const SizedBox();
                         var firstItem = items.first;
+                        String productId = firstItem['productId'] ?? '';
 
-                        return Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isDark ? Colors.grey[800] : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(5),
-                                  image:
-                                      (firstItem['image'] != null &&
-                                          firstItem['image'] != '')
-                                      ? DecorationImage(
-                                          image: NetworkImage(
-                                            firstItem['image'],
-                                          ),
-                                          fit: BoxFit.cover,
+                        return GestureDetector(
+                          onTap: () async {
+                            if (productId.isEmpty) return;
+                            Get.dialog(
+                              const Center(child: CircularProgressIndicator()),
+                              barrierDismissible: false,
+                            );
+                            try {
+                              var prodDoc = await FirebaseFirestore.instance
+                                  .collection('products')
+                                  .doc(productId)
+                                  .get();
+                              Get.back();
+                              if (prodDoc.exists) {
+                                ProductModel product = ProductModel.fromMap(
+                                  prodDoc.data() as Map<String, dynamic>,
+                                  prodDoc.id,
+                                );
+                                Get.to(
+                                  () => ProductDetailScreen(product: product),
+                                );
+                              } else {
+                                Get.snackbar(
+                                  "ขออภัย",
+                                  "สินค้านี้อาจถูกลบไปแล้ว",
+                                );
+                              }
+                            } catch (e) {
+                              Get.back();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey[800]
+                                  : Colors.grey[100],
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isDark
+                                    ? Colors.grey[700]!
+                                    : Colors.grey[200]!,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 45,
+                                  height: 45,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                    image:
+                                        (firstItem['image'] != null &&
+                                            firstItem['image'] != '')
+                                        ? DecorationImage(
+                                            image: NetworkImage(
+                                              firstItem['image'],
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  child:
+                                      (firstItem['image'] == null ||
+                                          firstItem['image'] == '')
+                                      ? const Icon(
+                                          Icons.image,
+                                          size: 20,
+                                          color: Colors.grey,
                                         )
                                       : null,
                                 ),
-                                child:
-                                    (firstItem['image'] == null ||
-                                        firstItem['image'] == '')
-                                    ? const Icon(
-                                        Icons.image,
-                                        size: 20,
-                                        color: Colors.grey,
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      firstItem['name'] ?? 'ไม่มีชื่อสินค้า',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        firstItem['name'] ?? 'ไม่มีชื่อสินค้า',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      "ตัวเลือก: ${firstItem['size'] ?? '-'}",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.grey[500],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        "ตัวเลือก: ${firstItem['size'] ?? '-'}${items.length > 1 ? ' (+อีก ${items.length - 1} ชิ้น)' : ''}",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[500],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 12,
+                                  color: Colors.grey[400],
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       },
                     ),
+                  ],
                 ],
               ),
             );

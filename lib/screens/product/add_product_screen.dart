@@ -89,12 +89,38 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   bool get _isEditing => widget.product != null;
 
+  bool _isFormValid() {
+    int totalImages = _existingImages.length + _selectedImages.length;
+    bool hasVideo =
+        _selectedVideo != null ||
+        (_existingVideoUrl != null && _existingVideoUrl!.isNotEmpty);
+
+    bool hasTextInputs =
+        _nameController.text.trim().isNotEmpty &&
+        _priceController.text.trim().isNotEmpty &&
+        _weightController.text.trim().isNotEmpty;
+
+    bool hasDropdowns =
+        _selectedType != null &&
+        _selectedCategory != null &&
+        _selectedSize != null &&
+        _selectedCondition != null;
+
+    bool hasMedia = (totalImages >= 3 && totalImages <= 5) && hasVideo;
+
+    return hasTextInputs && hasDropdowns && hasMedia && !_isLoading;
+  }
+
   @override
   void initState() {
     super.initState();
     if (_isEditing) {
       _loadExistingData();
     }
+
+    _nameController.addListener(() => setState(() {}));
+    _priceController.addListener(() => setState(() {}));
+    _weightController.addListener(() => setState(() {}));
   }
 
   void _loadExistingData() {
@@ -519,64 +545,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
       }
       return false;
     } catch (e) {
-      debugPrint("Error checking shipping: $e");
       return false;
     }
   }
 
   Future<void> _uploadAndSave() async {
-    if (!_formKey.currentState!.validate()) {
-      AppDialog.showCustomDialog(
-        title: "ข้อมูลไม่ถูกต้อง",
-        message: "กรุณาตรวจสอบและกรอกข้อมูลบังคับ (*) ให้ครบถ้วน",
-        icon: CupertinoIcons.doc_text_search,
-        iconColor: Colors.orange,
-        confirmText: "ตกลง",
-        onConfirm: () => Get.back(),
-      );
-      return;
-    }
-
-    if (_selectedType == null ||
-        _selectedCategory == null ||
-        _selectedSize == null ||
-        _selectedCondition == null) {
-      AppDialog.showCustomDialog(
-        title: "ข้อมูลไม่ครบถ้วน",
-        message: "กรุณาเลือก ประเภท, หมวดหมู่, ไซส์ และสภาพสินค้า ให้ครบถ้วน",
-        icon: CupertinoIcons.square_list,
-        iconColor: Colors.orange,
-        confirmText: "ตกลง",
-        onConfirm: () => Get.back(),
-      );
-      return;
-    }
-
-    int totalImages = _existingImages.length + _selectedImages.length;
-    if (totalImages < 3 || totalImages > 5) {
-      AppDialog.showCustomDialog(
-        title: "จำนวนรูปภาพไม่ถูกต้อง",
-        message: "กรุณาอัปโหลดรูปภาพสินค้าระหว่าง 3 ถึง 5 รูป",
-        icon: CupertinoIcons.photo_on_rectangle,
-        iconColor: Colors.orange,
-        confirmText: "ตกลง",
-        onConfirm: () => Get.back(),
-      );
-      return;
-    }
-
-    if (_selectedVideo == null &&
-        (_existingVideoUrl == null || _existingVideoUrl!.isEmpty)) {
-      AppDialog.showCustomDialog(
-        title: "ขาดวิดีโอสินค้า",
-        message: "กรุณาอัปโหลดวิดีโอแสดงสินค้า (ความยาวไม่เกิน 15 วินาที)",
-        icon: CupertinoIcons.video_camera,
-        iconColor: Colors.orange,
-        confirmText: "ตกลง",
-        onConfirm: () => Get.back(),
-      );
-      return;
-    }
+    if (!_isFormValid()) return;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -630,7 +604,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         Reference ref = FirebaseStorage.instance.ref().child(
           'products/images/$fileName',
         );
-
         UploadTask uploadTask = ref.putFile(_selectedImages[i]);
 
         uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
@@ -696,14 +669,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
             .collection('products')
             .doc(widget.product!.id)
             .update(productData);
-
         Get.back();
-
         ProductModel updatedProduct = ProductModel.fromMap(
           productData,
           widget.product!.id,
         );
-
         AppDialog.showCustomDialog(
           title: "แก้ไขสำเร็จ",
           message: "ระบบได้ทำการอัปเดตข้อมูลสินค้าของคุณเรียบร้อยแล้ว",
@@ -723,9 +693,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         var docRef = await FirebaseFirestore.instance
             .collection('products')
             .add(productData);
-
         Get.back();
-
         ProductModel newProduct = ProductModel.fromMap(productData, docRef.id);
 
         setState(() {
@@ -808,18 +776,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       .orderBy('name')
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
+                    if (!snapshot.hasData)
                       return const Center(child: CircularProgressIndicator());
-                    }
                     final docs = snapshot.data!.docs;
-                    if (docs.isEmpty) {
+                    if (docs.isEmpty)
                       return Center(
                         child: Text(
                           "ไม่พบข้อมูล",
                           style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                       );
-                    }
 
                     return ListView.separated(
                       itemCount: docs.length,
@@ -993,6 +959,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     if (user == null) return const GuestView();
+
+    bool isFormComplete = _isFormValid();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -1269,8 +1237,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 label: "รายละเอียดเพิ่มเติม",
                 controller: _descController,
                 maxLines: 4,
-                hint:
-                    "อธิบายจุดเด่นหรือตำหนิของสินค้าให้ชัดเจน (เช่น รอบอก ความยาว)",
+                hint: "อธิบายจุดเด่นหรือตำหนิของสินค้าให้ชัดเจน",
               ),
               _buildTextField(
                 label: "ราคา (บาท) *",
@@ -1304,13 +1271,19 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
 
               const SizedBox(height: 30),
+
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _uploadAndSave,
+                  onPressed: isFormComplete ? _uploadAndSave : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: isFormComplete
+                        ? AppTheme.primaryColor
+                        : Colors.grey[400],
+                    disabledBackgroundColor: isDark
+                        ? Colors.grey[800]
+                        : Colors.grey[300],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1326,14 +1299,28 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         )
                       : Text(
                           _isEditing ? "บันทึกการแก้ไข" : "ลงขายทันที",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: isFormComplete
+                                ? Colors.white
+                                : Colors.grey[500],
                           ),
                         ),
                 ),
               ),
+
+              if (!isFormComplete)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Center(
+                    child: Text(
+                      "กรุณากรอกข้อมูลบังคับ (*) ให้ครบถ้วนเพื่อลงขาย",
+                      style: TextStyle(color: Colors.red[400], fontSize: 12),
+                    ),
+                  ),
+                ),
+
               const SizedBox(height: 30),
             ],
           ),
