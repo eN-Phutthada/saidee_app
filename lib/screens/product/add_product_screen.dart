@@ -87,6 +87,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
   double _uploadProgress = 0.0;
   String _uploadStatusText = "เตรียมพร้อมอัปโหลด...";
 
+  bool _isProgressDialogOpen = false;
+
   bool get _isEditing => widget.product != null;
 
   bool _isFormValid() {
@@ -458,6 +460,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   void _showProgressDialog() {
+    _isProgressDialogOpen = true;
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -527,7 +530,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ),
       ),
       barrierDismissible: false,
-    );
+    ).then((_) {
+      _isProgressDialogOpen = false;
+    });
   }
 
   Future<bool> _checkShippingIsSet(String uid) async {
@@ -597,7 +602,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           () => _uploadStatusText =
               "อัปโหลดรูปภาพที่ ${i + 1}/${_selectedImages.length}",
         );
-        if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
+        if (_isProgressDialogOpen) Get.forceAppUpdate();
 
         String fileName =
             'img_${DateTime.now().millisecondsSinceEpoch}_${_selectedImages[i].path.split('/').last}';
@@ -613,7 +618,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 (completedFiles + taskProgress) /
                 (totalFiles == 0 ? 1 : totalFiles);
           });
-          if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
+          if (_isProgressDialogOpen) Get.forceAppUpdate();
         });
 
         await uploadTask;
@@ -624,20 +629,23 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       if (_selectedVideo != null) {
         setState(() => _uploadStatusText = "กำลังอัปโหลดวิดีโอ...");
-        if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
+        if (_isProgressDialogOpen) Get.forceAppUpdate();
+
         SettableMetadata metadata = SettableMetadata(contentType: 'video/mp4');
         String videoName = 'vid_${DateTime.now().millisecondsSinceEpoch}.mp4';
         Reference videoRef = FirebaseStorage.instance.ref().child(
           'products/videos/$videoName',
         );
         UploadTask videoTask = videoRef.putFile(_selectedVideo!, metadata);
+
         videoTask.snapshotEvents.listen((TaskSnapshot snapshot) {
           double taskProgress = snapshot.bytesTransferred / snapshot.totalBytes;
           setState(() {
             _uploadProgress = (completedFiles + taskProgress) / totalFiles;
           });
-          if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
+          if (_isProgressDialogOpen) Get.forceAppUpdate();
         });
+
         await videoTask;
         finalVideoUrl = await videoRef.getDownloadURL();
       }
@@ -646,7 +654,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         _uploadStatusText = "กำลังบันทึกข้อมูล...";
         _uploadProgress = 1.0;
       });
-      if (Get.isDialogOpen ?? false) Get.forceAppUpdate();
+      if (_isProgressDialogOpen) Get.forceAppUpdate();
 
       Map<String, dynamic> productData = {
         'sellerId': user.uid,
@@ -669,11 +677,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
             .collection('products')
             .doc(widget.product!.id)
             .update(productData);
-        Get.back();
+
+        if (_isProgressDialogOpen) {
+          Get.back();
+          _isProgressDialogOpen = false;
+        }
+
+        productData['updatedAt'] = Timestamp.now();
+        productData['createdAt'] = widget.product!.createdAt;
+
         ProductModel updatedProduct = ProductModel.fromMap(
           productData,
           widget.product!.id,
         );
+
         AppDialog.showCustomDialog(
           title: "แก้ไขสำเร็จ",
           message: "ระบบได้ทำการอัปเดตข้อมูลสินค้าของคุณเรียบร้อยแล้ว",
@@ -693,7 +710,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
         var docRef = await FirebaseFirestore.instance
             .collection('products')
             .add(productData);
-        Get.back();
+
+        if (_isProgressDialogOpen) {
+          Get.back();
+          _isProgressDialogOpen = false;
+        }
+
+        productData['createdAt'] = Timestamp.now();
+
         ProductModel newProduct = ProductModel.fromMap(productData, docRef.id);
 
         setState(() {
@@ -728,11 +752,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
         );
       }
     } catch (e) {
-      Get.back();
+      debugPrint("Upload Error: $e");
+      if (_isProgressDialogOpen) {
+        Get.back();
+        _isProgressDialogOpen = false;
+      }
+
       AppDialog.showCustomDialog(
         title: "เกิดข้อผิดพลาด",
         message:
-            "การอัปโหลดล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
+            "การอัปโหลดล้มเหลว กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง ($e)",
         icon: CupertinoIcons.wifi_exclamationmark,
         iconColor: Colors.red,
         confirmText: "ตกลง",
@@ -776,16 +805,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       .orderBy('name')
                       .snapshots(),
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData)
+                    if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
                     final docs = snapshot.data!.docs;
-                    if (docs.isEmpty)
+                    if (docs.isEmpty) {
                       return Center(
                         child: Text(
                           "ไม่พบข้อมูล",
                           style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
                       );
+                    }
 
                     return ListView.separated(
                       itemCount: docs.length,

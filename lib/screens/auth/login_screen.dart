@@ -735,70 +735,70 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 40),
 
                         // --- DEBUG SECTION ---
-                        const Divider(),
-                        const Text(
-                          "DEBUG MODE (Login ด่วน)",
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          alignment: WrapAlignment.center,
-                          children: [
-                            _buildDebugBtn(
-                              "Admin",
-                              CupertinoIcons.at_badge_minus,
-                              Colors.black87,
-                              () {
-                                _emailController.text = "admin@saidee.com";
-                                _passwordController.text = "password1234";
-                                _login();
-                              },
-                            ),
-                            _buildDebugBtn(
-                              "User 1",
-                              CupertinoIcons.person,
-                              Colors.blueGrey,
-                              () {
-                                _emailController.text = "saidee@gmail.com";
-                                _passwordController.text = "123456";
-                                _login();
-                              },
-                            ),
-                            _buildDebugBtn(
-                              "User 2",
-                              CupertinoIcons.person,
-                              Colors.blueGrey,
-                              () {
-                                _emailController.text = "saidee2@gmail.com";
-                                _passwordController.text = "12345678";
-                                _login();
-                              },
-                            ),
-                            _buildDebugBtn(
-                              "User 3",
-                              CupertinoIcons.person,
-                              Colors.blueGrey,
-                              () {
-                                _emailController.text = "test02@gmail.com";
-                                _passwordController.text = "123456";
-                                _login();
-                              },
-                            ),
-                            _buildDebugBtn(
-                              "User 4",
-                              CupertinoIcons.person,
-                              Colors.blueGrey,
-                              () {
-                                _emailController.text = "test03@gmail.com";
-                                _passwordController.text = "123456";
-                                _login();
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
+                        // const Divider(),
+                        // const Text(
+                        //   "DEBUG MODE (Login ด่วน)",
+                        //   style: TextStyle(color: Colors.grey, fontSize: 12),
+                        // ),
+                        // const SizedBox(height: 10),
+                        // Wrap(
+                        //   spacing: 10,
+                        //   runSpacing: 10,
+                        //   alignment: WrapAlignment.center,
+                        //   children: [
+                        //     _buildDebugBtn(
+                        //       "Admin",
+                        //       CupertinoIcons.at_badge_minus,
+                        //       Colors.black87,
+                        //       () {
+                        //         _emailController.text = "admin@saidee.com";
+                        //         _passwordController.text = "password1234";
+                        //         _login();
+                        //       },
+                        //     ),
+                        //     _buildDebugBtn(
+                        //       "User 1",
+                        //       CupertinoIcons.person,
+                        //       Colors.blueGrey,
+                        //       () {
+                        //         _emailController.text = "saidee@gmail.com";
+                        //         _passwordController.text = "123456";
+                        //         _login();
+                        //       },
+                        //     ),
+                        //     _buildDebugBtn(
+                        //       "User 2",
+                        //       CupertinoIcons.person,
+                        //       Colors.blueGrey,
+                        //       () {
+                        //         _emailController.text = "saidee2@gmail.com";
+                        //         _passwordController.text = "12345678";
+                        //         _login();
+                        //       },
+                        //     ),
+                        //     _buildDebugBtn(
+                        //       "User 3",
+                        //       CupertinoIcons.person,
+                        //       Colors.blueGrey,
+                        //       () {
+                        //         _emailController.text = "test02@gmail.com";
+                        //         _passwordController.text = "123456";
+                        //         _login();
+                        //       },
+                        //     ),
+                        //     _buildDebugBtn(
+                        //       "User 4",
+                        //       CupertinoIcons.person,
+                        //       Colors.blueGrey,
+                        //       () {
+                        //         _emailController.text = "test03@gmail.com";
+                        //         _passwordController.text = "123456";
+                        //         _login();
+                        //       },
+                        //     ),
+                        //   ],
+                        // ),
+                        // const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -882,22 +882,22 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDebugBtn(
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
+  // Widget _buildDebugBtn(
+  //   String label,
+  //   IconData icon,
+  //   Color color,
+  //   VoidCallback onTap,
+  // ) {
+  //   return ElevatedButton.icon(
+  //     onPressed: onTap,
+  //     icon: Icon(icon, size: 16),
+  //     label: Text(label),
+  //     style: ElevatedButton.styleFrom(
+  //       backgroundColor: color,
+  //       foregroundColor: Colors.white,
+  //       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  //     ),
+  //   );
+  // }
 }
