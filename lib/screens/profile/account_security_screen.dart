@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/profile/login_history_screen.dart';
-import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class AccountSecurityScreen extends StatefulWidget {
   final String email;
@@ -52,10 +51,14 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   _buildMenuTile(
                     icon: CupertinoIcons.envelope,
                     title: "ยืนยันตัวตนด้วยอีเมล",
-                    subtitle: (FirebaseAuth.instance.currentUser?.emailVerified ?? false)
+                    subtitle:
+                        (FirebaseAuth.instance.currentUser?.emailVerified ??
+                            false)
                         ? "ยืนยันอีเมลแล้ว"
                         : "แตะเพื่อส่งอีเมลยืนยัน",
-                    iconColor: (FirebaseAuth.instance.currentUser?.emailVerified ?? false)
+                    iconColor:
+                        (FirebaseAuth.instance.currentUser?.emailVerified ??
+                            false)
                         ? Colors.green
                         : Colors.orange,
                     hasBorder: true,
@@ -111,9 +114,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     if (user.emailVerified) {
       setState(() {});
       _showCustomSnackbar(
-        "ยืนยันแล้ว", 
-        "อีเมลนี้ได้รับการยืนยันเรียบร้อยแล้ว", 
-        CupertinoIcons.check_mark_circled_solid, 
+        "ยืนยันแล้ว",
+        "อีเมลนี้ได้รับการยืนยันเรียบร้อยแล้ว",
+        CupertinoIcons.check_mark_circled_solid,
         Colors.green,
       );
       return;
@@ -122,16 +125,16 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     try {
       await user.sendEmailVerification();
       _showCustomSnackbar(
-        "สำเร็จ", 
-        "ส่งอีเมลยืนยันตัวตนไปที่ ${user.email} แล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ", 
-        CupertinoIcons.envelope_fill, 
+        "สำเร็จ",
+        "ส่งอีเมลยืนยันตัวตนไปที่ ${user.email} แล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ",
+        CupertinoIcons.envelope_fill,
         AppTheme.primaryColor,
       );
     } catch (e) {
       _showCustomSnackbar(
-        "ข้อผิดพลาด", 
-        "ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่ในภายหลัง", 
-        CupertinoIcons.xmark_circle_fill, 
+        "ข้อผิดพลาด",
+        "ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่ในภายหลัง",
+        CupertinoIcons.xmark_circle_fill,
         Colors.red,
       );
     }
@@ -147,10 +150,11 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       StatefulBuilder(
         builder: (context, setStateDialog) {
           final theme = Theme.of(context);
-          final isDark = theme.brightness == Brightness.dark;
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             backgroundColor: theme.scaffoldBackgroundColor,
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -159,11 +163,18 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(CupertinoIcons.lock_shield_fill, color: Colors.orange, size: 50),
+                    const Icon(
+                      CupertinoIcons.lock_shield_fill,
+                      color: Colors.orange,
+                      size: 50,
+                    ),
                     const SizedBox(height: 15),
                     const Text(
                       "เปลี่ยนรหัสผ่าน",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     TextFormField(
@@ -172,9 +183,13 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       decoration: InputDecoration(
                         labelText: "รหัสผ่านเดิม",
                         prefixIcon: const Icon(CupertinoIcons.lock),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      validator: (value) => value == null || value.isEmpty ? 'กรุณากรอกรหัสผ่านเดิม' : null,
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'กรุณากรอกรหัสผ่านเดิม'
+                          : null,
                     ),
                     const SizedBox(height: 15),
                     TextFormField(
@@ -183,11 +198,17 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       decoration: InputDecoration(
                         labelText: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
                         prefixIcon: const Icon(CupertinoIcons.lock_rotation),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       validator: (value) {
-                        if (value == null || value.isEmpty) return 'กรุณากรอกรหัสผ่านใหม่';
-                        if (value.length < 6) return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                        if (value == null || value.isEmpty) {
+                          return 'กรุณากรอกรหัสผ่านใหม่';
+                        }
+                        if (value.length < 6) {
+                          return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                        }
                         return null;
                       },
                     ),
@@ -199,7 +220,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             onPressed: isLoading ? null : () => Get.back(),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text("ยกเลิก"),
                           ),
@@ -213,20 +236,29 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                     if (formKey.currentState!.validate()) {
                                       setStateDialog(() => isLoading = true);
                                       try {
-                                        final user = FirebaseAuth.instance.currentUser;
+                                        final user =
+                                            FirebaseAuth.instance.currentUser;
                                         if (user != null) {
-                                          final cred = EmailAuthProvider.credential(
-                                            email: user.email!,
-                                            password: oldPasswordController.text,
+                                          final cred =
+                                              EmailAuthProvider.credential(
+                                                email: user.email!,
+                                                password:
+                                                    oldPasswordController.text,
+                                              );
+                                          await user
+                                              .reauthenticateWithCredential(
+                                                cred,
+                                              );
+                                          await user.updatePassword(
+                                            newPasswordController.text,
                                           );
-                                          await user.reauthenticateWithCredential(cred);
-                                          await user.updatePassword(newPasswordController.text);
 
                                           Get.back();
                                           _showCustomSnackbar(
                                             "สำเร็จ",
                                             "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว",
-                                            CupertinoIcons.check_mark_circled_solid,
+                                            CupertinoIcons
+                                                .check_mark_circled_solid,
                                             AppTheme.primaryColor,
                                           );
                                         }
@@ -234,7 +266,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                                         setStateDialog(() => isLoading = false);
                                         _showCustomSnackbar(
                                           "ข้อผิดพลาด",
-                                          e.code == 'wrong-password' ? 'รหัสผ่านเดิมไม่ถูกต้อง' : (e.message ?? 'เปลี่ยนรหัสผ่านไม่สำเร็จ'),
+                                          e.code == 'wrong-password'
+                                              ? 'รหัสผ่านเดิมไม่ถูกต้อง'
+                                              : (e.message ??
+                                                    'เปลี่ยนรหัสผ่านไม่สำเร็จ'),
                                           CupertinoIcons.xmark_circle_fill,
                                           Colors.red,
                                         );
@@ -247,11 +282,25 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               backgroundColor: AppTheme.primaryColor,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: isLoading
-                                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text("บันทึก", style: TextStyle(fontWeight: FontWeight.bold)),
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    "บันทึก",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -277,14 +326,20 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           final theme = Theme.of(context);
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             backgroundColor: theme.scaffoldBackgroundColor,
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 50),
+                  const Icon(
+                    CupertinoIcons.exclamationmark_triangle_fill,
+                    color: Colors.red,
+                    size: 50,
+                  ),
                   const SizedBox(height: 15),
                   const Text(
                     "ยืนยันการลบบัญชี",
@@ -303,7 +358,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     decoration: InputDecoration(
                       labelText: "รหัสผ่าน",
                       prefixIcon: const Icon(CupertinoIcons.lock),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 25),
@@ -314,7 +371,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                           onPressed: isLoading ? null : () => Get.back(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text("ยกเลิก"),
                         ),
@@ -326,11 +385,18 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                               ? null
                               : () async {
                                   if (passwordController.text.isEmpty) {
-                                    _showCustomSnackbar("ข้อผิดพลาด", "กรุณากรอกรหัสผ่าน", CupertinoIcons.xmark_circle_fill, Colors.red);
+                                    _showCustomSnackbar(
+                                      "ข้อผิดพลาด",
+                                      "กรุณากรอกรหัสผ่าน",
+                                      CupertinoIcons.xmark_circle_fill,
+                                      Colors.red,
+                                    );
                                     return;
                                   }
                                   setStateDialog(() => isLoading = true);
-                                  await _deleteAccountData(passwordController.text);
+                                  await _deleteAccountData(
+                                    passwordController.text,
+                                  );
                                   if (context.mounted) {
                                     setStateDialog(() => isLoading = false);
                                   }
@@ -339,11 +405,23 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: isLoading
-                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text("ลบถาวร", style: TextStyle(fontWeight: FontWeight.bold)),
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "ลบถาวร",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
                         ),
                       ),
                     ],
@@ -364,7 +442,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       if (user == null) return;
 
       // 1. Re-authenticate
-      final cred = EmailAuthProvider.credential(email: user.email!, password: password);
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
       await user.reauthenticateWithCredential(cred);
 
       String uid = user.uid;
@@ -373,7 +454,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       // a. Delete all products from this seller
-      var productsSnapshot = await FirebaseFirestore.instance.collection('products').where('sellerId', isEqualTo: uid).get();
+      var productsSnapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where('sellerId', isEqualTo: uid)
+          .get();
       for (var doc in productsSnapshot.docs) {
         batch.delete(doc.reference);
       }
@@ -390,15 +474,35 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       await user.delete();
 
       Get.offAll(() => const HomeScreen());
-      _showCustomSnackbar("สำเร็จ", "ลบบัญชีเรียบร้อยแล้ว", CupertinoIcons.check_mark_circled_solid, Colors.black87);
+      _showCustomSnackbar(
+        "สำเร็จ",
+        "ลบบัญชีเรียบร้อยแล้ว",
+        CupertinoIcons.check_mark_circled_solid,
+        Colors.black87,
+      );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password') {
-        _showCustomSnackbar("ข้อผิดพลาด", "รหัสผ่านไม่ถูกต้อง", CupertinoIcons.xmark_circle_fill, Colors.red);
+        _showCustomSnackbar(
+          "ข้อผิดพลาด",
+          "รหัสผ่านไม่ถูกต้อง",
+          CupertinoIcons.xmark_circle_fill,
+          Colors.red,
+        );
       } else {
-        _showCustomSnackbar("ข้อผิดพลาด", e.message ?? "ไม่สามารถลบบัญชีได้", CupertinoIcons.xmark_circle_fill, Colors.red);
+        _showCustomSnackbar(
+          "ข้อผิดพลาด",
+          e.message ?? "ไม่สามารถลบบัญชีได้",
+          CupertinoIcons.xmark_circle_fill,
+          Colors.red,
+        );
       }
     } catch (e) {
-      _showCustomSnackbar("ข้อผิดพลาด", "เกิดข้อผิดพลาดในการลบบัญชี", CupertinoIcons.xmark_circle_fill, Colors.red);
+      _showCustomSnackbar(
+        "ข้อผิดพลาด",
+        "เกิดข้อผิดพลาดในการลบบัญชี",
+        CupertinoIcons.xmark_circle_fill,
+        Colors.red,
+      );
     }
   }
 
