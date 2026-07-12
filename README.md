@@ -51,14 +51,21 @@
    flutter pub get
    ```
 
-3. **Configure Firebase**:
+3. **Configure Environment Variables**:
+   - Copy `.env.example` to a new file named `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Open `.env` and fill in your API keys (e.g., Google Maps, SlipOK, and Xendit).
+
+4. **Configure Firebase**:
    - Create a `lib/firebase_options.dart` file by running:
      ```bash
      flutterfire configure --project=<your-project-id>
      ```
    - Alternatively, copy the configuration from the Firebase Console.
 
-4. **Run the app**:
+5. **Run the app**:
    ```bash
    flutter run
    ```
@@ -98,19 +105,4 @@ Contributions are welcome! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) fo
 
 Built with ❤️ by the Saidee Development Team.
 
----
 
-**A new Flutter project.**
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.

@@ -1,5 +1,5 @@
 name: saidee_app
-description: "A new Flutter project."
+description: "A modern mobile application for community and social support, connecting individuals in need with helpers, built with Flutter."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -38,7 +38,6 @@ dependencies:
   firebase_storage: ^13.0.6
   provider: ^6.1.5+1
   google_maps_flutter: ^2.14.0
-  qr_flutter: ^4.1.0
   image_picker: ^1.2.1
   get: ^4.7.3
   google_fonts: ^6.3.2
@@ -46,7 +45,6 @@ dependencies:
   geolocator: ^13.0.0
   geocoding: ^3.0.0
   video_player: ^2.10.1
-  flutter_launcher_icons: ^0.14.4
   cloud_functions: ^6.0.6
   http: ^1.6.0
   video_compress: ^3.1.4
@@ -65,6 +63,8 @@ flutter_launcher_icons:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  flutter_launcher_icons: ^0.14.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
