@@ -453,6 +453,17 @@ class _LoginScreenState extends State<LoginScreen> {
           debugPrint("Failed to fetch or save FCM Token: $tokenError");
         }
 
+        try {
+          await FirebaseFirestore.instance.collection('login_history').add({
+            'uid': user.uid,
+            'email': user.email,
+            'timestamp': FieldValue.serverTimestamp(),
+            'method': 'email_password',
+          });
+        } catch (e) {
+          debugPrint("Failed to save login history: $e");
+        }
+
         if (mounted) setState(() => _isLoading = false);
 
         _showSuccessWelcomeDialog(isAdmin: isAdmin);
