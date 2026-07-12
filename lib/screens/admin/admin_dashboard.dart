@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/main.dart';
 
 import 'manage_master_data.dart';
 import 'manage_shipping.dart';
@@ -25,11 +28,68 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
+  StreamSubscription<QuerySnapshot>? _pendingWithdrawalSubscription;
+  bool _isInitialLoad = true;
 
   final List<Widget> _pages = [
     const AdminDashboardContent(),
     const AdminTransactionScreen(isBottomNav: true),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForNewWithdrawals();
+  }
+
+  void _listenForNewWithdrawals() {
+    _pendingWithdrawalSubscription = FirebaseFirestore.instance
+        .collection('transactions')
+        .where('type', isEqualTo: 'withdraw')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .listen((snapshot) {
+      if (_isInitialLoad) {
+        _isInitialLoad = false;
+        return;
+      }
+      
+      for (var change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.added) {
+          var data = change.doc.data() as Map<String, dynamic>;
+          _showWithdrawalNotification(data);
+        }
+      }
+    });
+  }
+
+  Future<void> _showWithdrawalNotification(Map<String, dynamic> data) async {
+    double amount = (data['amount'] ?? 0).toDouble();
+    
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'admin_alerts_channel',
+      'Admin Alerts',
+      channelDescription: 'แจ้งเตือนสำหรับแอดมิน',
+      importance: Importance.max,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    
+    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    
+    await flutterLocalNotificationsPlugin.show(
+      id: DateTime.now().millisecond,
+      title: 'คำร้องขอถอนเงินใหม่!',
+      body: 'มีผู้ใช้ขอถอนเงินจำนวน ${amount.toStringAsFixed(2)} ฿',
+      notificationDetails: platformDetails,
+    );
+  }
+
+  @override
+  void dispose() {
+    _pendingWithdrawalSubscription?.cancel();
+    super.dispose();
+  }
 
   void _onBottomNavTapped(int index) {
     setState(() => _selectedIndex = index);
@@ -45,26 +105,48 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ? theme.scaffoldBackgroundColor
           : const Color(0xFFF7F9FC),
       body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onBottomNavTapped,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        backgroundColor: theme.cardColor,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.square_grid_2x2),
-            activeIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
-            label: 'หน้าหลัก',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.creditcard),
-            activeIcon: Icon(CupertinoIcons.creditcard_fill),
-            label: 'ธุรกรรมการเงิน',
-          ),
-        ],
+      bottomNavigationBar: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('transactions')
+            .where('type', isEqualTo: 'withdraw')
+            .where('status', isEqualTo: 'pending')
+            .snapshots(),
+        builder: (context, snapshot) {
+          int pendingCount = 0;
+          if (snapshot.hasData) {
+            pendingCount = snapshot.data!.docs.length;
+          }
+
+          return BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onBottomNavTapped,
+            showSelectedLabels: true,
+            showUnselectedLabels: true,
+            selectedItemColor: AppTheme.primaryColor,
+            unselectedItemColor: Colors.grey,
+            backgroundColor: theme.cardColor,
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(CupertinoIcons.square_grid_2x2),
+                activeIcon: Icon(CupertinoIcons.square_grid_2x2_fill),
+                label: 'หน้าหลัก',
+              ),
+              BottomNavigationBarItem(
+                icon: Badge(
+                  isLabelVisible: pendingCount > 0,
+                  label: Text(pendingCount.toString()),
+                  child: const Icon(CupertinoIcons.creditcard),
+                ),
+                activeIcon: Badge(
+                  isLabelVisible: pendingCount > 0,
+                  label: Text(pendingCount.toString()),
+                  child: const Icon(CupertinoIcons.creditcard_fill),
+                ),
+                label: 'ธุรกรรมการเงิน',
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -119,17 +119,38 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   }
                 }
 
-                final filteredDocs = _selectedFilter == 'all'
+                var filteredDocs = _selectedFilter == 'all'
                     ? allTransactions
                     : allTransactions.where((doc) {
-                        var type =
-                            ((doc.data() as Map<String, dynamic>)['type'] ?? '')
-                                .toLowerCase();
+                        var data = doc.data() as Map<String, dynamic>;
+                        var type = (data['type'] ?? '').toLowerCase();
+                        var status = (data['status'] ?? '').toLowerCase();
+                        
+                        if (_selectedFilter == 'pending_withdraw') {
+                          return type == 'withdraw' && status == 'pending';
+                        }
                         if (_selectedFilter == 'purchase' && type == 'buy') {
                           return true;
                         }
                         return type == _selectedFilter;
                       }).toList();
+
+                // DYNAMIC SORTING: Float pending withdrawals to the top
+                filteredDocs.sort((a, b) {
+                  var dataA = a.data() as Map<String, dynamic>;
+                  var dataB = b.data() as Map<String, dynamic>;
+                  bool isPendingA = dataA['type'] == 'withdraw' && dataA['status'] == 'pending';
+                  bool isPendingB = dataB['type'] == 'withdraw' && dataB['status'] == 'pending';
+                  
+                  if (isPendingA && !isPendingB) return -1;
+                  if (!isPendingA && isPendingB) return 1;
+                  
+                  Timestamp? tsA = dataA['createdAt'];
+                  Timestamp? tsB = dataB['createdAt'];
+                  if (tsA == null) return 1;
+                  if (tsB == null) return -1;
+                  return tsB.compareTo(tsA);
+                });
 
                 return Column(
                   children: [
@@ -188,6 +209,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       child: Row(
                         children: [
                           _buildFilterChip('ทั้งหมด', 'all', isDark),
+                          _buildFilterChip('รอโอนเงิน', 'pending_withdraw', isDark),
                           _buildFilterChip('เติมเงิน', 'topup', isDark),
                           _buildFilterChip('ซื้อสินค้า', 'purchase', isDark),
                           _buildFilterChip('รายรับผู้ขาย', 'income', isDark),
@@ -661,8 +683,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           }
         }
 
+        bool isPendingWithdraw = type == 'withdraw' && status == 'pending';
+
         return InkWell(
-          onTap: (type == 'withdraw' && status == 'pending')
+          onTap: isPendingWithdraw
               ? () => _showWithdrawalActionDialog(context, docId, uid, data, userName)
               : null,
           borderRadius: BorderRadius.circular(20),
@@ -670,11 +694,23 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: theme.cardColor,
+              color: isPendingWithdraw 
+                  ? (isDark ? Colors.orange.withOpacity(0.15) : Colors.orange.withOpacity(0.05)) 
+                  : theme.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark ? Colors.white10 : Colors.grey.shade100,
+                color: isPendingWithdraw 
+                    ? Colors.orangeAccent 
+                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                width: isPendingWithdraw ? 1.5 : 1.0,
               ),
+              boxShadow: isPendingWithdraw ? [
+                BoxShadow(
+                  color: Colors.orangeAccent.withOpacity(0.2), 
+                  blurRadius: 8, 
+                  spreadRadius: 1
+                )
+              ] : [],
             ),
             child: Row(
               children: [
