@@ -368,64 +368,67 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       String fullAddress =
                           "${data['address_detail']} ${data['sub_district']} ${data['district']} ${data['province']} ${data['postcode']}";
 
-                      return ListTile(
-                        leading: Icon(
-                          CupertinoIcons.location_solid,
-                          color: isSelected
-                              ? AppTheme.primaryColor
-                              : Colors.grey,
-                        ),
-                        title: Text(
-                          "${data['receiver_name']} | ${data['phone']}",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fullAddress,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (data['is_default'] == true)
-                              Container(
-                                margin: const EdgeInsets.only(top: 4),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: const Text(
-                                  "ค่าเริ่มต้น",
-                                  style: TextStyle(
-                                    color: AppTheme.primaryColor,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
+                      return Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          leading: Icon(
+                            CupertinoIcons.location_solid,
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : Colors.grey,
+                          ),
+                          title: Text(
+                            "${data['receiver_name']} | ${data['phone']}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fullAddress,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (data['is_default'] == true)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    "ค่าเริ่มต้น",
+                                    style: TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
+                          trailing: isSelected
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: AppTheme.primaryColor,
+                                )
+                              : null,
+                          tileColor: isSelected
+                              ? AppTheme.primaryColor.withOpacity(0.05)
+                              : null,
+                          onTap: () {
+                            setState(() {
+                              _selectedAddress = Map<String, dynamic>.from(data);
+                              _selectedAddress!['name'] = data['receiver_name'];
+                              _selectedAddress!['address'] = fullAddress;
+                            });
+                            Get.back();
+                          },
                         ),
-                        trailing: isSelected
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: AppTheme.primaryColor,
-                              )
-                            : null,
-                        tileColor: isSelected
-                            ? AppTheme.primaryColor.withOpacity(0.05)
-                            : null,
-                        onTap: () {
-                          setState(() {
-                            _selectedAddress = Map<String, dynamic>.from(data);
-                            _selectedAddress!['name'] = data['receiver_name'];
-                            _selectedAddress!['address'] = fullAddress;
-                          });
-                          Get.back();
-                        },
                       );
                     },
                   );
@@ -1025,34 +1028,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             height: 1,
                             color: isDark ? Colors.grey[800] : Colors.grey[200],
                           ),
-                          ListTile(
-                            leading: const Icon(
-                              CupertinoIcons.cube_box,
-                              color: Colors.blue,
-                            ),
-                            title: const Text(
-                              "ตัวเลือกการจัดส่ง",
-                              style: TextStyle(fontSize: 14),
-                            ),
-                            subtitle: hasShipping
-                                ? Text(
-                                    "${group.selectedShipping!['name']} (${group.totalWeight}g)",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
+                          Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              leading: const Icon(
+                                CupertinoIcons.cube_box,
+                                color: Colors.blue,
+                              ),
+                              title: const Text(
+                                "ตัวเลือกการจัดส่ง",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              subtitle: hasShipping
+                                  ? Text(
+                                      "${group.selectedShipping!['name']} (${group.totalWeight}g)",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                      ),
+                                    )
+                                  : const Text(
+                                      "ไม่รองรับน้ำหนัก",
+                                      style: TextStyle(color: Colors.red),
                                     ),
-                                  )
-                                : const Text(
-                                    "ไม่รองรับน้ำหนัก",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                            trailing: Text(
-                              hasShipping
-                                  ? "${group.selectedShipping!['price']} ฿"
-                                  : "-",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                              trailing: Text(
+                                hasShipping
+                                    ? "${group.selectedShipping!['price']} ฿"
+                                    : "-",
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ),
@@ -1128,42 +1134,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ),
                             ],
                           )
-                        : ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.1),
-                                shape: BoxShape.circle,
+                        : Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  CupertinoIcons.checkmark_seal_fill,
+                                  color: Colors.green,
+                                ),
                               ),
-                              child: const Icon(
-                                CupertinoIcons.checkmark_seal_fill,
-                                color: Colors.green,
-                              ),
-                            ),
-                            title: Text(
-                              "ใช้โค้ด: ${_appliedCoupon!['code']}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
-                            ),
-                            subtitle: Text(
-                              "ได้รับส่วนลด ${_discountAmount.toStringAsFixed(0)} บาท",
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.grey[400]
-                                    : Colors.grey[600],
-                                fontSize: 13,
-                              ),
-                            ),
-                            trailing: TextButton(
-                              onPressed: _removeCoupon,
-                              child: const Text(
-                                "นำออก",
-                                style: TextStyle(
-                                  color: Colors.red,
+                              title: Text(
+                                "ใช้โค้ด: ${_appliedCoupon!['code']}",
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              subtitle: Text(
+                                "ได้รับส่วนลด ${_discountAmount.toStringAsFixed(0)} บาท",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
+                                  fontSize: 13,
+                                ),
+                              ),
+                              trailing: TextButton(
+                                onPressed: _removeCoupon,
+                                child: const Text(
+                                  "นำออก",
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1197,37 +1206,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ),
                       ],
                     ),
-                    child: ListTile(
-                      leading: Icon(
-                        CupertinoIcons.creditcard_fill,
-                        color: _walletBalance >= _grandTotal
-                            ? AppTheme.primaryColor
-                            : Colors.red,
-                      ),
-                      title: const Text(
-                        "SAIDEE Wallet",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        "ยอดเงินคงเหลือ: ${_walletBalance.toStringAsFixed(2)} ฿",
-                        style: TextStyle(
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(15),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        leading: Icon(
+                          CupertinoIcons.creditcard_fill,
                           color: _walletBalance >= _grandTotal
-                              ? Colors.grey[600]
+                              ? AppTheme.primaryColor
                               : Colors.red,
                         ),
-                      ),
-                      trailing: _walletBalance >= _grandTotal
-                          ? const Icon(
-                              CupertinoIcons.checkmark_alt_circle_fill,
-                              color: AppTheme.primaryColor,
-                            )
-                          : const Text(
-                              "เงินไม่พอ",
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontWeight: FontWeight.bold,
+                        title: const Text(
+                          "SAIDEE Wallet",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          "ยอดเงินคงเหลือ: ${_walletBalance.toStringAsFixed(2)} ฿",
+                          style: TextStyle(
+                            color: _walletBalance >= _grandTotal
+                                ? Colors.grey[600]
+                                : Colors.red,
+                          ),
+                        ),
+                        trailing: _walletBalance >= _grandTotal
+                            ? const Icon(
+                                CupertinoIcons.checkmark_alt_circle_fill,
+                                color: AppTheme.primaryColor,
+                              )
+                            : const Text(
+                                "เงินไม่พอ",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40),

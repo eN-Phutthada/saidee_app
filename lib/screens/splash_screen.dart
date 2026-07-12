@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
+import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,6 +21,28 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _decideRoute() async {
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user != null) {
+      try {
+        final adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(user.uid)
+            .get();
+            
+        if (adminDoc.exists) {
+          Get.off(
+            () => const AdminDashboard(),
+            transition: Transition.circularReveal,
+            duration: const Duration(milliseconds: 1000),
+          );
+          return;
+        }
+      } catch (e) {
+        debugPrint("Error checking admin status in Splash: $e");
+      }
+    }
+
     Get.off(
       () => const HomeScreen(),
       transition: Transition.circularReveal,

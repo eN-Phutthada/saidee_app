@@ -88,14 +88,19 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
                       color: isDark ? Colors.grey[800] : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: SwitchListTile(
-                      title: const Text(
-                        "เปิดใช้งานสถานะ",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: SwitchListTile(
+                        title: const Text(
+                          "เปิดใช้งานสถานะ",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        value: isActive,
+                        activeColor: AppTheme.primaryColor,
+                        onChanged: (val) => setState(() => isActive = val),
                       ),
-                      value: isActive,
-                      activeColor: AppTheme.primaryColor,
-                      onChanged: (val) => setState(() => isActive = val),
                     ),
                   ),
                 ),
@@ -290,75 +295,80 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
                     ),
                   ],
                 ),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isActive
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
-                    child: Icon(
-                      isActive
-                          ? CupertinoIcons.checkmark_alt
-                          : CupertinoIcons.xmark,
-                      color: isActive ? Colors.green : Colors.red,
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(15),
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isActive
+                          ? Colors.green.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
+                      child: Icon(
+                        isActive
+                            ? CupertinoIcons.checkmark_alt
+                            : CupertinoIcons.xmark,
+                        color: isActive ? Colors.green : Colors.red,
+                      ),
                     ),
-                  ),
-                  title: Text(
-                    data['name'] ?? '',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                    title: Text(
+                      data['name'] ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                  subtitle: Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            isActive ? "เปิดใช้งาน" : "ปิดใช้งาน",
-                            style: TextStyle(
-                              color: isActive ? Colors.green : Colors.red,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? Colors.green.withOpacity(0.1)
+                                  : Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              isActive ? "เปิดใช้งาน" : "ปิดใช้งาน",
+                              style: TextStyle(
+                                color: isActive ? Colors.green : Colors.red,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
+                        ],
+                      ),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            CupertinoIcons.pencil,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () => _showEditDialog(
+                            docId: docs[index].id,
+                            currentName: data['name'],
+                            currentStatus: isActive,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            CupertinoIcons.delete,
+                            color: Colors.red,
+                          ),
+                          onPressed: () =>
+                              _deleteItem(docs[index].id, data['name']),
                         ),
                       ],
                     ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          CupertinoIcons.pencil,
-                          color: Colors.blue,
-                        ),
-                        onPressed: () => _showEditDialog(
-                          docId: docs[index].id,
-                          currentName: data['name'],
-                          currentStatus: isActive,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          CupertinoIcons.delete,
-                          color: Colors.red,
-                        ),
-                        onPressed: () =>
-                            _deleteItem(docs[index].id, data['name']),
-                      ),
-                    ],
                   ),
                 ),
               );

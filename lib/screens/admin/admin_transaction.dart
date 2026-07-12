@@ -1,9 +1,14 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
-
 class AdminTransactionScreen extends StatefulWidget {
   final bool isBottomNav;
 
@@ -211,12 +216,14 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                               ),
                               itemCount: filteredDocs.length,
                               itemBuilder: (context, index) {
+                                var docId = filteredDocs[index].id;
                                 var data =
                                     filteredDocs[index].data()
                                         as Map<String, dynamic>;
                                 return _buildTransactionItem(
                                   context,
                                   data,
+                                  docId,
                                   isDark,
                                   theme,
                                 );
@@ -300,9 +307,330 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     );
   }
 
+  void _showWithdrawalActionDialog(
+    BuildContext context,
+    String docId,
+    String uid,
+    Map<String, dynamic> data,
+    String userName,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final amount = (data['amount'] ?? 0).toDouble();
+    final bankName = data['bankName'] ?? 'ไม่ระบุธนาคาร';
+    final accountName = data['accountName'] ?? 'ไม่ระบุชื่อบัญชี';
+    final accountNumber = data['accountNumber'] ?? 'ไม่ระบุเลขบัญชี';
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "ตรวจสอบการถอนเงิน",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 15),
+            _buildDetailRow("ผู้ขอถอนเงิน", userName, isDark),
+            _buildDetailRow("จำนวนเงิน", "${amount.toStringAsFixed(2)} ฿", isDark, isHighlight: true),
+            const Divider(height: 30),
+            _buildDetailRow("ธนาคาร", bankName, isDark),
+            _buildDetailRow("ชื่อบัญชี", accountName, isDark),
+            _buildDetailRow("เลขที่บัญชี", accountNumber, isDark),
+            const SizedBox(height: 30),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Get.back();
+                      _rejectWithdrawal(docId, uid, amount);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text("ปฏิเสธ/คืนเงิน", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Get.back();
+                      _showUploadSlipDialog(docId, amount);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text("โอนเงินเรียบร้อย", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, bool isDark, {bool isHighlight = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontWeight: isHighlight ? FontWeight.w900 : FontWeight.bold,
+                fontSize: isHighlight ? 18 : 14,
+                color: isHighlight ? Colors.redAccent : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUploadSlipDialog(String docId, double expectedAmount) {
+    File? slipImage;
+    bool isUploading = false;
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setStateDialog) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: theme.scaffoldBackgroundColor,
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "อัปโหลดสลิปยืนยันการโอน",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+                  GestureDetector(
+                    onTap: isUploading ? null : () async {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                      if (image != null) {
+                        setStateDialog(() => slipImage = File(image.path));
+                      }
+                    },
+                    child: Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: slipImage != null ? Colors.green : Colors.grey.shade400,
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: slipImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(13),
+                              child: Image.file(slipImage!, fit: BoxFit.cover),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(CupertinoIcons.photo_on_rectangle, size: 50, color: Colors.grey[400]),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "แตะเพื่อเลือกรูปสลิป",
+                                  style: TextStyle(color: Colors.grey[500]),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isUploading ? null : () => Get.back(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("ยกเลิก"),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: (slipImage == null || isUploading)
+                              ? null
+                              : () async {
+                                  setStateDialog(() => isUploading = true);
+                                  bool success = await _uploadSlipAndApprove(docId, slipImage!, expectedAmount);
+                                  if (context.mounted) {
+                                    setStateDialog(() => isUploading = false);
+                                    if (success) {
+                                      Get.back();
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: isUploading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text("ยืนยัน", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<bool> _uploadSlipAndApprove(String docId, File imageFile, double expectedAmount) async {
+    try {
+      final String slipokApiKey = dotenv.env['SLIPOK_API_KEY'] ?? '';
+      
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
+      );
+      request.headers['x-authorization'] = slipokApiKey;
+      request.files.add(
+        await http.MultipartFile.fromPath('files', imageFile.path),
+      );
+
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+      var jsonData = json.decode(responseData);
+
+      if (response.statusCode == 200 && jsonData['success'] == true) {
+        var slipData = jsonData['data'];
+        double transferredAmount = (slipData['amount'] ?? 0).toDouble();
+
+        if (transferredAmount != expectedAmount) {
+          Get.snackbar(
+            "สลิปไม่ถูกต้อง", 
+            "จำนวนเงินในสลิป ($transferredAmount ฿) ไม่ตรงกับยอดถอน ($expectedAmount ฿)", 
+            backgroundColor: Colors.red, 
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+          return false;
+        }
+
+        // Upload to Firebase Storage
+        String fileName = 'slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        Reference storageRef = FirebaseStorage.instance.ref().child('slips/withdrawals/$docId/$fileName');
+
+        UploadTask uploadTask = storageRef.putFile(imageFile);
+        TaskSnapshot snapshot = await uploadTask;
+        String downloadUrl = await snapshot.ref.getDownloadURL();
+
+        await FirebaseFirestore.instance.collection('transactions').doc(docId).update({
+          'status': 'success',
+          'slipUrl': downloadUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        Get.snackbar("สำเร็จ", "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย", backgroundColor: Colors.green, colorText: Colors.white);
+        return true;
+      } else {
+        Get.snackbar(
+          "ตรวจสอบสลิปไม่ผ่าน", 
+          jsonData['message'] ?? 'รูปภาพสลิปไม่ถูกต้อง หรือเซิร์ฟเวอร์มีปัญหา', 
+          backgroundColor: Colors.orange, 
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      return false;
+    }
+  }
+
+  Future<void> _rejectWithdrawal(String docId, String uid, double amount) async {
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc(docId);
+
+        DocumentSnapshot userSnapshot = await transaction.get(userRef);
+        if (!userSnapshot.exists) {
+          throw Exception("ไม่พบข้อมูลผู้ใช้");
+        }
+
+        double currentBalance = (userSnapshot.data() as Map<String, dynamic>)['walletBalance']?.toDouble() ?? 0.0;
+
+        transaction.update(userRef, {
+          'walletBalance': currentBalance + amount,
+        });
+
+        transaction.update(txRef, {
+          'status': 'cancelled',
+          'updatedAt': FieldValue.serverTimestamp(),
+          'note': 'แอดมินปฏิเสธรายการ / คืนเงินเข้าวอลเล็ท',
+        });
+      });
+      Get.snackbar("ยกเลิกรายการ", "ทำการคืนเงินเข้าวอลเล็ทผู้ใช้สำเร็จ", backgroundColor: Colors.orange, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
   Widget _buildTransactionItem(
     BuildContext context,
     Map<String, dynamic> data,
+    String docId,
     bool isDark,
     ThemeData theme,
   ) {
@@ -317,30 +645,39 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
     bool isAppIn = _isAppIncome(type);
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+    return FutureBuilder<DocumentSnapshot?>(
+      future: uid.isEmpty ? Future.value(null) : FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, userSnapshot) {
         String userName = "กำลังโหลด...";
         String userImage = "";
 
-        if (userSnapshot.hasData && userSnapshot.data!.exists) {
-          var userData = userSnapshot.data!.data() as Map<String, dynamic>;
-          userName = userData['name'] ?? "ไม่ทราบชื่อ";
-          userImage = userData['profileImage'] ?? "";
+        if (userSnapshot.connectionState == ConnectionState.done) {
+          if (userSnapshot.hasData && userSnapshot.data!.exists) {
+            var userData = userSnapshot.data!.data() as Map<String, dynamic>;
+            userName = userData['name'] ?? "ไม่ทราบชื่อ";
+            userImage = userData['profileImage'] ?? "";
+          } else {
+            userName = "ไม่ทราบชื่อผู้ใช้";
+          }
         }
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.grey.shade100,
+        return InkWell(
+          onTap: (type == 'withdraw' && status == 'pending')
+              ? () => _showWithdrawalActionDialog(context, docId, uid, data, userName)
+              : null,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? Colors.white10 : Colors.grey.shade100,
+              ),
             ),
-          ),
-          child: Row(
-            children: [
+            child: Row(
+              children: [
               Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -428,10 +765,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               ),
             ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildStatusBadge(String status) {
     Color color;

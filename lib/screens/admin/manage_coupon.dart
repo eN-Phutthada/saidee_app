@@ -277,17 +277,22 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                     color: isDark ? Colors.grey[800] : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: SwitchListTile(
-                    title: const Text(
-                      "เปิดใช้งานคูปองนี้",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: SwitchListTile(
+                      title: const Text(
+                        "เปิดใช้งานคูปองนี้",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
                       ),
+                      value: _isActive,
+                      activeColor: AppTheme.primaryColor,
+                      onChanged: (val) => setModalState(() => _isActive = val),
                     ),
-                    value: _isActive,
-                    activeColor: AppTheme.primaryColor,
-                    onChanged: (val) => setModalState(() => _isActive = val),
                   ),
                 ),
                 const SizedBox(height: 30),

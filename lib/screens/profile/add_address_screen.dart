@@ -571,18 +571,23 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   ),
                 ],
               ),
-              child: SwitchListTile(
-                title: const Text(
-                  "ตั้งเป็นที่อยู่จัดส่งหลัก",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(15),
+                clipBehavior: Clip.antiAlias,
+                child: SwitchListTile(
+                  title: const Text(
+                    "ตั้งเป็นที่อยู่จัดส่งหลัก",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    "ที่อยู่นี้จะถูกเลือกอัตโนมัติเมื่อสั่งซื้อสินค้า",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  value: _isDefault,
+                  activeColor: AppTheme.primaryColor,
+                  onChanged: (val) => setState(() => _isDefault = val),
                 ),
-                subtitle: const Text(
-                  "ที่อยู่นี้จะถูกเลือกอัตโนมัติเมื่อสั่งซื้อสินค้า",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                value: _isDefault,
-                activeColor: AppTheme.primaryColor,
-                onChanged: (val) => setState(() => _isDefault = val),
               ),
             ),
             const SizedBox(height: 20),

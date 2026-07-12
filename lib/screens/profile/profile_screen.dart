@@ -9,6 +9,8 @@ import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/account_security_screen.dart';
 import 'package:saidee_app/screens/profile/user_guide_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
+import 'package:saidee_app/screens/wallet/wallet_withdraw_screen.dart';
+import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/widgets/guest_view.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'edit_profile_screen.dart';
@@ -337,24 +339,81 @@ class ProfileScreen extends StatelessWidget {
                   color: AppTheme.primaryColor,
                 ),
               ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => Get.to(() => const WalletHistoryScreen()),
+                child: Row(
+                  children: [
+                    const Icon(
+                      CupertinoIcons.clock,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "ประวัติธุรกรรม",
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          ElevatedButton.icon(
-            onPressed: () => Get.to(() => const WalletTopUpScreen()),
-            icon: const Icon(CupertinoIcons.add_circled, size: 18),
-            label: const Text(
-              "เติมเงิน",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => Get.to(() => const WalletTopUpScreen()),
+                icon: const Icon(CupertinoIcons.add_circled, size: 16),
+                label: const Text(
+                  "เติมเงิน",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  elevation: 0,
+                  minimumSize: const Size(100, 36),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              elevation: 0,
-            ),
+              ElevatedButton.icon(
+                onPressed: () =>
+                    Get.to(() => WalletWithdrawScreen(currentBalance: balance)),
+                icon: const Icon(CupertinoIcons.minus_circle, size: 16),
+                label: const Text(
+                  "ถอนเงิน",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: AppTheme.primaryColor,
+                  side: const BorderSide(
+                    color: AppTheme.primaryColor,
+                    width: 1.5,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  elevation: 0,
+                  minimumSize: const Size(100, 36),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -439,22 +498,25 @@ class ProfileScreen extends StatelessWidget {
               )
             : null,
       ),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isDark ? Colors.grey[400] : Colors.grey[700],
-          size: 22,
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(
+            icon,
+            color: isDark ? Colors.grey[400] : Colors.grey[700],
+            size: 22,
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          trailing: const Icon(
+            CupertinoIcons.chevron_right,
+            size: 16,
+            color: Colors.grey,
+          ),
+          onTap: onTap,
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        ),
-        trailing: const Icon(
-          CupertinoIcons.chevron_right,
-          size: 16,
-          color: Colors.grey,
-        ),
-        onTap: onTap,
       ),
     );
   }

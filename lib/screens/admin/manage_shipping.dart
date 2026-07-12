@@ -132,14 +132,19 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                       color: isDark ? Colors.grey[800] : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: SwitchListTile(
-                      title: const Text(
-                        "เปิดใช้งาน",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      clipBehavior: Clip.antiAlias,
+                      child: SwitchListTile(
+                        title: const Text(
+                          "เปิดใช้งาน",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        value: isActive,
+                        activeColor: AppTheme.primaryColor,
+                        onChanged: (val) => setState(() => isActive = val),
                       ),
-                      value: isActive,
-                      activeColor: AppTheme.primaryColor,
-                      onChanged: (val) => setState(() => isActive = val),
                     ),
                   ),
                 ),
