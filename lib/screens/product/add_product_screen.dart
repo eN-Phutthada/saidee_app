@@ -86,32 +86,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   bool _isLoading = false;
   double _uploadProgress = 0.0;
   String _uploadStatusText = "เตรียมพร้อมอัปโหลด...";
-
   bool _isProgressDialogOpen = false;
 
   bool get _isEditing => widget.product != null;
-
-  bool _isFormValid() {
-    int totalImages = _existingImages.length + _selectedImages.length;
-    bool hasVideo =
-        _selectedVideo != null ||
-        (_existingVideoUrl != null && _existingVideoUrl!.isNotEmpty);
-
-    bool hasTextInputs =
-        _nameController.text.trim().isNotEmpty &&
-        _priceController.text.trim().isNotEmpty &&
-        _weightController.text.trim().isNotEmpty;
-
-    bool hasDropdowns =
-        _selectedType != null &&
-        _selectedCategory != null &&
-        _selectedSize != null &&
-        _selectedCondition != null;
-
-    bool hasMedia = (totalImages >= 3 && totalImages <= 5) && hasVideo;
-
-    return hasTextInputs && hasDropdowns && hasMedia && !_isLoading;
-  }
 
   @override
   void initState() {
@@ -119,10 +96,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     if (_isEditing) {
       _loadExistingData();
     }
-
-    _nameController.addListener(() => setState(() {}));
-    _priceController.addListener(() => setState(() {}));
-    _weightController.addListener(() => setState(() {}));
   }
 
   void _loadExistingData() {
@@ -160,6 +133,41 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _videoController?.dispose();
     VideoCompress.deleteAllCache();
     super.dispose();
+  }
+
+  void _handleSavePress() {
+    bool isTextValid = _formKey.currentState!.validate();
+
+    List<String> missingFields = [];
+    int totalImages = _existingImages.length + _selectedImages.length;
+    bool hasVideo =
+        _selectedVideo != null ||
+        (_existingVideoUrl != null && _existingVideoUrl!.isNotEmpty);
+
+    if (totalImages < 3) missingFields.add("- รูปภาพ (อย่างน้อย 3 รูป)");
+    if (!hasVideo) missingFields.add("- วิดีโอสินค้า (1 คลิป)");
+    if (_selectedCategory == null) missingFields.add("- หมวดหมู่ผู้สวมใส่");
+    if (_selectedType == null) missingFields.add("- ประเภทสินค้า");
+    if (_selectedSize == null) missingFields.add("- ไซส์");
+    if (_selectedCondition == null) missingFields.add("- สภาพสินค้า");
+    if (!isTextValid) {
+      missingFields.add("- ข้อมูลที่กรอกไม่ถูกต้อง (ดูข้อความสีแดง)");
+    }
+
+    if (missingFields.isNotEmpty) {
+      AppDialog.showCustomDialog(
+        title: "ข้อมูลไม่ครบถ้วน",
+        message:
+            "กรุณาตรวจสอบและแก้ไขข้อมูลต่อไปนี้ให้ครบถ้วน:\n\n${missingFields.join('\n')}",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.orange,
+        confirmText: "ตกลง",
+        showCancel: false,
+        onConfirm: () => Get.back(),
+      );
+      return;
+    }
+    _uploadAndSave();
   }
 
   void _showImageSourceOptions() {
@@ -555,8 +563,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   Future<void> _uploadAndSave() async {
-    if (!_isFormValid()) return;
-
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -717,7 +723,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
         }
 
         productData['createdAt'] = Timestamp.now();
-
         ProductModel newProduct = ProductModel.fromMap(productData, docRef.id);
 
         setState(() {
@@ -990,8 +995,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     if (user == null) return const GuestView();
-
-    bool isFormComplete = _isFormValid();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -1307,11 +1310,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: isFormComplete ? _uploadAndSave : null,
+                  onPressed: _isLoading ? null : _handleSavePress,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isFormComplete
-                        ? AppTheme.primaryColor
-                        : Colors.grey[400],
+                    backgroundColor: AppTheme.primaryColor,
                     disabledBackgroundColor: isDark
                         ? Colors.grey[800]
                         : Colors.grey[300],
@@ -1330,27 +1331,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         )
                       : Text(
                           _isEditing ? "บันทึกการแก้ไข" : "ลงขายทันที",
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isFormComplete
-                                ? Colors.white
-                                : Colors.grey[500],
+                            color: Colors.white,
                           ),
                         ),
                 ),
               ),
-
-              if (!isFormComplete)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Center(
-                    child: Text(
-                      "กรุณากรอกข้อมูลบังคับ (*) ให้ครบถ้วนเพื่อลงขาย",
-                      style: TextStyle(color: Colors.red[400], fontSize: 12),
-                    ),
-                  ),
-                ),
 
               const SizedBox(height: 30),
             ],

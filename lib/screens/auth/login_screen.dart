@@ -407,53 +407,55 @@ class _LoginScreenState extends State<LoginScreen> {
 
       User? user = userCredential.user;
       if (user != null) {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-          String status = userData['status'] ?? 'active';
-
-          if (status == 'suspended' || status == 'banned') {
-            await FirebaseAuth.instance.signOut();
-            setState(() => _isLoading = false);
-            _showBannedPopup();
-            return;
-          }
-        }
-
-        try {
-          await FirebaseMessaging.instance.requestPermission();
-
-          String? fcmToken = await FirebaseMessaging.instance.getToken();
-          if (fcmToken != null) {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .set({
-                  'fcmToken': fcmToken,
-                  'lastLogin': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true));
-            debugPrint("FCM Token Saved: $fcmToken");
-          }
-        } catch (tokenError) {
-          debugPrint("Failed to fetch or save FCM Token: $tokenError");
-        }
-
         DocumentSnapshot adminDoc = await FirebaseFirestore.instance
             .collection('admins')
             .doc(user.uid)
             .get();
 
+        bool isAdmin = adminDoc.exists;
+
+        if (!isAdmin) {
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+
+          if (userDoc.exists) {
+            var userData = userDoc.data() as Map<String, dynamic>;
+            String status = userData['status'] ?? 'active';
+
+            if (status == 'suspended' || status == 'banned') {
+              await FirebaseAuth.instance.signOut();
+              setState(() => _isLoading = false);
+              _showBannedPopup();
+              return;
+            }
+          }
+        }
+
+        try {
+          await FirebaseMessaging.instance.requestPermission();
+          String? fcmToken = await FirebaseMessaging.instance.getToken();
+
+          if (fcmToken != null) {
+            String collectionPath = isAdmin ? 'admins' : 'users';
+
+            await FirebaseFirestore.instance
+                .collection(collectionPath)
+                .doc(user.uid)
+                .set({
+                  'fcmToken': fcmToken,
+                  'lastLogin': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+            debugPrint("FCM Token Saved to $collectionPath: $fcmToken");
+          }
+        } catch (tokenError) {
+          debugPrint("Failed to fetch or save FCM Token: $tokenError");
+        }
+
         if (mounted) setState(() => _isLoading = false);
 
-        if (adminDoc.exists) {
-          _showSuccessWelcomeDialog(isAdmin: true);
-        } else {
-          _showSuccessWelcomeDialog(isAdmin: false);
-        }
+        _showSuccessWelcomeDialog(isAdmin: isAdmin);
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) setState(() => _isLoading = false);
