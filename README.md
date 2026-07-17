@@ -2,6 +2,8 @@
 
 **Saidee** is a modern mobile application built with Flutter that serves as a comprehensive platform for community and social support. It connects individuals in need with helpers, facilitates mutual aid, and provides tools for managing community resources and events.
 
+> 🇹🇭 **Note:** Currently, the application supports **Thai language only** (ภาษาไทยเท่านั้น).
+
 ![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-000000?style=for-the-badge&logo=dart&logoColor=white)
 ![Firebase](https://img.shields.io/badge/Firebase-FF422C?style=for-the-badge&logo=firebase&logoColor=white)
@@ -34,9 +36,14 @@
 
 ## 🛠️ Getting Started
 
-### Prerequisites
-- Flutter SDK (stable channel) - [Download Flutter](https://flutter.dev/get-started/install)
-- A Firebase Project with Firestore and Authentication enabled.
+### System Requirements & Compatibility
+
+- **Supported Language**: Thai only (ภาษาไทยเท่านั้น)
+- **Android**: Android 5.0 (Lollipop) / API 21 or higher (Java 17 compatibility)
+- **iOS**: iOS 12.0 or higher
+- **Dart SDK**: `^3.8.1`
+- **Flutter SDK**: 3.x+ (stable channel) - [Download Flutter](https://flutter.dev/get-started/install)
+- **Firebase**: Project with Firestore, Authentication, Cloud Storage, Functions, and FCM enabled.
 
 ### Installation
 
@@ -87,11 +94,18 @@ saidee_app/
 └── test/                    # Unit and widget tests
 ```
 
-## 🔌 Backend Services
+## 🔌 Backend Services & Core Technologies
 
-This application uses **Firebase** for backend services:
-- **Firestore**: Database for storing user data, requests, and community posts.
-- **Firebase Authentication**: For secure user sign-in.
+This application integrates **Firebase** and several core services:
+- **Firebase Authentication**: For secure user sign-in and session management.
+- **Cloud Firestore**: Real-time NoSQL database for users, requests, events, and community posts.
+- **Firebase Storage**: Media and document storage.
+- **Firebase Cloud Messaging (FCM)**: Push notification delivery.
+- **Cloud Functions**: Serverless backend triggers and logic.
+- **Location & Maps**: Integrated Google Maps SDK and Geolocator for location-based matching.
+- **Security & Privacy**:
+  - `flutter_secure_storage` for encrypted token/data storage.
+  - `flutter_jailbreak_detection` & `secure_application` for runtime security and screen protection.
 
 ## 📝 License
 
