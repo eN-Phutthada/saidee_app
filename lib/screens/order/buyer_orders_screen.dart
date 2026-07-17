@@ -34,30 +34,97 @@ class BuyerOrdersScreen extends StatelessWidget {
             ),
             onPressed: () => Get.back(),
           ),
-          bottom: TabBar(
-            isScrollable: false,
-            tabAlignment: TabAlignment.fill,
-            labelColor: AppTheme.primaryColor,
-            indicatorColor: AppTheme.primaryColor,
-            unselectedLabelColor: isDark ? Colors.grey[500] : Colors.grey[400],
-            labelStyle: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-            unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.normal,
-              fontSize: 15,
-            ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: user != null
+                  ? FirebaseFirestore.instance
+                      .collection('orders')
+                      .where('buyerId', isEqualTo: user.uid)
+                      .snapshots()
+                  : null,
+              builder: (context, snapshot) {
+                int pendingCount = 0;
+                int shippingCount = 0;
 
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: Colors.transparent,
+                if (snapshot.hasData) {
+                  for (var doc in snapshot.data!.docs) {
+                    String status = doc.get('status') ?? '';
+                    if (status == 'pending') pendingCount++;
+                    if (status == 'shipping') shippingCount++;
+                  }
+                }
 
-            tabs: const [
-              Tab(text: "รอจัดส่ง"),
-              Tab(text: "กำลังจัดส่ง"),
-              Tab(text: "สำเร็จ"),
-              Tab(text: "ยกเลิกแล้ว"),
-            ],
+                return TabBar(
+                  isScrollable: false,
+                  tabAlignment: TabAlignment.fill,
+                  labelColor: AppTheme.primaryColor,
+                  indicatorColor: AppTheme.primaryColor,
+                  unselectedLabelColor:
+                      isDark ? Colors.grey[500] : Colors.grey[400],
+                  labelStyle: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                  unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 15,
+                  ),
+                  indicatorSize: TabBarIndicatorSize.label,
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("รอจัดส่ง"),
+                            if (pendingCount > 0) ...[
+                              const SizedBox(width: 4),
+                              Badge(
+                                label: Text(pendingCount.toString()),
+                                backgroundColor: Colors.orange,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text("กำลังจัดส่ง"),
+                            if (shippingCount > 0) ...[
+                              const SizedBox(width: 4),
+                              Badge(
+                                label: Text(shippingCount.toString()),
+                                backgroundColor: Colors.blue,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("สำเร็จ"),
+                      ),
+                    ),
+                    const Tab(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text("ยกเลิกแล้ว"),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
         body: TabBarView(

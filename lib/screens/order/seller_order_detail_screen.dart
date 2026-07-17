@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/screens/chat/chat_screen.dart';
 
 class SellerOrderDetailScreen extends StatelessWidget {
   final String orderId;
@@ -216,6 +217,39 @@ class SellerOrderDetailScreen extends StatelessWidget {
                           padding: EdgeInsets.symmetric(vertical: 15),
                           child: Divider(height: 1),
                         ),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Get.to(() => ChatScreen(
+                                    targetUserId: orderData['buyerId'] ?? '',
+                                    targetUserName: address['name'] ?? address['receiver_name'] ?? 'ผู้ซื้อ',
+                                    targetUserImage: '',
+                                  ));
+                            },
+                            icon: const Icon(
+                              CupertinoIcons.chat_bubble_2_fill,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            label: const Text(
+                              "ทักแชตกับผู้ซื้อ (เจรจาเปลี่ยนสินค้า/สอบถาม)",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[700],
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Text(
                           "จัดส่งผ่าน: ${orderData['shippingMethod']}",
                           style: const TextStyle(

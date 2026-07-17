@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
+import 'package:saidee_app/screens/chat/chat_screen.dart';
+import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class SellerOrdersScreen extends StatefulWidget {
@@ -369,6 +371,12 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                         barrierDismissible: false,
                                       );
                                       try {
+                                        var orderDoc = await FirebaseFirestore.instance
+                                            .collection('orders')
+                                            .doc(orderId)
+                                            .get();
+                                        String buyerId = orderDoc.data()?['buyerId'] ?? '';
+
                                         await FirebaseFirestore.instance
                                             .collection('orders')
                                             .doc(orderId)
@@ -378,6 +386,17 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                               'updatedAt':
                                                   FieldValue.serverTimestamp(),
                                             });
+
+                                        if (buyerId.isNotEmpty) {
+                                          NotificationService.sendNotification(
+                                            userId: buyerId,
+                                            title: "สินค้าของคุณถูกจัดส่งแล้ว! 🚚",
+                                            body: "เลขพัสดุ: $finalTracking",
+                                            type: 'order',
+                                            orderId: orderId,
+                                          );
+                                        }
+
                                         Get.back();
                                         AppDialog.showCustomDialog(
                                           title: "สำเร็จ",
@@ -464,27 +483,80 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
             ),
             onPressed: () => Get.back(),
           ),
-          bottom: TabBar(
-            isScrollable: false,
-            tabAlignment: TabAlignment.fill,
-            labelColor: AppTheme.primaryColor,
-            indicatorColor: AppTheme.primaryColor,
-            unselectedLabelColor: isDark ? Colors.grey[500] : Colors.grey[400],
-            labelStyle: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: user != null
+                  ? FirebaseFirestore.instance
+                      .collection('orders')
+                      .where('sellerId', isEqualTo: user.uid)
+                      .snapshots()
+                  : null,
+              builder: (context, snapshot) {
+                int pendingCount = 0;
+                int shippingCount = 0;
+
+                if (snapshot.hasData) {
+                  for (var doc in snapshot.data!.docs) {
+                    String status = doc.get('status') ?? '';
+                    if (status == 'pending') pendingCount++;
+                    if (status == 'shipping') shippingCount++;
+                  }
+                }
+
+                return TabBar(
+                  isScrollable: false,
+                  tabAlignment: TabAlignment.fill,
+                  labelColor: AppTheme.primaryColor,
+                  indicatorColor: AppTheme.primaryColor,
+                  unselectedLabelColor:
+                      isDark ? Colors.grey[500] : Colors.grey[400],
+                  labelStyle: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                  unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.normal,
+                    fontSize: 15,
+                  ),
+                  indicatorSize: TabBarIndicatorSize.label,
+                  dividerColor: Colors.transparent,
+                  tabs: [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("ต้องจัดส่ง"),
+                          if (pendingCount > 0) ...[
+                            const SizedBox(width: 6),
+                            Badge(
+                              label: Text(pendingCount.toString()),
+                              backgroundColor: Colors.orange,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("กำลังจัดส่ง"),
+                          if (shippingCount > 0) ...[
+                            const SizedBox(width: 6),
+                            Badge(
+                              label: Text(shippingCount.toString()),
+                              backgroundColor: Colors.blue,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const Tab(text: "ประวัติการขาย"),
+                  ],
+                );
+              },
             ),
-            unselectedLabelStyle: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.normal,
-              fontSize: 15,
-            ),
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: "ต้องจัดส่ง"),
-              Tab(text: "กำลังจัดส่ง"),
-              Tab(text: "ประวัติการขาย"),
-            ],
           ),
         ),
         body: TabBarView(
@@ -496,6 +568,199 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         ),
       ),
     );
+  }
+
+  void _showSellerCancelDialog(String orderId, Map<String, dynamic> orderData) {
+    TextEditingController reasonCtrl = TextEditingController();
+    String selectedReason = "สินค้าหมด / สต็อกไม่พอ";
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (context, setModalState) {
+          final theme = Theme.of(context);
+          return AlertDialog(
+            backgroundColor: theme.cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(CupertinoIcons.xmark_circle_fill, color: Colors.red),
+                SizedBox(width: 10),
+                Text("ยกเลิกคำสั่งซื้อ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("ระบุสาเหตุที่ต้องการยกเลิก (ระบบจะคืนเงินผู้ซื้อ 100% ทันที):", style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedReason,
+                    decoration: InputDecoration(
+                      filled: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: "สินค้าหมด / สต็อกไม่พอ", child: Text("สินค้าหมด / สต็อกไม่พอ")),
+                      DropdownMenuItem(value: "สินค้าชำรุดมีตำหนิก่อนจัดส่ง", child: Text("สินค้าชำรุดมีตำหนิก่อนจัดส่ง")),
+                      DropdownMenuItem(value: "ไม่สะดวกจัดส่งตามกำหนด", child: Text("ไม่สะดวกจัดส่งตามกำหนด")),
+                      DropdownMenuItem(value: "อื่นๆ", child: Text("อื่นๆ")),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedReason = val);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  if (selectedReason == "อื่นๆ")
+                    TextField(
+                      controller: reasonCtrl,
+                      decoration: InputDecoration(
+                        hintText: "อธิบายเหตุผลเพิ่มเติม",
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  const SizedBox(height: 15),
+                  InkWell(
+                    onTap: () {
+                      Get.back();
+                      var address = orderData['shippingAddress'] ?? {};
+                      Get.to(() => ChatScreen(
+                            targetUserId: orderData['buyerId'] ?? '',
+                            targetUserName: address['name'] ?? address['receiver_name'] ?? 'ผู้ซื้อ',
+                            targetUserImage: '',
+                          ));
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(CupertinoIcons.chat_bubble_2_fill, color: Colors.blue, size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("ทักแชตกับผู้ซื้อเพื่อเปลี่ยนสินค้า", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                                SizedBox(height: 2),
+                                Text("ลองคุยเจรจาขอเปลี่ยนสี/รุ่นทดแทนก่อนยกเลิก", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text("ปิด"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Get.back();
+                  String reasonText = selectedReason == "อื่นๆ" ? reasonCtrl.text.trim() : selectedReason;
+                  _executeSellerCancel(orderId, orderData, reasonText.isEmpty ? selectedReason : reasonText);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text("ยืนยันยกเลิกคำสั่งซื้อ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _executeSellerCancel(String orderId, Map<String, dynamic> orderData, String reason) async {
+    String buyerId = orderData['buyerId'] ?? '';
+    double totalAmount = (orderData['total'] ?? 0).toDouble();
+
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+
+    try {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+      batch.update(orderRef, {
+        'status': 'cancelled',
+        'cancelReason': reason,
+        'cancelledBy': 'seller',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (buyerId.isNotEmpty && totalAmount > 0) {
+        DocumentReference buyerRef = FirebaseFirestore.instance.collection('users').doc(buyerId);
+        batch.update(buyerRef, {
+          'walletBalance': FieldValue.increment(totalAmount),
+        });
+
+        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+        batch.set(txRef, {
+          'uid': buyerId,
+          'type': 'refund',
+          'amount': totalAmount,
+          'order_id': orderId,
+          'status': 'success',
+          'note': 'ผู้ขายยกเลิกคำสั่งซื้อก่อนจัดส่ง: $reason',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      List items = orderData['items'] ?? [];
+      for (var item in items) {
+        String productId = item['productId'];
+        DocumentReference productRef = FirebaseFirestore.instance
+            .collection('products')
+            .doc(productId);
+        batch.update(productRef, {'status': 'active'});
+      }
+
+      await batch.commit();
+
+      if (buyerId.isNotEmpty) {
+        NotificationService.sendNotification(
+          userId: buyerId,
+          title: "คำสั่งซื้อถูกยกเลิกโดยผู้ขาย ❌",
+          body: "คำสั่งซื้อถูกยกเลิก (สาเหตุ: $reason) ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ได้ถูกคืนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
+          type: 'order',
+          orderId: orderId,
+        );
+      }
+
+      Get.back();
+
+      AppDialog.showCustomDialog(
+        title: "ยกเลิกคำสั่งซื้อสำเร็จ",
+        message: "ยกเลิกคำสั่งซื้อเรียบร้อยแล้ว ระบบได้โอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
+        icon: CupertinoIcons.check_mark_circled_solid,
+        iconColor: Colors.green,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
+      );
+    } catch (e) {
+      Get.back();
+      AppDialog.showCustomDialog(
+        title: "ข้อผิดพลาด",
+        message: "ไม่สามารถยกเลิกคำสั่งซื้อได้: $e",
+        icon: CupertinoIcons.xmark_circle_fill,
+        iconColor: Colors.red,
+        confirmText: "ตกลง",
+        onConfirm: () => Get.back(),
+      );
+    }
   }
 
   Widget _buildOrderList(String sellerId, String tabType) {
@@ -843,33 +1108,58 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                           ),
                           if (currentStatus == 'pending') ...[
                             const SizedBox(height: 15),
-                            SizedBox(
-                              width: double.infinity,
-                              height: 60,
-                              child: ElevatedButton.icon(
-                                onPressed: () => _confirmShipping(
-                                  doc.id,
-                                  data['shippingMethod'] ?? 'ไม่ระบุ',
-                                ),
-                                icon: const Icon(
-                                  CupertinoIcons.cube_box,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => _showSellerCancelDialog(doc.id, data),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                      side: const BorderSide(color: Colors.red),
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "สินค้ามีปัญหา / ยกเลิก",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                label: const Text(
-                                  "จัดส่งสินค้า (กรอกเลขพัสดุ)",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () => _confirmShipping(
+                                      doc.id,
+                                      data['shippingMethod'] ?? 'ไม่ระบุ',
+                                    ),
+                                    icon: const Icon(
+                                      CupertinoIcons.cube_box,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppTheme.primaryColor,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    label: const Text(
+                                      "จัดส่งสินค้า",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
                           ],
 

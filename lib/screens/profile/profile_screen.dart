@@ -163,29 +163,60 @@ class ProfileScreen extends StatelessWidget {
                       _buildWalletCard(context, userData, isDark),
                       const SizedBox(height: 25),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildBigButton(
-                              context,
-                              CupertinoIcons.cube_box,
-                              "การสั่งซื้อของฉัน",
-                              onTap: () =>
-                                  Get.to(() => const BuyerOrdersScreen()),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _buildBigButton(
-                              context,
-                              CupertinoIcons.bag,
-                              "ร้านค้าของฉัน",
-                              onTap: () => Get.to(
-                                () => StoreProfileScreen(sellerId: user.uid),
-                              ),
-                            ),
-                          ),
-                        ],
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('orders')
+                            .where('buyerId', isEqualTo: user.uid)
+                            .snapshots(),
+                        builder: (context, buyerSnap) {
+                          int activeBuyerCount = 0;
+                          if (buyerSnap.hasData) {
+                            for (var doc in buyerSnap.data!.docs) {
+                              String status = doc.get('status') ?? '';
+                              if (status == 'pending' || status == 'shipping') {
+                                activeBuyerCount++;
+                              }
+                            }
+                          }
+
+                          return StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('orders')
+                                .where('sellerId', isEqualTo: user.uid)
+                                .where('status', isEqualTo: 'pending')
+                                .snapshots(),
+                            builder: (context, sellerSnap) {
+                              int pendingSales = sellerSnap.data?.docs.length ?? 0;
+
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildBigButton(
+                                      context,
+                                      CupertinoIcons.cube_box,
+                                      "การสั่งซื้อของฉัน",
+                                      badgeCount: activeBuyerCount,
+                                      onTap: () =>
+                                          Get.to(() => const BuyerOrdersScreen()),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: _buildBigButton(
+                                      context,
+                                      CupertinoIcons.bag,
+                                      "ร้านค้าของฉัน",
+                                      badgeCount: pendingSales,
+                                      onTap: () => Get.to(
+                                        () => StoreProfileScreen(sellerId: user.uid),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
                       ),
                       const SizedBox(height: 30),
 
@@ -424,6 +455,7 @@ class ProfileScreen extends StatelessWidget {
     BuildContext context,
     IconData icon,
     String label, {
+    int badgeCount = 0,
     VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
@@ -445,13 +477,18 @@ class ProfileScreen extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                shape: BoxShape.circle,
+            Badge(
+              isLabelVisible: badgeCount > 0,
+              label: Text(badgeCount.toString()),
+              backgroundColor: Colors.orange,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: AppTheme.primaryColor, size: 28),
               ),
-              child: Icon(icon, color: AppTheme.primaryColor, size: 28),
             ),
             const SizedBox(height: 12),
             Text(

@@ -867,12 +867,29 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           ),
           const SizedBox(width: 15),
           Expanded(
-            child: _buildButtonContainer(
-              "สถานะการขาย",
-              Icons.receipt_long_rounded,
-              theme,
-              isDark,
-              () => Get.to(() => const SellerOrdersScreen()),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('orders')
+                  .where('sellerId', isEqualTo: widget.sellerId)
+                  .where('status', isEqualTo: 'pending')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                int pendingCount = snapshot.data?.docs.length ?? 0;
+
+                return Badge(
+                  isLabelVisible: pendingCount > 0,
+                  label: Text(pendingCount.toString()),
+                  backgroundColor: Colors.orange,
+                  alignment: const Alignment(0.8, -0.8),
+                  child: _buildButtonContainer(
+                    "สถานะการขาย",
+                    Icons.receipt_long_rounded,
+                    theme,
+                    isDark,
+                    () => Get.to(() => const SellerOrdersScreen()),
+                  ),
+                );
+              },
             ),
           ),
         ],

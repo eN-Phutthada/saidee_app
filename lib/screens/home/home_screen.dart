@@ -6,8 +6,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:saidee_app/main.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/screens/chat/chat_list_screen.dart';
+import 'package:saidee_app/screens/notification/notification_screen.dart';
+import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/screens/profile/profile_screen.dart';
 import 'package:saidee_app/screens/cart/cart_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
@@ -27,7 +31,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   StreamSubscription<DocumentSnapshot>? _userStatusSubscription;
+  StreamSubscription<QuerySnapshot>? _notificationSubscription;
   bool _isBannedAlertShown = false;
+  bool _isNotifInitialLoad = true;
 
   final List<Widget> _pages = [
     const HomeContent(),
@@ -40,12 +46,81 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _listenToUserStatus();
+    _listenToNotifications();
   }
 
   @override
   void dispose() {
     _userStatusSubscription?.cancel();
+    _notificationSubscription?.cancel();
     super.dispose();
+  }
+
+  void _listenToNotifications() {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _notificationSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .snapshots()
+          .listen((snapshot) {
+        if (_isNotifInitialLoad) {
+          _isNotifInitialLoad = false;
+          return;
+        }
+
+        for (var change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            var data = change.doc.data() as Map<String, dynamic>;
+            _showNotificationSnackbar(data);
+          }
+        }
+      });
+    }
+  }
+
+  void _showNotificationSnackbar(Map<String, dynamic> data) {
+    String title = data['title'] ?? 'การแจ้งเตือน';
+    String body = data['body'] ?? '';
+    String type = data['type'] ?? 'system';
+
+    // ป้องกันการยิงแจ้งเตือนซ้ำซ้อนภายใน 2 วินาที
+    if (NotificationService.isDuplicateNotification(title, body)) return;
+
+    IconData iconData = CupertinoIcons.bell_fill;
+    Color iconColor = AppTheme.primaryColor;
+
+    if (type == 'order') {
+      iconData = CupertinoIcons.cube_box_fill;
+      iconColor = Colors.blue;
+    } else if (type == 'wallet') {
+      iconData = CupertinoIcons.money_dollar_circle_fill;
+      iconColor = Colors.green;
+    } else if (type == 'dispute') {
+      iconData = CupertinoIcons.exclamationmark_shield_fill;
+      iconColor = Colors.red;
+    }
+
+    Get.snackbar(
+      title,
+      body,
+      backgroundColor: Colors.white,
+      colorText: Colors.black87,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(15),
+      duration: const Duration(seconds: 4),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.1),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
+      icon: Icon(iconData, color: iconColor),
+    );
   }
 
   void _listenToUserStatus() {
@@ -253,103 +328,202 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   )
                 else
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12.0),
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('chats')
-                          .where('users', arrayContains: user.uid)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        int unreadCount = 0;
-                        if (snapshot.hasData) {
-                          for (var doc in snapshot.data!.docs) {
-                            var data = doc.data() as Map<String, dynamic>;
-                            String lastSender = data['lastSenderId'] ?? '';
-                            bool isRead = data['lastMessageRead'] ?? true;
-                            if (lastSender != user.uid && !isRead) {
-                              unreadCount++;
-                            }
-                          }
-                        }
-
-                        return Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            IconButton(
-                              icon: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  CupertinoIcons.chat_bubble_text_fill,
-                                  color: AppTheme.primaryColor,
-                                  size: 24,
-                                ),
-                              ),
-                              onPressed: () {
-                                Get.to(() => const ChatListScreen());
-                              },
-                            ),
-                            if (unreadCount > 0)
-                              Positioned(
-                                top: 8,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Notification Bell Icon
+                      StreamBuilder<int>(
+                        stream: NotificationService.getUnreadCount(user.uid),
+                        builder: (context, notifSnap) {
+                          int notifCount = notifSnap.data ?? 0;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                icon: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withOpacity(0.1),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: Text(
-                                    unreadCount > 9
-                                        ? '9+'
-                                        : unreadCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                                  child: const Icon(
+                                    CupertinoIcons.bell_fill,
+                                    color: AppTheme.primaryColor,
+                                    size: 22,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Get.to(() => const NotificationScreen());
+                                },
+                              ),
+                              if (notifCount > 0)
+                                Positioned(
+                                  top: 8,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      notifCount > 9 ? '9+' : notifCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
                                 ),
+                            ],
+                          );
+                        },
+                      ),
+
+                      // Chat Icon
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('chats')
+                            .where('users', arrayContains: user.uid)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          int unreadCount = 0;
+                          if (snapshot.hasData) {
+                            for (var doc in snapshot.data!.docs) {
+                              var data = doc.data() as Map<String, dynamic>;
+                              String lastSender = data['lastSenderId'] ?? '';
+                              bool isRead = data['lastMessageRead'] ?? true;
+                              if (lastSender != user.uid && !isRead) {
+                                unreadCount++;
+                              }
+                            }
+                          }
+
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              IconButton(
+                                icon: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.chat_bubble_text_fill,
+                                    color: AppTheme.primaryColor,
+                                    size: 22,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Get.to(() => const ChatListScreen());
+                                },
                               ),
-                          ],
-                        );
-                      },
-                    ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  top: 8,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 9
+                                          ? '9+'
+                                          : unreadCount.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                   ),
               ],
             )
           : null,
       body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Theme.of(context).cardColor,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.house_fill),
-            label: 'หน้าหลัก',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.cart_fill),
-            label: 'ตะกร้า',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.plus_circle),
-            label: 'ขาย',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person_fill),
-            label: 'บัญชี',
-          ),
-        ],
+      bottomNavigationBar: StreamBuilder<QuerySnapshot>(
+        stream: user != null
+            ? FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .collection('cart')
+                .snapshots()
+            : null,
+        builder: (context, cartSnap) {
+          int cartCount = cartSnap.data?.docs.length ?? 0;
+
+          return StreamBuilder<QuerySnapshot>(
+            stream: user != null
+                ? FirebaseFirestore.instance
+                    .collection('orders')
+                    .where('sellerId', isEqualTo: user.uid)
+                    .where('status', isEqualTo: 'pending')
+                    .snapshots()
+                : null,
+            builder: (context, sellerOrdersSnap) {
+              int pendingSales = sellerOrdersSnap.data?.docs.length ?? 0;
+
+              return StreamBuilder<int>(
+                stream: user != null
+                    ? NotificationService.getUnreadCount(user.uid)
+                    : null,
+                builder: (context, notifCountSnap) {
+                  int unreadNotifs = notifCountSnap.data ?? 0;
+                  int profileTotalBadge = unreadNotifs + pendingSales;
+
+                  return BottomNavigationBar(
+                    currentIndex: _selectedIndex,
+                    onTap: (index) => setState(() => _selectedIndex = index),
+                    type: BottomNavigationBarType.fixed,
+                    backgroundColor: Theme.of(context).cardColor,
+                    selectedItemColor: AppTheme.primaryColor,
+                    unselectedItemColor: Colors.grey,
+                    items: [
+                      const BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.house_fill),
+                        label: 'หน้าหลัก',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Badge(
+                          isLabelVisible: cartCount > 0,
+                          label: Text(cartCount.toString()),
+                          child: const Icon(CupertinoIcons.cart_fill),
+                        ),
+                        label: 'ตะกร้า',
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(CupertinoIcons.plus_circle),
+                        label: 'ขาย',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Badge(
+                          isLabelVisible: profileTotalBadge > 0,
+                          label: Text(profileTotalBadge.toString()),
+                          child: const Icon(CupertinoIcons.person_fill),
+                        ),
+                        label: 'บัญชี',
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }

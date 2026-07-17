@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class ManageReportScreen extends StatelessWidget {
@@ -322,16 +323,7 @@ class ManageReportScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "รายละเอียดการรายงาน:",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          color: Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ...reports.map((r) => _buildDetailItem(r, isDark)),
+                      ...reports.map((r) => _buildDetailItem(context, r, isDark)),
                       const SizedBox(height: 10),
                       _buildActionButtons(userId, status, theme),
                     ],
@@ -345,7 +337,162 @@ class ManageReportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailItem(Map<String, dynamic> report, bool isDark) {
+  void _resolveDisputeRefund(BuildContext context, Map<String, dynamic> report) async {
+    String orderId = report['order_id'] ?? '';
+    String buyerId = report['reporter_id'] ?? '';
+    if (orderId.isEmpty || buyerId.isEmpty) return;
+
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการคืนเงินให้ผู้ซื้อ",
+      message: "ระบบจะทำรายการยกเลิกออเดอร์และโอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
+      icon: CupertinoIcons.arrow_counterclockwise_circle_fill,
+      iconColor: Colors.orange,
+      confirmText: "อนุมัติคืนเงิน",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      onConfirm: () async {
+        Get.back();
+        try {
+          var orderDoc = await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
+          if (!orderDoc.exists) throw Exception("ไม่พบข้อมูลออเดอร์");
+          double total = (orderDoc.data()!['total'] ?? 0).toDouble();
+
+          WriteBatch batch = FirebaseFirestore.instance.batch();
+
+          DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+          batch.update(orderRef, {
+            'status': 'cancelled',
+            'note': 'แอดมินตัดสินข้อพาท: คืนเงินให้ผู้ซื้อ',
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
+
+          DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(buyerId);
+          batch.update(userRef, {
+            'walletBalance': FieldValue.increment(total),
+          });
+
+          DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+          batch.set(txRef, {
+            'uid': buyerId,
+            'type': 'refund',
+            'amount': total,
+            'order_id': orderId,
+            'status': 'success',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          DocumentReference reportRef = FirebaseFirestore.instance.collection('reports').doc(report['id']);
+          batch.update(reportRef, {
+            'status': 'resolved_refund',
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
+
+          await batch.commit();
+
+          NotificationService.sendNotification(
+            userId: buyerId,
+            title: "อนุมัติคืนเงินข้อพาท 💰",
+            body: "ข้อพาทคำสั่งซื้อได้รับการอนุมัติ คืนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            type: 'wallet',
+            orderId: orderId,
+          );
+
+          NotificationService.sendNotification(
+            userId: report['reported_id'] ?? '',
+            title: "แจ้งผลการตัดสินข้อพาท ℹ️",
+            body: "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติคืนเงินให้ผู้ซื้อ)",
+            type: 'dispute',
+            orderId: orderId,
+          );
+
+          Get.snackbar("สำเร็จ", "อนุมัติคืนเงินผู้ซื้อเรียบร้อยแล้ว", backgroundColor: Colors.green, colorText: Colors.white);
+        } catch (e) {
+          Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+        }
+      },
+    );
+  }
+
+  void _resolveDisputeRelease(BuildContext context, Map<String, dynamic> report) async {
+    String orderId = report['order_id'] ?? '';
+    String sellerId = report['reported_id'] ?? '';
+    if (orderId.isEmpty || sellerId.isEmpty) return;
+
+    AppDialog.showCustomDialog(
+      title: "ยืนยันการโอนเงินให้ผู้ขาย",
+      message: "ระบบจะทำรายการอนุมัติออเดอร์และโอนเงินเข้าวอลเล็ทของผู้ขายทันที",
+      icon: CupertinoIcons.money_dollar_circle_fill,
+      iconColor: Colors.green,
+      confirmText: "อนุมัติปล่อยเงิน",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      onConfirm: () async {
+        Get.back();
+        try {
+          var orderDoc = await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
+          if (!orderDoc.exists) throw Exception("ไม่พบข้อมูลออเดอร์");
+          double total = (orderDoc.data()!['total'] ?? 0).toDouble();
+
+          WriteBatch batch = FirebaseFirestore.instance.batch();
+
+          DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+          batch.update(orderRef, {
+            'status': 'completed',
+            'note': 'แอดมินตัดสินข้อพาท: โอนเงินให้ผู้ขาย',
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
+
+          DocumentReference sellerRef = FirebaseFirestore.instance.collection('users').doc(sellerId);
+          batch.update(sellerRef, {
+            'walletBalance': FieldValue.increment(total),
+          });
+
+          DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+          batch.set(txRef, {
+            'uid': sellerId,
+            'type': 'income',
+            'amount': total,
+            'order_id': orderId,
+            'status': 'success',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          DocumentReference reportRef = FirebaseFirestore.instance.collection('reports').doc(report['id']);
+          batch.update(reportRef, {
+            'status': 'resolved_payout',
+            'resolvedAt': FieldValue.serverTimestamp(),
+          });
+
+          await batch.commit();
+
+          NotificationService.sendNotification(
+            userId: sellerId,
+            title: "อนุมัติโอนเงินข้อพาท 💰",
+            body: "ข้อพาทได้รับการอนุมัติ โอนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            type: 'wallet',
+            orderId: orderId,
+          );
+
+          NotificationService.sendNotification(
+            userId: report['reporter_id'] ?? '',
+            title: "แจ้งผลการตัดสินข้อพาท ℹ️",
+            body: "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติปล่อยเงินให้ผู้ขาย)",
+            type: 'dispute',
+            orderId: orderId,
+          );
+
+          Get.snackbar("สำเร็จ", "อนุมัติโอนเงินให้ผู้ขายเรียบร้อยแล้ว", backgroundColor: Colors.green, colorText: Colors.white);
+        } catch (e) {
+          Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+        }
+      },
+    );
+  }
+
+  Widget _buildDetailItem(BuildContext context, Map<String, dynamic> report, bool isDark) {
+    String? orderId = report['order_id'];
+    String reportStatus = report['status'] ?? 'pending';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -397,6 +544,48 @@ class ManageReportScreen extends StatelessWidget {
                 ),
               ),
             ),
+          if (orderId != null && orderId.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: reportStatus.startsWith('resolved')
+                        ? null
+                        : () => _resolveDisputeRefund(context, report),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      side: const BorderSide(color: Colors.orange),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text("คืนเงินผู้ซื้อ", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: reportStatus.startsWith('resolved')
+                        ? null
+                        : () => _resolveDisputeRelease(context, report),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text("โอนเงินให้ผู้ขาย", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -421,7 +610,7 @@ class ManageReportScreen extends StatelessWidget {
               isBanned ? Icons.lock_open : Icons.lock_person,
               size: 18,
             ),
-            label: Text(isBanned ? "ปลดระงับการใช้งาน" : "ระงับบัญชีทันที"),
+            label: Text(isBanned ? "ปลดระงับการใช้งาน" : "ระงับบัญชีผู้ใช้กรณีทุจริต"),
           ),
         ),
       ],

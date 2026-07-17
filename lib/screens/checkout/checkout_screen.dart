@@ -7,6 +7,8 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
+import 'package:saidee_app/screens/checkout/promptpay_checkout_payment_screen.dart';
+import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class CheckoutShopGroup {
@@ -42,6 +44,8 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isLoading = true;
   bool _isProcessing = false;
+
+  String _selectedPaymentMethod = 'wallet';
 
   double _walletBalance = 0.0;
   List<CheckoutShopGroup> _shopGroups = [];
@@ -254,6 +258,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       var couponData = snap.docs.first.data();
       double minOrder = (couponData['min_order'] ?? 0).toDouble();
+
+      if (couponData['end_date'] != null) {
+        DateTime endDate = (couponData['end_date'] as Timestamp).toDate();
+        // ให้คูปองหมดอายุในเวลา 23:59:59 ของวันที่กำหนด
+        endDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+        if (DateTime.now().isAfter(endDate)) {
+          AppDialog.showCustomDialog(
+            title: "ไม่สามารถใช้โค้ดได้",
+            message: "โค้ดส่วนลดนี้หมดอายุแล้ว",
+            icon: CupertinoIcons.exclamationmark_circle_fill,
+            iconColor: Colors.red,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
+          );
+          return;
+        }
+      }
+
+      if (couponData['start_date'] != null) {
+        DateTime startDate = (couponData['start_date'] as Timestamp).toDate();
+        startDate = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+        if (DateTime.now().isBefore(startDate)) {
+          AppDialog.showCustomDialog(
+            title: "ไม่สามารถใช้โค้ดได้",
+            message: "โค้ดส่วนลดนี้ยังไม่ถึงเวลาเริ่มใช้งาน",
+            icon: CupertinoIcons.exclamationmark_circle_fill,
+            iconColor: Colors.orange,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
+          );
+          return;
+        }
+      }
 
       if (_itemsTotalAll < minOrder) {
         AppDialog.showCustomDialog(
@@ -469,6 +506,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         confirmText: "ตกลง",
         onConfirm: () => Get.back(),
       );
+      return;
+    }
+
+    if (_selectedPaymentMethod == 'promptpay_qr') {
+      Get.to(() => PromptPayCheckoutPaymentScreen(
+            grandTotal: _grandTotal,
+            shopGroups: _shopGroups,
+            selectedAddress: _selectedAddress,
+            discountAmount: _discountAmount,
+            appliedCoupon: _appliedCoupon,
+            itemsTotalAll: _itemsTotalAll,
+          ));
       return;
     }
 
@@ -736,6 +785,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       await batch.commit();
+
+      NotificationService.sendNotification(
+        userId: user.uid,
+        title: "ชำระเงินสำเร็จแล้ว 💳",
+        body: "คำสั่งซื้อยอด ${_grandTotal.toStringAsFixed(2)} ฿ ชำระผ่าน SAIDEE Wallet เรียบร้อยแล้ว",
+        type: 'order',
+      );
+
+      for (var group in _shopGroups) {
+        NotificationService.sendNotification(
+          userId: group.sellerId,
+          title: "มีคำสั่งซื้อใหม่เข้ามา! 📦",
+          body: "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
+          type: 'order',
+        );
+      }
 
       AppDialog.showCustomDialog(
         title: "สั่งซื้อสำเร็จ!",
@@ -1184,63 +1249,143 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     "วิธีการชำระเงิน",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                  const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: _walletBalance >= _grandTotal
-                            ? AppTheme.primaryColor
-                            : Colors.red,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              (_walletBalance >= _grandTotal
-                                      ? AppTheme.primaryColor
-                                      : Colors.red)
-                                  .withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(15),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        leading: Icon(
-                          CupertinoIcons.creditcard_fill,
-                          color: _walletBalance >= _grandTotal
+                  const SizedBox(height: 12),
+
+                  // Option 1: SAIDEE Wallet
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedPaymentMethod = 'wallet');
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _selectedPaymentMethod == 'wallet'
                               ? AppTheme.primaryColor
-                              : Colors.red,
+                              : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          width: _selectedPaymentMethod == 'wallet' ? 2 : 1,
                         ),
-                        title: const Text(
-                          "SAIDEE Wallet",
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        subtitle: Text(
-                          "ยอดเงินคงเหลือ: ${_walletBalance.toStringAsFixed(2)} ฿",
-                          style: TextStyle(
-                            color: _walletBalance >= _grandTotal
-                                ? Colors.grey[600]
-                                : Colors.red,
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_selectedPaymentMethod == 'wallet'
+                                    ? AppTheme.primaryColor
+                                    : Colors.black)
+                                .withValues(alpha: isDark ? 0.2 : 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          leading: Icon(
+                            CupertinoIcons.creditcard_fill,
+                            color: _selectedPaymentMethod == 'wallet'
+                                ? AppTheme.primaryColor
+                                : Colors.grey[500],
+                          ),
+                          title: const Text(
+                            "SAIDEE Wallet",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            "ยอดเงินคงเหลือ: ${_walletBalance.toStringAsFixed(2)} ฿",
+                            style: TextStyle(
+                              color: _walletBalance >= _grandTotal
+                                  ? (isDark ? Colors.grey[400] : Colors.grey[600])
+                                  : Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
+                          trailing: Icon(
+                            _selectedPaymentMethod == 'wallet'
+                                ? CupertinoIcons.checkmark_circle_fill
+                                : CupertinoIcons.circle,
+                            color: _selectedPaymentMethod == 'wallet'
+                                ? AppTheme.primaryColor
+                                : Colors.grey[400],
                           ),
                         ),
-                        trailing: _walletBalance >= _grandTotal
-                            ? const Icon(
-                                CupertinoIcons.checkmark_alt_circle_fill,
-                                color: AppTheme.primaryColor,
-                              )
-                            : const Text(
-                                "เงินไม่พอ",
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Option 2: PromptPay Dynamic QR
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedPaymentMethod = 'promptpay_qr');
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: _selectedPaymentMethod == 'promptpay_qr'
+                              ? AppTheme.primaryColor
+                              : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          width: _selectedPaymentMethod == 'promptpay_qr' ? 2 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (_selectedPaymentMethod == 'promptpay_qr'
+                                    ? AppTheme.primaryColor
+                                    : Colors.black)
+                                .withValues(alpha: isDark ? 0.2 : 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        clipBehavior: Clip.antiAlias,
+                        child: ListTile(
+                          leading: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF113566),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Text(
+                                "P",
                                 style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
                                 ),
                               ),
+                            ),
+                          ),
+                          title: const Text(
+                            "PromptPay Dynamic QR",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            "สแกน QR Code ชำระตรง (ระบบคนกลาง Escrow ถือเงินปลอดภัย 100%)",
+                            style: TextStyle(
+                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 11,
+                            ),
+                          ),
+                          trailing: Icon(
+                            _selectedPaymentMethod == 'promptpay_qr'
+                                ? CupertinoIcons.checkmark_circle_fill
+                                : CupertinoIcons.circle,
+                            color: _selectedPaymentMethod == 'promptpay_qr'
+                                ? AppTheme.primaryColor
+                                : Colors.grey[400],
+                          ),
+                        ),
                       ),
                     ),
                   ),

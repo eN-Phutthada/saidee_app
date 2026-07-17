@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class BuyerOrderDetailScreen extends StatefulWidget {
@@ -97,6 +98,22 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           });
 
           await batch.commit();
+
+          NotificationService.sendNotification(
+            userId: sellerId,
+            title: "ได้รับโอนเงินแล้ว! 💰",
+            body: "ผู้ซื้อยืนยันรับสินค้าแล้ว ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ถูกโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            type: 'wallet',
+            orderId: widget.orderId,
+          );
+
+          NotificationService.sendNotification(
+            userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+            title: "คำสั่งซื้อเสร็จสมบูรณ์ ✨",
+            body: "ขอบคุณที่อุดหนุนและใช้งานบริการ อย่าลืมให้คะแนนและรีวิวสินค้านะครับ",
+            type: 'order',
+            orderId: widget.orderId,
+          );
 
           Get.back();
           Get.back();
@@ -641,6 +658,33 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                                 'createdAt': FieldValue.serverTimestamp(),
                               });
 
+                          await FirebaseFirestore.instance
+                              .collection('orders')
+                              .doc(widget.orderId)
+                              .update({
+                                'status': 'disputed',
+                                'disputedAt': FieldValue.serverTimestamp(),
+                              });
+
+                          String sellerId = widget.orderData['sellerId'] ?? '';
+                          String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+                          NotificationService.sendNotification(
+                            userId: sellerId,
+                            title: "แจ้งเตือนข้อพาทคำสั่งซื้อ ⚠️",
+                            body: "ผู้ซื้อรายงานปัญหาในคำสั่งซื้อ ระบบระงับการโอนเงินชั่วคราว ทีมงานกำลังเข้าตรวจสอบ",
+                            type: 'dispute',
+                            orderId: widget.orderId,
+                          );
+
+                          NotificationService.sendNotification(
+                            userId: currentUid,
+                            title: "ส่งรายงานข้อพาทเรียบร้อย ⚠️",
+                            body: "ระบบได้รับเรื่องรายงานของคุณแล้ว และได้ทำการระงับการปล่อยเงินชั่วคราวเรียบร้อยแล้ว",
+                            type: 'dispute',
+                            orderId: widget.orderId,
+                          );
+
                           Get.back();
                           AppDialog.showCustomDialog(
                             title: "ส่งรายงานสำเร็จ",
@@ -729,6 +773,11 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
       statusDesc = "คำสั่งซื้อถูกยกเลิก";
       headerColor = Colors.red;
       headerIcon = CupertinoIcons.xmark_circle;
+    } else if (status == 'disputed') {
+      statusTitle = "อยู่ระหว่างพิจารณาข้อพาท";
+      statusDesc = "ระงับการโอนเงินชั่วคราว ทีมงานกำลังตรวจสอบปัญหา";
+      headerColor = Colors.purple;
+      headerIcon = CupertinoIcons.exclamationmark_shield_fill;
     }
 
     Timestamp? ts = widget.orderData['createdAt'];

@@ -8,13 +8,14 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:saidee_app/screens/order/buyer_order_detail_screen.dart';
 
 import 'package:saidee_app/screens/splash_screen.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 
 import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
-import 'package:saidee_app/screens/order/buyer_order_detail_screen.dart';
+import 'package:saidee_app/services/notification_service.dart';
 
 import 'config/theme.dart';
 import 'providers/theme_provider.dart';
@@ -62,6 +63,27 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
   }
 
   Future<void> _setupPushNotifications() async {
+    // 1. Initialize FlutterLocalNotificationsPlugin
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        debugPrint("Local notification clicked: ${details.payload}");
+      },
+    );
+
+    // 2. Request Android 13+ Notification Permission
+    var androidImplementation = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidImplementation != null) {
+      await androidImplementation.requestNotificationsPermission();
+    }
+
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
     NotificationSettings settings = await messaging.requestPermission(
@@ -84,11 +106,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       importance: Importance.high,
     );
 
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+    await androidImplementation?.createNotificationChannel(channel);
 
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
@@ -112,6 +130,10 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       debugPrint('ได้รับข้อความขณะเปิดแอป! Type: ${message.data['type']}');
 
       if (message.notification != null) {
+        String title = message.notification!.title ?? 'แจ้งเตือนใหม่';
+        String body = message.notification!.body ?? '';
+
+        if (NotificationService.isDuplicateNotification(title, body)) return;
         IconData notifIcon = CupertinoIcons.bell_fill;
         Color notifColor = AppTheme.primaryColor;
         String? type = message.data['type'];
@@ -150,18 +172,21 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           },
         );
 
-        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+        const AndroidNotificationDetails androidDetails =
+            AndroidNotificationDetails(
+              'high_importance_channel',
+              'High Importance Notifications',
+              channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+              importance: Importance.high,
+              priority: Priority.high,
+              icon: '@mipmap/ic_launcher',
+            );
+        const NotificationDetails platformDetails = NotificationDetails(
+          android: androidDetails,
         );
-        const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
-        
+
         flutterLocalNotificationsPlugin.show(
-          id: message.hashCode,
+          id: message.hashCode.abs() % 100000,
           title: message.notification!.title ?? 'แจ้งเตือนใหม่',
           body: message.notification!.body ?? '',
           notificationDetails: platformDetails,
