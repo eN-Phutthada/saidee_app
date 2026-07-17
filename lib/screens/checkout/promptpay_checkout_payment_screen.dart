@@ -49,7 +49,7 @@ class _PromptPayCheckoutPaymentScreenState
   final String promptPayNumber = "0647490079";
   final String accountName = "นายพุทธดา หาญนอก";
 
-  final String slipokApiKey = dotenv.env['SLIPOK_API_KEY'] ?? '';
+  final String slipokAuthToken = dotenv.env['SLIPOK_API_KEY'] ?? '';
 
   void _copyPromptPay() {
     Clipboard.setData(ClipboardData(text: promptPayNumber));
@@ -89,7 +89,7 @@ class _PromptPayCheckoutPaymentScreenState
         'POST',
         Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
       );
-      request.headers['x-authorization'] = slipokApiKey;
+      request.headers['x-authorization'] = slipokAuthToken;
       request.files.add(
         await http.MultipartFile.fromPath('files', _slipImage!.path),
       );
