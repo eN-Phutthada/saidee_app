@@ -6,8 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:saidee_app/main.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/screens/chat/chat_list_screen.dart';
 import 'package:saidee_app/screens/notification/notification_screen.dart';
@@ -67,18 +65,18 @@ class _HomeScreenState extends State<HomeScreen> {
           .limit(1)
           .snapshots()
           .listen((snapshot) {
-        if (_isNotifInitialLoad) {
-          _isNotifInitialLoad = false;
-          return;
-        }
+            if (_isNotifInitialLoad) {
+              _isNotifInitialLoad = false;
+              return;
+            }
 
-        for (var change in snapshot.docChanges) {
-          if (change.type == DocumentChangeType.added) {
-            var data = change.doc.data() as Map<String, dynamic>;
-            _showNotificationSnackbar(data);
-          }
-        }
-      });
+            for (var change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added) {
+                var data = change.doc.data() as Map<String, dynamic>;
+                _showNotificationSnackbar(data);
+              }
+            }
+          });
     }
   }
 
@@ -344,7 +342,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    color: AppTheme.primaryColor.withOpacity(
+                                      0.1,
+                                    ),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -368,7 +368,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: Text(
-                                      notifCount > 9 ? '9+' : notifCount.toString(),
+                                      notifCount > 9
+                                          ? '9+'
+                                          : notifCount.toString(),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 10,
@@ -409,7 +411,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    color: AppTheme.primaryColor.withOpacity(
+                                      0.1,
+                                    ),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
@@ -458,10 +462,10 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: StreamBuilder<QuerySnapshot>(
         stream: user != null
             ? FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .collection('cart')
-                .snapshots()
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('cart')
+                  .snapshots()
             : null,
         builder: (context, cartSnap) {
           int cartCount = cartSnap.data?.docs.length ?? 0;
@@ -469,10 +473,10 @@ class _HomeScreenState extends State<HomeScreen> {
           return StreamBuilder<QuerySnapshot>(
             stream: user != null
                 ? FirebaseFirestore.instance
-                    .collection('orders')
-                    .where('sellerId', isEqualTo: user.uid)
-                    .where('status', isEqualTo: 'pending')
-                    .snapshots()
+                      .collection('orders')
+                      .where('sellerId', isEqualTo: user.uid)
+                      .where('status', isEqualTo: 'pending')
+                      .snapshots()
                 : null,
             builder: (context, sellerOrdersSnap) {
               int pendingSales = sellerOrdersSnap.data?.docs.length ?? 0;
@@ -483,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     : null,
                 builder: (context, notifCountSnap) {
                   int unreadNotifs = notifCountSnap.data ?? 0;
-                  int profileTotalBadge = unreadNotifs + pendingSales;
+                  int profileTotalBadge = pendingSales;
 
                   return BottomNavigationBar(
                     currentIndex: _selectedIndex,
@@ -493,8 +497,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     selectedItemColor: AppTheme.primaryColor,
                     unselectedItemColor: Colors.grey,
                     items: [
-                      const BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.house_fill),
+                      BottomNavigationBarItem(
+                        icon: Badge(
+                          isLabelVisible: unreadNotifs > 0,
+                          label: Text(unreadNotifs.toString()),
+                          child: const Icon(CupertinoIcons.house_fill),
+                        ),
                         label: 'หน้าหลัก',
                       ),
                       BottomNavigationBarItem(
@@ -854,7 +862,8 @@ class _HomeContentState extends State<HomeContent> {
                       limit: 10,
                     ),
                     builder: (context, recSnapshot) {
-                      if (recSnapshot.connectionState == ConnectionState.waiting) {
+                      if (recSnapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
@@ -958,7 +967,10 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                     child: imageUrl == null
                         ? const Center(
-                            child: Icon(CupertinoIcons.photo, color: Colors.grey),
+                            child: Icon(
+                              CupertinoIcons.photo,
+                              color: Colors.grey,
+                            ),
                           )
                         : null,
                   ),
