@@ -34,7 +34,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _secureScreen() async {
-    await FlutterWindowManagerPlus.addFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    await FlutterWindowManagerPlus.addFlags(
+      FlutterWindowManagerPlus.FLAG_SECURE,
+    );
   }
 
   @override
@@ -81,99 +83,266 @@ class _ProfileScreenState extends State<ProfileScreen> {
             physics: const BouncingScrollPhysics(),
             slivers: [
               SliverAppBar(
-                expandedHeight: 140.0,
+                expandedHeight: 170.0,
                 floating: false,
                 pinned: true,
                 backgroundColor: AppTheme.primaryColor,
                 elevation: 0,
+                centerTitle: false,
+                title: const Text(
+                  'โปรไฟล์ของฉัน',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 actions: [
-                  IconButton(
-                    icon: Icon(
-                      isDark
-                          ? CupertinoIcons.sun_max
-                          : CupertinoIcons.moon_stars,
-                      color: Colors.white,
+                  Container(
+                    margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    onPressed: () => Get.changeThemeMode(
-                      isDark ? ThemeMode.light : ThemeMode.dark,
+                    child: IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 38,
+                        minHeight: 38,
+                      ),
+                      padding: EdgeInsets.zero,
+                      icon: Icon(
+                        isDark
+                            ? CupertinoIcons.sun_max_fill
+                            : CupertinoIcons.moon_stars_fill,
+                        color: Colors.white,
+                        size: 19,
+                      ),
+                      tooltip: isDark ? "โหมดสว่าง" : "โหมดมืด",
+                      onPressed: () => Get.changeThemeMode(
+                        isDark ? ThemeMode.light : ThemeMode.dark,
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      CupertinoIcons.pencil_ellipsis_rectangle,
-                      color: Colors.white,
+                  Container(
+                    margin: const EdgeInsets.only(right: 16, top: 6, bottom: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    tooltip: "แก้ไขโปรไฟล์",
-                    onPressed: () =>
-                        Get.to(() => EditProfileScreen(userData: userData)),
+                    child: IconButton(
+                      constraints: const BoxConstraints(
+                        minWidth: 38,
+                        minHeight: 38,
+                      ),
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(
+                        CupertinoIcons.pencil_ellipsis_rectangle,
+                        color: Colors.white,
+                        size: 19,
+                      ),
+                      tooltip: "แก้ไขโปรไฟล์",
+                      onPressed: () =>
+                          Get.to(() => EditProfileScreen(userData: userData)),
+                    ),
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    padding: const EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      bottom: 20,
-                      top: 60,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primaryColor,
-                      borderRadius: BorderRadius.vertical(
-                        bottom: Radius.circular(30),
-                      ),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        CircleAvatar(
-                          radius: 35,
-                          backgroundColor: Colors.white24,
-                          backgroundImage:
-                              (userData['profileImage'] != null &&
-                                  userData['profileImage'] != '')
-                              ? NetworkImage(userData['profileImage'])
-                              : null,
-                          child:
-                              (userData['profileImage'] == null ||
-                                  userData['profileImage'] == '')
-                              ? const Icon(
-                                  CupertinoIcons.person_fill,
-                                  size: 35,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                userData['name'] ?? 'ไม่มีชื่อ',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                userData['email'] ?? '',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                  background: Stack(
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppTheme.primaryColor, AppTheme.darkGreen],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      Positioned(
+                        right: -20,
+                        top: -20,
+                        child: Container(
+                          width: 130,
+                          height: 130,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.08),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: -30,
+                        bottom: -15,
+                        child: Container(
+                          width: 100,
+                          height: 100,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.06),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 80,
+                        bottom: 10,
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.04),
+                          ),
+                        ),
+                      ),
+                      // Profile Header Details
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 18,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(2.5),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 32,
+                                    backgroundColor: AppTheme.primaryColor
+                                        .withOpacity(0.2),
+                                    backgroundImage:
+                                        (userData['profileImage'] != null &&
+                                            userData['profileImage'] != '')
+                                        ? NetworkImage(userData['profileImage'])
+                                        : null,
+                                    child:
+                                        (userData['profileImage'] == null ||
+                                            userData['profileImage'] == '')
+                                        ? const Icon(
+                                            CupertinoIcons.person_fill,
+                                            size: 32,
+                                            color: Colors.white,
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      CupertinoIcons.checkmark_seal_fill,
+                                      size: 11,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    userData['name'] ?? 'ไม่มีชื่อ',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        CupertinoIcons.mail,
+                                        size: 12,
+                                        color: Colors.white70,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          userData['email'] ?? '',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.25),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          userData['isSeller'] == true
+                                              ? CupertinoIcons.bag_fill
+                                              : CupertinoIcons.star_fill,
+                                          size: 11,
+                                          color: Colors.amber,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          userData['isSeller'] == true
+                                              ? 'ผู้ขาย / ร้านค้า'
+                                              : 'สมาชิก Saidee',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
