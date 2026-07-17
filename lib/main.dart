@@ -285,7 +285,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return GetMaterialApp(
-      title: 'SaiDee Application',
+      title: 'SaiDee Beta',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
 

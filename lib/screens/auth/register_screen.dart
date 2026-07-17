@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
+import 'package:saidee_app/screens/profile/privacy_policy_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -29,6 +30,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _hidePassword = true;
   File? _imageFile;
   bool _isLoading = false;
+
+  bool _agreeToTerms = false;
 
   @override
   void dispose() {
@@ -88,6 +91,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _registerUser() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_agreeToTerms) {
+      _showCustomSnackbar(
+        title: "แจ้งเตือน",
+        message:
+            "กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัวก่อนทำรายการ",
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        backgroundColor: Colors.orange[800]!,
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -410,7 +425,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 20),
+
+                    // Consent checkboxes
+                    _buildConsentCheckbox(
+                      value: _agreeToTerms,
+                      onChanged: (val) =>
+                          setState(() => _agreeToTerms = val ?? false),
+                      title:
+                          "ข้าพเจ้าได้อ่านและยอมรับ เงื่อนไขการใช้งาน และ นโยบายความเป็นส่วนตัว",
+                      isDark: isDark,
+                      isRequired: true,
+                    ),
+
+                    const SizedBox(height: 20),
 
                     SizedBox(
                       width: double.infinity,
@@ -552,6 +580,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
         contentPadding: const EdgeInsets.symmetric(vertical: 18),
       ),
       validator: validator,
+    );
+  }
+
+  Widget _buildConsentCheckbox({
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required String title,
+    required bool isDark,
+    required bool isRequired,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 24,
+            width: 24,
+            child: Checkbox(
+              value: value,
+              onChanged: onChanged,
+              activeColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GestureDetector(
+              onTap: isRequired
+                  ? () => Get.to(() => const PrivacyPolicyScreen())
+                  : null,
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    height: 1.4,
+                  ),
+                  children: [
+                    TextSpan(text: title),
+                    if (isRequired)
+                      const TextSpan(
+                        text: " *",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    if (isRequired)
+                      const TextSpan(
+                        text: "\n(คลิกเพื่ออ่านนโยบายความเป็นส่วนตัว)",
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 12,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

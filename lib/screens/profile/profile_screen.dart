@@ -7,6 +7,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/account_security_screen.dart';
+import 'package:saidee_app/screens/profile/privacy_policy_screen.dart';
 import 'package:saidee_app/screens/profile/user_guide_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_topup_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_withdraw_screen.dart';
@@ -186,7 +187,8 @@ class ProfileScreen extends StatelessWidget {
                                 .where('status', isEqualTo: 'pending')
                                 .snapshots(),
                             builder: (context, sellerSnap) {
-                              int pendingSales = sellerSnap.data?.docs.length ?? 0;
+                              int pendingSales =
+                                  sellerSnap.data?.docs.length ?? 0;
 
                               return Row(
                                 children: [
@@ -196,8 +198,9 @@ class ProfileScreen extends StatelessWidget {
                                       CupertinoIcons.cube_box,
                                       "การสั่งซื้อของฉัน",
                                       badgeCount: activeBuyerCount,
-                                      onTap: () =>
-                                          Get.to(() => const BuyerOrdersScreen()),
+                                      onTap: () => Get.to(
+                                        () => const BuyerOrdersScreen(),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 15),
@@ -208,7 +211,9 @@ class ProfileScreen extends StatelessWidget {
                                       "ร้านค้าของฉัน",
                                       badgeCount: pendingSales,
                                       onTap: () => Get.to(
-                                        () => StoreProfileScreen(sellerId: user.uid),
+                                        () => StoreProfileScreen(
+                                          sellerId: user.uid,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -280,8 +285,16 @@ class ProfileScreen extends StatelessWidget {
                               context,
                               icon: CupertinoIcons.info_circle,
                               title: "เกี่ยวกับ Saidee App",
-                              hasBorder: false,
+                              hasBorder: true,
                               onTap: () => _showAboutApp(context),
+                            ),
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.doc_text,
+                              title: "นโยบายความเป็นส่วนตัว",
+                              hasBorder: false,
+                              onTap: () =>
+                                  Get.to(() => const PrivacyPolicyScreen()),
                             ),
                           ],
                         ),
@@ -822,94 +835,169 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: theme.cardColor,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  height: 60,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    CupertinoIcons.tag_fill,
-                    color: AppTheme.primaryColor,
-                    size: 60,
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        padding: const EdgeInsets.only(top: 15, bottom: 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 50,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(isDark ? 0.6 : 0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 35),
+
+            // Logo with Glow
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.25),
+                    blurRadius: 30,
+                    spreadRadius: 2,
                   ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/logo.png',
+                height: 75,
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  CupertinoIcons.tag_fill,
+                  color: AppTheme.primaryColor,
+                  size: 75,
                 ),
               ),
-              const SizedBox(height: 20),
-              Text(
-                "Saidee App",
+            ),
+            const SizedBox(height: 25),
+
+            // App Name & Version
+            const Text(
+              "SaiDee",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.primaryColor,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "Version 1.0.0 (Beta)",
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
+                  color: isDark ? Colors.grey[300] : Colors.grey[700],
                 ),
               ),
-              const SizedBox(height: 5),
-              Text(
-                "Version 1.1.1 (Beta)",
+            ),
+            const SizedBox(height: 30),
+
+            // Description
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 30),
+              child: Text(
+                "แพลตฟอร์มซื้อขายเสื้อผ้ามือสองที่ช่วยลดขยะแฟชั่น\nเราตั้งใจสร้างพื้นที่นี้เพื่อส่งต่อความสวยงาม\nและสร้างความยั่งยืนให้กับสิ่งแวดล้อม 🌿",
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  height: 1.6,
+                  color: isDark ? Colors.white70 : Colors.black87,
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                "แพลตฟอร์มสำหรับซื้อ-ขาย เสื้อผ้ามือสองคุณภาพดี\nส่งต่อความสวยงามและลดขยะแฟชั่นไปด้วยกัน ♻️",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, height: 1.5),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 20,
+            ),
+            const SizedBox(height: 35),
+
+            // Social Links / Contact
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildSocialButton(CupertinoIcons.link, "เว็บไซต์", isDark),
+                const SizedBox(width: 25),
+                _buildSocialButton(
+                  CupertinoIcons.mail_solid,
+                  "ติดต่อเรา",
+                  isDark,
                 ),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 25),
+                _buildSocialButton(
+                  CupertinoIcons.star_fill,
+                  "ให้คะแนน",
+                  isDark,
+                  color: Colors.orange,
                 ),
-                child: const Text(
-                  "พัฒนาโดย: ทีมงาน Saidee",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "ปิด",
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 40),
+
+            // Copyright
+            Text(
+              "© 2026 SaiDee Team. All rights reserved.",
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 10),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSocialButton(
+    IconData icon,
+    String label,
+    bool isDark, {
+    Color? color,
+  }) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.grey[800] : Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            ),
+          ),
+          child: Icon(icon, color: color ?? AppTheme.primaryColor, size: 24),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.grey[400] : Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }
