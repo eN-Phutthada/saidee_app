@@ -13,6 +13,7 @@ import 'package:saidee_app/screens/cart/cart_screen.dart';
 import 'package:saidee_app/screens/product/add_product_screen.dart';
 import 'package:saidee_app/screens/product/product_detail_screen.dart';
 import 'package:saidee_app/models/product_model.dart';
+import 'package:saidee_app/services/recommendation_service.dart';
 import 'search_screen.dart';
 import 'search_results_screen.dart';
 
@@ -670,33 +671,56 @@ class _HomeContentState extends State<HomeContent> {
                     );
                   }
 
-                  validProducts.sort((a, b) {
-                    Timestamp? aTime =
-                        (a.data() as Map<String, dynamic>)['createdAt'];
-                    Timestamp? bTime =
-                        (b.data() as Map<String, dynamic>)['createdAt'];
-                    if (aTime == null || bTime == null) return 0;
-                    return bTime.compareTo(aTime);
-                  });
+                  final user = FirebaseAuth.instance.currentUser;
 
-                  var topProducts = validProducts.take(10).toList();
+                  return FutureBuilder<List<ScoredProduct>>(
+                    future: RecommendationService.getRecommendedProducts(
+                      userId: user?.uid,
+                      rawProducts: validProducts,
+                      limit: 10,
+                    ),
+                    builder: (context, recSnapshot) {
+                      if (recSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.58,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
-                        ),
-                    itemCount: topProducts.length,
-                    itemBuilder: (context, index) {
-                      var doc = topProducts[index];
-                      var data = doc.data() as Map<String, dynamic>;
-                      return _buildProductCard(context, data, doc.id, isDark);
+                      var recommendedList = recSnapshot.data ?? [];
+
+                      if (recommendedList.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Text(
+                            "ยังไม่มีสินค้าลงขาย",
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        );
+                      }
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 0.58,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                            ),
+                        itemCount: recommendedList.length,
+                        itemBuilder: (context, index) {
+                          var scored = recommendedList[index];
+                          var doc = scored.doc;
+                          var data = doc.data() as Map<String, dynamic>;
+                          return _buildProductCard(
+                            context,
+                            data,
+                            doc.id,
+                            isDark,
+                            badgeText: scored.badgeText,
+                          );
+                        },
+                      );
                     },
                   );
                 },
@@ -713,8 +737,9 @@ class _HomeContentState extends State<HomeContent> {
     BuildContext context,
     Map<String, dynamic> data,
     String docId,
-    bool isDark,
-  ) {
+    bool isDark, {
+    String? badgeText,
+  }) {
     final theme = Theme.of(context);
     String? imageUrl =
         (data['images'] != null && (data['images'] as List).isNotEmpty)
@@ -742,24 +767,58 @@ class _HomeContentState extends State<HomeContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[200],
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(15),
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[200],
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(15),
+                      ),
+                      image: imageUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(imageUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: imageUrl == null
+                        ? const Center(
+                            child: Icon(CupertinoIcons.photo, color: Colors.grey),
+                          )
+                        : null,
                   ),
-                  image: imageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(imageUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: imageUrl == null
-                    ? const Center(
-                        child: Icon(CupertinoIcons.photo, color: Colors.grey),
-                      )
-                    : null,
+                  if (badgeText != null && badgeText.isNotEmpty)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          badgeText,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             Padding(

@@ -8,6 +8,7 @@ import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/recommendation_service.dart';
 import '../../models/product_model.dart';
 import '../store/store_profile_screen.dart';
 import '../cart/cart_screen.dart';
@@ -80,6 +81,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && user.uid == widget.product.sellerId) return;
+
+      if (user != null) {
+        RecommendationService.trackProductView(user.uid, widget.product);
+      }
 
       await FirebaseFirestore.instance
           .collection('products')
@@ -480,6 +485,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         'quantity': 1,
         'addedAt': Timestamp.now(),
       });
+
+      RecommendationService.trackCartAdd(user.uid, product);
 
       AppDialog.showCustomDialog(
         title: "เพิ่มลงตะกร้าสำเร็จ!",
