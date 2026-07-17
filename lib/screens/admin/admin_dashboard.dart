@@ -67,10 +67,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     double amount = (data['amount'] ?? 0).toDouble();
     
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'admin_alerts_channel',
-      'Admin Alerts',
-      channelDescription: 'แจ้งเตือนสำหรับแอดมิน',
-      importance: Importance.max,
+      'high_importance_channel',
+      'High Importance Notifications',
+      channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+      importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
     );
@@ -82,6 +82,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
       title: 'คำร้องขอถอนเงินใหม่!',
       body: 'มีผู้ใช้ขอถอนเงินจำนวน ${amount.toStringAsFixed(2)} ฿',
       notificationDetails: platformDetails,
+    );
+
+    Get.snackbar(
+      'คำร้องขอถอนเงินใหม่!',
+      'มีผู้ใช้ขอถอนเงินจำนวน ${amount.toStringAsFixed(2)} ฿',
+      backgroundColor: Colors.white,
+      colorText: Colors.black87,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(15),
+      duration: const Duration(seconds: 4),
+      boxShadows: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 10,
+          offset: const Offset(0, 5),
+        ),
+      ],
+      icon: const Icon(CupertinoIcons.creditcard_fill, color: Colors.orange),
     );
   }
 

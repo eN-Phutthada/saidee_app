@@ -596,12 +596,41 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         TaskSnapshot snapshot = await uploadTask;
         String downloadUrl = await snapshot.ref.getDownloadURL();
 
-        await FirebaseFirestore.instance.collection('transactions').doc(docId).update({
-          'status': 'success',
-          'slipUrl': downloadUrl,
-          'updatedAt': FieldValue.serverTimestamp(),
+        // Transaction to deduct wallet balance and update transaction status to success
+        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc(docId);
+        DocumentSnapshot txSnap = await txRef.get();
+        if (!txSnap.exists) {
+          throw Exception("ไม่พบข้อมูลรายการถอนเงิน");
+        }
+        Map<String, dynamic> txData = txSnap.data() as Map<String, dynamic>;
+        String uid = txData['uid'] ?? '';
+        if (uid.isEmpty) {
+          throw Exception("ไม่พบรหัสผู้ใช้ในรายการถอนเงิน");
+        }
+
+        await FirebaseFirestore.instance.runTransaction((transaction) async {
+          DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+          DocumentSnapshot userSnap = await transaction.get(userRef);
+          if (!userSnap.exists) {
+            throw Exception("ไม่พบข้อมูลผู้ใช้");
+          }
+
+          double currentBalance = (userSnap.data() as Map<String, dynamic>)['walletBalance']?.toDouble() ?? 0.0;
+          if (currentBalance < expectedAmount) {
+            throw Exception("ยอดเงินคงเหลือของผู้ใช้ไม่เพียงพอสำหรับหักเงิน (คงเหลือ: ฿${currentBalance.toStringAsFixed(2)})");
+          }
+
+          transaction.update(userRef, {
+            'walletBalance': FieldValue.increment(-expectedAmount),
+          });
+
+          transaction.update(txRef, {
+            'status': 'success',
+            'slipUrl': downloadUrl,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
         });
-        
+
         Get.snackbar("สำเร็จ", "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย", backgroundColor: Colors.green, colorText: Colors.white);
         return true;
       } else {
@@ -615,35 +644,19 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         return false;
       }
     } catch (e) {
-      Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar("เกิดข้อผิดพลาด", e.toString().replaceAll('Exception: ', ''), backgroundColor: Colors.red, colorText: Colors.white);
       return false;
     }
   }
 
   Future<void> _rejectWithdrawal(String docId, String uid, double amount) async {
     try {
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc(docId);
-
-        DocumentSnapshot userSnapshot = await transaction.get(userRef);
-        if (!userSnapshot.exists) {
-          throw Exception("ไม่พบข้อมูลผู้ใช้");
-        }
-
-        double currentBalance = (userSnapshot.data() as Map<String, dynamic>)['walletBalance']?.toDouble() ?? 0.0;
-
-        transaction.update(userRef, {
-          'walletBalance': currentBalance + amount,
-        });
-
-        transaction.update(txRef, {
-          'status': 'cancelled',
-          'updatedAt': FieldValue.serverTimestamp(),
-          'note': 'แอดมินปฏิเสธรายการ / คืนเงินเข้าวอลเล็ท',
-        });
+      await FirebaseFirestore.instance.collection('transactions').doc(docId).update({
+        'status': 'cancelled',
+        'updatedAt': FieldValue.serverTimestamp(),
+        'note': 'แอดมินปฏิเสธรายการถอนเงิน',
       });
-      Get.snackbar("ยกเลิกรายการ", "ทำการคืนเงินเข้าวอลเล็ทผู้ใช้สำเร็จ", backgroundColor: Colors.orange, colorText: Colors.white);
+      Get.snackbar("ปฏิเสธรายการ", "ปฏิเสธรายการถอนเงินเรียบร้อยแล้ว", backgroundColor: Colors.orange, colorText: Colors.white);
     } catch (e) {
       Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
     }

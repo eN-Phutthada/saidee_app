@@ -149,6 +149,23 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
             _handleNotificationClick(message);
           },
         );
+
+        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        );
+        const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+        
+        flutterLocalNotificationsPlugin.show(
+          id: message.hashCode,
+          title: message.notification!.title ?? 'แจ้งเตือนใหม่',
+          body: message.notification!.body ?? '',
+          notificationDetails: platformDetails,
+        );
       }
     });
 

@@ -36,6 +36,38 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
 
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedAccount();
+  }
+
+  Future<void> _loadSavedAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (mounted) {
+          setState(() {
+            if (data['withdrawBank'] != null && _banks.contains(data['withdrawBank'])) {
+              _selectedBank = data['withdrawBank'];
+            }
+            if (data['withdrawAccountNumber'] != null) {
+              _accountNumberController.text = data['withdrawAccountNumber'].toString();
+            }
+            if (data['withdrawAccountName'] != null) {
+              _accountNameController.text = data['withdrawAccountName'].toString();
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error loading saved account: $e");
+    }
+  }
+
   Future<void> _processWithdraw() async {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
@@ -46,11 +78,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
     final double? amount = double.tryParse(amountText);
     if (amount == null || amount <= 0) {
       _showError("กรุณาระบุจำนวนเงินให้ถูกต้อง (ต้องมากกว่า 0 บาท)");
-      return;
-    }
-
-    if (amount > widget.currentBalance) {
-      _showError("ยอดเงินในวอลเล็ทของคุณไม่เพียงพอสำหรับการถอน");
       return;
     }
 
@@ -75,39 +102,56 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("ไม่พบผู้ใช้งาน");
 
-      // Transaction to ensure atomicity
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-        DocumentSnapshot userSnapshot = await transaction.get(userRef);
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) throw Exception("ไม่พบข้อมูลผู้ใช้");
 
-        if (!userSnapshot.exists) {
-          throw Exception("ไม่พบข้อมูลผู้ใช้");
+      final userData = userDoc.data() as Map<String, dynamic>;
+      double currentWalletBalance = (userData['walletBalance'] ?? 0.0).toDouble();
+
+      final pendingSnap = await FirebaseFirestore.instance
+          .collection('transactions')
+          .where('uid', isEqualTo: user.uid)
+          .where('type', isEqualTo: 'withdraw')
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      double pendingTotal = 0.0;
+      for (var doc in pendingSnap.docs) {
+        pendingTotal += (doc.data()['amount'] ?? 0).toDouble();
+      }
+
+      double availableBalance = currentWalletBalance - pendingTotal;
+
+      if (amount > availableBalance) {
+        if (pendingTotal > 0) {
+          throw Exception("ยอดเงินคงเหลือไม่เพียงพอ (มีรายการรอถอนเงินอยู่ ฿${pendingTotal.toStringAsFixed(2)})");
+        } else {
+          throw Exception("ยอดเงินในวอลเล็ทของคุณไม่เพียงพอสำหรับการถอน");
         }
+      }
 
-        double currentWalletBalance = (userSnapshot.data() as Map<String, dynamic>)['walletBalance']?.toDouble() ?? 0.0;
+      WriteBatch batch = FirebaseFirestore.instance.batch();
 
-        if (currentWalletBalance < amount) {
-          throw Exception("ยอดเงินคงเหลือไม่เพียงพอ");
-        }
-
-        // 1. Deduct balance
-        transaction.update(userRef, {
-          'walletBalance': FieldValue.increment(-amount),
-        });
-
-        // 2. Create transaction record
-        DocumentReference newTxRef = FirebaseFirestore.instance.collection('transactions').doc();
-        transaction.set(newTxRef, {
-          'uid': user.uid,
-          'type': 'withdraw',
-          'amount': amount,
-          'status': 'pending',
-          'bankName': _selectedBank,
-          'accountNumber': _accountNumberController.text.trim(),
-          'accountName': _accountNameController.text.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+      DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      batch.update(userRef, {
+        'withdrawBank': _selectedBank,
+        'withdrawAccountNumber': _accountNumberController.text.trim(),
+        'withdrawAccountName': _accountNameController.text.trim(),
       });
+
+      DocumentReference newTxRef = FirebaseFirestore.instance.collection('transactions').doc();
+      batch.set(newTxRef, {
+        'uid': user.uid,
+        'type': 'withdraw',
+        'amount': amount,
+        'status': 'pending',
+        'bankName': _selectedBank,
+        'accountNumber': _accountNumberController.text.trim(),
+        'accountName': _accountNameController.text.trim(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      await batch.commit();
 
       setState(() => _isLoading = false);
 
@@ -124,7 +168,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError("เกิดข้อผิดพลาดในการถอนเงิน: ${e.toString()}");
+      _showError("เกิดข้อผิดพลาดในการถอนเงิน: ${e.toString().replaceAll('Exception: ', '')}");
     }
   }
 
@@ -367,7 +411,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                             ),
                             child: Center(
                               child: Text(
-                                amtText == 'ทั้งหมด' ? amtText : "$amtText",
+                                amtText,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,

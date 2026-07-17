@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 
@@ -54,17 +55,35 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 180,
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                 shape: BoxShape.circle,
+                boxShadow: isDark
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
               ),
               padding: const EdgeInsets.all(18),
               child: Image.asset('assets/images/logo.png', fit: BoxFit.contain),
@@ -109,7 +128,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'SECONDHAND, FIRST CHOICE',
               style: GoogleFonts.notoSans(
-                color: const Color(0xFF8C8C8C),
+                color: isDark ? Colors.grey[400] : const Color(0xFF8C8C8C),
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
               ),
