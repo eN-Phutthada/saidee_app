@@ -567,7 +567,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isDark ? Colors.white12 : Colors.grey.withOpacity(0.1),
+              color: isDark
+                  ? Colors.white12
+                  : Colors.grey.withValues(alpha: 0.1),
             ),
           ),
         ),
@@ -588,14 +590,14 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       message,
       icon: Icon(icon, color: Colors.white, size: 28),
       snackPosition: SnackPosition.TOP,
-      backgroundColor: color.withOpacity(0.9),
+      backgroundColor: color.withValues(alpha: 0.9),
       colorText: Colors.white,
       borderRadius: 16,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       duration: const Duration(seconds: 3),
       boxShadows: [
         BoxShadow(
-          color: color.withOpacity(0.4),
+          color: color.withValues(alpha: 0.4),
           blurRadius: 15,
           offset: const Offset(0, 5),
         ),

@@ -85,7 +85,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
       message,
       icon: Icon(icon, color: Colors.white, size: 28),
       snackPosition: SnackPosition.TOP,
-      backgroundColor: backgroundColor.withOpacity(0.9),
+      backgroundColor: backgroundColor.withValues(alpha: 0.9),
       colorText: Colors.white,
       borderRadius: 16,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -94,7 +94,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
       barBlur: 20,
       boxShadows: [
         BoxShadow(
-          color: backgroundColor.withOpacity(0.4),
+          color: backgroundColor.withValues(alpha: 0.4),
           blurRadius: 15,
           offset: const Offset(0, 5),
         ),
@@ -121,7 +121,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),
@@ -198,7 +200,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -212,8 +216,8 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: _isActive
-                                  ? AppTheme.primaryColor.withOpacity(0.5)
-                                  : Colors.red.withOpacity(0.5),
+                                  ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                                  : Colors.red.withValues(alpha: 0.5),
                               width: 3,
                             ),
                           ),
@@ -260,8 +264,8 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: _isActive
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.red.withOpacity(0.1),
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -304,7 +308,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                         colors: isDark
                             ? [Colors.grey[800]!, Colors.grey[850]!]
                             : [
-                                AppTheme.primaryColor.withOpacity(0.1),
+                                AppTheme.primaryColor.withValues(alpha: 0.1),
                                 Colors.white,
                               ],
                         begin: Alignment.topLeft,
@@ -312,7 +316,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.2),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
@@ -323,7 +327,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withOpacity(0.2),
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -391,13 +397,13 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: _isActive
-                          ? Colors.red.withOpacity(0.05)
-                          : Colors.green.withOpacity(0.05),
+                          ? Colors.red.withValues(alpha: 0.05)
+                          : Colors.green.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
                         color: _isActive
-                            ? Colors.red.withOpacity(0.3)
-                            : Colors.green.withOpacity(0.3),
+                            ? Colors.red.withValues(alpha: 0.3)
+                            : Colors.green.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Column(
@@ -498,7 +504,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),

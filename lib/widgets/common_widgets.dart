@@ -14,7 +14,7 @@ class TopGreenShape extends StatelessWidget {
         width: 300,
         height: 300,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.9),
+          color: AppTheme.primaryColor.withValues(alpha: 0.9),
           borderRadius: const BorderRadius.only(
             bottomRight: Radius.circular(200),
             bottomLeft: Radius.circular(100),
@@ -75,7 +75,7 @@ class CustomTextField extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 5),
                   ),

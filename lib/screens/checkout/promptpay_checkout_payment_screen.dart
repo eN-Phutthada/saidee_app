@@ -136,7 +136,9 @@ class _PromptPayCheckoutPaymentScreenState
         );
       }
     } catch (e) {
-      _showError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่: ${e.toString()}");
+      _showError(
+        "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์ กรุณาลองใหม่: ${e.toString()}",
+      );
     } finally {
       if (mounted) {
         setState(() => _isVerifying = false);
@@ -146,8 +148,11 @@ class _PromptPayCheckoutPaymentScreenState
 
   Future<String> _uploadSlipToStorage(File imageFile) async {
     try {
-      String fileName = 'checkout_slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference ref = FirebaseStorage.instance.ref().child('slips/checkout/$fileName');
+      String fileName =
+          'checkout_slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      Reference ref = FirebaseStorage.instance.ref().child(
+        'slips/checkout/$fileName',
+      );
       await ref.putFile(imageFile);
       return await ref.getDownloadURL();
     } catch (e) {
@@ -234,7 +239,8 @@ class _PromptPayCheckoutPaymentScreenState
       NotificationService.sendNotification(
         userId: user.uid,
         title: "ชำระเงินสำเร็จแล้ว 💳",
-        body: "คำสั่งซื้อยอด ${widget.grandTotal.toStringAsFixed(2)} ฿ ถูกส่งไปยังผู้ขายเรียบร้อยแล้ว (ระบบถือเงิน Escrow ปลอดภัย 100%)",
+        body:
+            "คำสั่งซื้อยอด ${widget.grandTotal.toStringAsFixed(2)} ฿ ถูกส่งไปยังผู้ขายเรียบร้อยแล้ว (ระบบถือเงิน Escrow ปลอดภัย 100%)",
         type: 'order',
       );
 
@@ -242,7 +248,8 @@ class _PromptPayCheckoutPaymentScreenState
         NotificationService.sendNotification(
           userId: group.sellerId,
           title: "มีคำสั่งซื้อใหม่เข้ามา! 📦",
-          body: "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
+          body:
+              "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
           type: 'order',
         );
       }
@@ -305,7 +312,9 @@ class _PromptPayCheckoutPaymentScreenState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: isDark ? 0.15 : 0.08),
+                color: AppTheme.primaryColor.withValues(
+                  alpha: isDark ? 0.15 : 0.08,
+                ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: AppTheme.primaryColor.withValues(alpha: 0.3),
@@ -407,7 +416,7 @@ class _PromptPayCheckoutPaymentScreenState
                       child: Image.asset(
                         'assets/images/promptpay_logo.jpg',
                         height: 30,
-                        errorBuilder: (_, __, ___) => const Text(
+                        errorBuilder: (_, _, _) => const Text(
                           "PromptPay",
                           style: TextStyle(
                             color: Colors.white,
@@ -509,7 +518,9 @@ class _PromptPayCheckoutPaymentScreenState
                             Text(
                               "ชื่อบัญชี",
                               style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                                 fontSize: 13,
                               ),
                             ),
@@ -530,7 +541,9 @@ class _PromptPayCheckoutPaymentScreenState
                             Text(
                               "เบอร์พร้อมเพย์",
                               style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                                 fontSize: 13,
                               ),
                             ),
@@ -615,7 +628,9 @@ class _PromptPayCheckoutPaymentScreenState
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.2 : 0.05,
+                      ),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),

@@ -180,7 +180,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       message,
       icon: Icon(icon, color: Colors.white, size: 28),
       snackPosition: SnackPosition.TOP,
-      backgroundColor: backgroundColor.withOpacity(0.9),
+      backgroundColor: backgroundColor.withValues(alpha: 0.9),
       colorText: Colors.white,
       borderRadius: 16,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -192,7 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       barBlur: 20,
       boxShadows: [
         BoxShadow(
-          color: backgroundColor.withOpacity(0.4),
+          color: backgroundColor.withValues(alpha: 0.4),
           blurRadius: 15,
           offset: const Offset(0, 5),
         ),
@@ -282,7 +282,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     ? Colors.grey[800]
                                     : Colors.grey[200],
                                 border: Border.all(
-                                  color: AppTheme.primaryColor.withOpacity(0.5),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   width: 2,
                                 ),
                                 image: _imageFile != null
@@ -329,8 +331,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(
-                              isDark ? 0.2 : 0.05,
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
                             ),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
@@ -452,7 +454,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 5,
-                          shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                          shadowColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.4,
+                          ),
                         ),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
@@ -531,7 +535,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),

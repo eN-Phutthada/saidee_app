@@ -173,9 +173,9 @@ class ManageReportScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,11 +232,11 @@ class ManageReportScreen extends StatelessWidget {
             color: theme.cardColor,
             borderRadius: BorderRadius.circular(20),
             border: isUrgent
-                ? Border.all(color: Colors.red.withOpacity(0.3), width: 2)
+                ? Border.all(color: Colors.red.withValues(alpha: 0.3), width: 2)
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -284,8 +284,8 @@ class ManageReportScreen extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       color: status == 'banned'
-                          ? Colors.red.withOpacity(0.1)
-                          : Colors.green.withOpacity(0.1),
+                          ? Colors.red.withValues(alpha: 0.1)
+                          : Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(5),
                     ),
                     child: Text(
@@ -323,7 +323,9 @@ class ManageReportScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ...reports.map((r) => _buildDetailItem(context, r, isDark)),
+                      ...reports.map(
+                        (r) => _buildDetailItem(context, r, isDark),
+                      ),
                       const SizedBox(height: 10),
                       _buildActionButtons(userId, status, theme),
                     ],
@@ -337,14 +339,18 @@ class ManageReportScreen extends StatelessWidget {
     );
   }
 
-  void _resolveDisputeRefund(BuildContext context, Map<String, dynamic> report) async {
+  void _resolveDisputeRefund(
+    BuildContext context,
+    Map<String, dynamic> report,
+  ) async {
     String orderId = report['order_id'] ?? '';
     String buyerId = report['reporter_id'] ?? '';
     if (orderId.isEmpty || buyerId.isEmpty) return;
 
     AppDialog.showCustomDialog(
       title: "ยืนยันการคืนเงินให้ผู้ซื้อ",
-      message: "ระบบจะทำรายการยกเลิกออเดอร์และโอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
+      message:
+          "ระบบจะทำรายการยกเลิกออเดอร์และโอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
       icon: CupertinoIcons.arrow_counterclockwise_circle_fill,
       iconColor: Colors.orange,
       confirmText: "อนุมัติคืนเงิน",
@@ -353,25 +359,32 @@ class ManageReportScreen extends StatelessWidget {
       onConfirm: () async {
         Get.back();
         try {
-          var orderDoc = await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
+          var orderDoc = await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId)
+              .get();
           if (!orderDoc.exists) throw Exception("ไม่พบข้อมูลออเดอร์");
           double total = (orderDoc.data()!['total'] ?? 0).toDouble();
 
           WriteBatch batch = FirebaseFirestore.instance.batch();
 
-          DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+          DocumentReference orderRef = FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId);
           batch.update(orderRef, {
             'status': 'cancelled',
             'note': 'แอดมินตัดสินข้อพาท: คืนเงินให้ผู้ซื้อ',
             'resolvedAt': FieldValue.serverTimestamp(),
           });
 
-          DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(buyerId);
-          batch.update(userRef, {
-            'walletBalance': FieldValue.increment(total),
-          });
+          DocumentReference userRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(buyerId);
+          batch.update(userRef, {'walletBalance': FieldValue.increment(total)});
 
-          DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+          DocumentReference txRef = FirebaseFirestore.instance
+              .collection('transactions')
+              .doc();
           batch.set(txRef, {
             'uid': buyerId,
             'type': 'refund',
@@ -381,7 +394,9 @@ class ManageReportScreen extends StatelessWidget {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          DocumentReference reportRef = FirebaseFirestore.instance.collection('reports').doc(report['id']);
+          DocumentReference reportRef = FirebaseFirestore.instance
+              .collection('reports')
+              .doc(report['id']);
           batch.update(reportRef, {
             'status': 'resolved_refund',
             'resolvedAt': FieldValue.serverTimestamp(),
@@ -392,7 +407,8 @@ class ManageReportScreen extends StatelessWidget {
           NotificationService.sendNotification(
             userId: buyerId,
             title: "อนุมัติคืนเงินข้อพาท 💰",
-            body: "ข้อพาทคำสั่งซื้อได้รับการอนุมัติ คืนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            body:
+                "ข้อพาทคำสั่งซื้อได้รับการอนุมัติ คืนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
             type: 'wallet',
             orderId: orderId,
           );
@@ -400,27 +416,42 @@ class ManageReportScreen extends StatelessWidget {
           NotificationService.sendNotification(
             userId: report['reported_id'] ?? '',
             title: "แจ้งผลการตัดสินข้อพาท ℹ️",
-            body: "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติคืนเงินให้ผู้ซื้อ)",
+            body:
+                "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติคืนเงินให้ผู้ซื้อ)",
             type: 'dispute',
             orderId: orderId,
           );
 
-          Get.snackbar("สำเร็จ", "อนุมัติคืนเงินผู้ซื้อเรียบร้อยแล้ว", backgroundColor: Colors.green, colorText: Colors.white);
+          Get.snackbar(
+            "สำเร็จ",
+            "อนุมัติคืนเงินผู้ซื้อเรียบร้อยแล้ว",
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
         } catch (e) {
-          Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+          Get.snackbar(
+            "เกิดข้อผิดพลาด",
+            e.toString(),
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
         }
       },
     );
   }
 
-  void _resolveDisputeRelease(BuildContext context, Map<String, dynamic> report) async {
+  void _resolveDisputeRelease(
+    BuildContext context,
+    Map<String, dynamic> report,
+  ) async {
     String orderId = report['order_id'] ?? '';
     String sellerId = report['reported_id'] ?? '';
     if (orderId.isEmpty || sellerId.isEmpty) return;
 
     AppDialog.showCustomDialog(
       title: "ยืนยันการโอนเงินให้ผู้ขาย",
-      message: "ระบบจะทำรายการอนุมัติออเดอร์และโอนเงินเข้าวอลเล็ทของผู้ขายทันที",
+      message:
+          "ระบบจะทำรายการอนุมัติออเดอร์และโอนเงินเข้าวอลเล็ทของผู้ขายทันที",
       icon: CupertinoIcons.money_dollar_circle_fill,
       iconColor: Colors.green,
       confirmText: "อนุมัติปล่อยเงิน",
@@ -429,25 +460,34 @@ class ManageReportScreen extends StatelessWidget {
       onConfirm: () async {
         Get.back();
         try {
-          var orderDoc = await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
+          var orderDoc = await FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId)
+              .get();
           if (!orderDoc.exists) throw Exception("ไม่พบข้อมูลออเดอร์");
           double total = (orderDoc.data()!['total'] ?? 0).toDouble();
 
           WriteBatch batch = FirebaseFirestore.instance.batch();
 
-          DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+          DocumentReference orderRef = FirebaseFirestore.instance
+              .collection('orders')
+              .doc(orderId);
           batch.update(orderRef, {
             'status': 'completed',
             'note': 'แอดมินตัดสินข้อพาท: โอนเงินให้ผู้ขาย',
             'resolvedAt': FieldValue.serverTimestamp(),
           });
 
-          DocumentReference sellerRef = FirebaseFirestore.instance.collection('users').doc(sellerId);
+          DocumentReference sellerRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(sellerId);
           batch.update(sellerRef, {
             'walletBalance': FieldValue.increment(total),
           });
 
-          DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+          DocumentReference txRef = FirebaseFirestore.instance
+              .collection('transactions')
+              .doc();
           batch.set(txRef, {
             'uid': sellerId,
             'type': 'income',
@@ -457,7 +497,9 @@ class ManageReportScreen extends StatelessWidget {
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          DocumentReference reportRef = FirebaseFirestore.instance.collection('reports').doc(report['id']);
+          DocumentReference reportRef = FirebaseFirestore.instance
+              .collection('reports')
+              .doc(report['id']);
           batch.update(reportRef, {
             'status': 'resolved_payout',
             'resolvedAt': FieldValue.serverTimestamp(),
@@ -468,7 +510,8 @@ class ManageReportScreen extends StatelessWidget {
           NotificationService.sendNotification(
             userId: sellerId,
             title: "อนุมัติโอนเงินข้อพาท 💰",
-            body: "ข้อพาทได้รับการอนุมัติ โอนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            body:
+                "ข้อพาทได้รับการอนุมัติ โอนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
             type: 'wallet',
             orderId: orderId,
           );
@@ -476,20 +519,35 @@ class ManageReportScreen extends StatelessWidget {
           NotificationService.sendNotification(
             userId: report['reporter_id'] ?? '',
             title: "แจ้งผลการตัดสินข้อพาท ℹ️",
-            body: "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติปล่อยเงินให้ผู้ขาย)",
+            body:
+                "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติปล่อยเงินให้ผู้ขาย)",
             type: 'dispute',
             orderId: orderId,
           );
 
-          Get.snackbar("สำเร็จ", "อนุมัติโอนเงินให้ผู้ขายเรียบร้อยแล้ว", backgroundColor: Colors.green, colorText: Colors.white);
+          Get.snackbar(
+            "สำเร็จ",
+            "อนุมัติโอนเงินให้ผู้ขายเรียบร้อยแล้ว",
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
         } catch (e) {
-          Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+          Get.snackbar(
+            "เกิดข้อผิดพลาด",
+            e.toString(),
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
         }
       },
     );
   }
 
-  Widget _buildDetailItem(BuildContext context, Map<String, dynamic> report, bool isDark) {
+  Widget _buildDetailItem(
+    BuildContext context,
+    Map<String, dynamic> report,
+    bool isDark,
+  ) {
     String? orderId = report['order_id'];
     String reportStatus = report['status'] ?? 'pending';
 
@@ -497,7 +555,7 @@ class ManageReportScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -563,7 +621,13 @@ class ManageReportScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text("คืนเงินผู้ซื้อ", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "คืนเงินผู้ซื้อ",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -580,7 +644,13 @@ class ManageReportScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text("โอนเงินให้ผู้ขาย", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "โอนเงินให้ผู้ขาย",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -610,7 +680,9 @@ class ManageReportScreen extends StatelessWidget {
               isBanned ? Icons.lock_open : Icons.lock_person,
               size: 18,
             ),
-            label: Text(isBanned ? "ปลดระงับการใช้งาน" : "ระงับบัญชีผู้ใช้กรณีทุจริต"),
+            label: Text(
+              isBanned ? "ปลดระงับการใช้งาน" : "ระงับบัญชีผู้ใช้กรณีทุจริต",
+            ),
           ),
         ),
       ],

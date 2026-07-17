@@ -202,7 +202,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -235,8 +235,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
                       color: isCurrentCondition
-                          ? AppTheme.primaryColor.withOpacity(
-                              isDark ? 0.15 : 0.08,
+                          ? AppTheme.primaryColor.withValues(
+                              alpha: isDark ? 0.15 : 0.08,
                             )
                           : (isDark ? Colors.grey[900] : Colors.grey[50]),
                       borderRadius: BorderRadius.circular(15),
@@ -756,7 +756,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 sigmaY: 4.0,
                               ),
                               child: Container(
-                                color: Colors.black.withOpacity(0.4),
+                                color: Colors.black.withValues(alpha: 0.4),
                                 child: Center(
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -765,12 +765,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: displayProduct.status == 'sold'
-                                          ? Colors.redAccent.withOpacity(0.9)
-                                          : Colors.orange.withOpacity(0.9),
+                                          ? Colors.redAccent.withValues(
+                                              alpha: 0.9,
+                                            )
+                                          : Colors.orange.withValues(
+                                              alpha: 0.9,
+                                            ),
                                       borderRadius: BorderRadius.circular(30),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.3),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.3,
+                                          ),
                                           blurRadius: 15,
                                           offset: const Offset(0, 5),
                                         ),
@@ -927,10 +933,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 shape: BoxShape.circle,
                                 color: _currentImageIndex == index
                                     ? AppTheme.primaryColor
-                                    : Colors.white.withOpacity(0.6),
+                                    : Colors.white.withValues(alpha: 0.6),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withValues(alpha: 0.2),
                                     blurRadius: 4,
                                   ),
                                 ],
@@ -1136,7 +1142,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color: Colors.orange
-                                                      .withOpacity(0.1),
+                                                      .withValues(alpha: 0.1),
                                                   borderRadius:
                                                       BorderRadius.circular(4),
                                                 ),
@@ -1336,7 +1342,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         color: theme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -1437,7 +1443,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         color: theme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -1465,7 +1471,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 side: BorderSide(
                   color: canEditOrDelete
                       ? (isDark ? Colors.grey[500]! : Colors.grey)
-                      : Colors.grey.withOpacity(0.3),
+                      : Colors.grey.withValues(alpha: 0.3),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),

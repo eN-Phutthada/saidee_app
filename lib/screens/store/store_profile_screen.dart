@@ -169,7 +169,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 20,
                   offset: const Offset(0, -5),
                 ),
@@ -227,7 +227,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -287,7 +287,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withOpacity(0.1),
+                          color: Colors.orange.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -359,7 +359,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                         elevation: 5,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                        shadowColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                       child: const Text(
                         "ใช้ตัวกรอง",
@@ -410,7 +412,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -541,7 +543,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           Icon(
             CupertinoIcons.nosign,
             size: 80,
-            color: Colors.red.withOpacity(0.5),
+            color: Colors.red.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 15),
           const Text(
@@ -612,7 +614,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             borderRadius: BorderRadius.circular(15),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
@@ -760,8 +762,8 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                     Icon(
                                       CupertinoIcons.cube_box_fill,
                                       size: 18,
-                                      color: AppTheme.primaryColor.withOpacity(
-                                        0.8,
+                                      color: AppTheme.primaryColor.withValues(
+                                        alpha: 0.8,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
@@ -913,7 +915,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: isDark ? Colors.black45 : Colors.grey.withOpacity(0.3),
+              color: isDark
+                  ? Colors.black45
+                  : Colors.grey.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -931,7 +935,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, size: 18, color: AppTheme.primaryColor),
@@ -1048,7 +1052,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.3 : 0.05,
+                      ),
                       blurRadius: 5,
                       offset: const Offset(0, 2),
                     ),
@@ -1083,7 +1089,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                           if (isSold)
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.7),
+                                color: Colors.white.withValues(alpha: 0.7),
                                 borderRadius: const BorderRadius.vertical(
                                   top: Radius.circular(15),
                                 ),
@@ -1254,7 +1260,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),

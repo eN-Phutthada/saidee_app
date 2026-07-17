@@ -25,7 +25,7 @@ flutter build ipa --obfuscate --split-debug-info=build/app/outputs/symbols
 
 ## 2. Screenshot Prevention
 
-Screenshot prevention has been applied to sensitive screens using `flutter_windowmanager`:
+Screenshot prevention has been applied to sensitive screens using `flutter_windowmanager_plus`:
 - `ProfileScreen`
 - `PrivacyPolicyScreen`
 

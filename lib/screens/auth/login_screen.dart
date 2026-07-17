@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -136,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(15),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -321,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     boxShadow: [
                       BoxShadow(
                         color: (isAdmin ? Colors.blue : Colors.green)
-                            .withOpacity(0.2),
+                            .withValues(alpha: 0.2),
                         blurRadius: 30,
                         spreadRadius: 5,
                         offset: const Offset(0, 10),
@@ -335,8 +335,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: isAdmin
-                              ? Colors.blue.withOpacity(0.1)
-                              : Colors.green.withOpacity(0.1),
+                              ? Colors.blue.withValues(alpha: 0.1)
+                              : Colors.green.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -529,7 +529,7 @@ class _LoginScreenState extends State<LoginScreen> {
       message,
       icon: Icon(icon, color: Colors.white, size: 28),
       snackPosition: SnackPosition.TOP,
-      backgroundColor: backgroundColor.withOpacity(0.9),
+      backgroundColor: backgroundColor.withValues(alpha: 0.9),
       colorText: Colors.white,
       borderRadius: 16,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -541,7 +541,7 @@ class _LoginScreenState extends State<LoginScreen> {
       barBlur: 20,
       boxShadows: [
         BoxShadow(
-          color: backgroundColor.withOpacity(0.4),
+          color: backgroundColor.withValues(alpha: 0.4),
           blurRadius: 15,
           offset: const Offset(0, 5),
         ),
@@ -590,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Image.asset(
@@ -630,8 +630,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(
-                                  isDark ? 0.2 : 0.05,
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.05,
                                 ),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
@@ -692,7 +692,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                     elevation: 5,
                                     shadowColor: AppTheme.primaryColor
-                                        .withOpacity(0.4),
+                                        .withValues(alpha: 0.4),
                                   ),
                                   child: AnimatedSwitcher(
                                     duration: const Duration(milliseconds: 300),
@@ -843,7 +843,9 @@ class _LoginScreenState extends State<LoginScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),

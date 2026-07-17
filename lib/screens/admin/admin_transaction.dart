@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+
 class AdminTransactionScreen extends StatefulWidget {
   final bool isBottomNav;
 
@@ -125,7 +126,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         var data = doc.data() as Map<String, dynamic>;
                         var type = (data['type'] ?? '').toLowerCase();
                         var status = (data['status'] ?? '').toLowerCase();
-                        
+
                         if (_selectedFilter == 'pending_withdraw') {
                           return type == 'withdraw' && status == 'pending';
                         }
@@ -139,12 +140,16 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                 filteredDocs.sort((a, b) {
                   var dataA = a.data() as Map<String, dynamic>;
                   var dataB = b.data() as Map<String, dynamic>;
-                  bool isPendingA = dataA['type'] == 'withdraw' && dataA['status'] == 'pending';
-                  bool isPendingB = dataB['type'] == 'withdraw' && dataB['status'] == 'pending';
-                  
+                  bool isPendingA =
+                      dataA['type'] == 'withdraw' &&
+                      dataA['status'] == 'pending';
+                  bool isPendingB =
+                      dataB['type'] == 'withdraw' &&
+                      dataB['status'] == 'pending';
+
                   if (isPendingA && !isPendingB) return -1;
                   if (!isPendingA && isPendingB) return 1;
-                  
+
                   Timestamp? tsA = dataA['createdAt'];
                   Timestamp? tsB = dataB['createdAt'];
                   if (tsA == null) return 1;
@@ -163,8 +168,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(
-                                isDark ? 0.3 : 0.05,
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.3 : 0.05,
                               ),
                               blurRadius: 20,
                               offset: const Offset(0, 10),
@@ -184,7 +189,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                 Container(
                                   width: 1,
                                   height: 40,
-                                  color: Colors.grey.withOpacity(0.2),
+                                  color: Colors.grey.withValues(alpha: 0.2),
                                   margin: const EdgeInsets.symmetric(
                                     horizontal: 15,
                                   ),
@@ -209,7 +214,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       child: Row(
                         children: [
                           _buildFilterChip('ทั้งหมด', 'all', isDark),
-                          _buildFilterChip('รอโอนเงิน', 'pending_withdraw', isDark),
+                          _buildFilterChip(
+                            'รอโอนเงิน',
+                            'pending_withdraw',
+                            isDark,
+                          ),
                           _buildFilterChip('เติมเงิน', 'topup', isDark),
                           _buildFilterChip('ซื้อสินค้า', 'purchase', isDark),
                           _buildFilterChip('รายรับผู้ขาย', 'income', isDark),
@@ -317,7 +326,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         ),
         elevation: isSelected ? 4 : 0,
         pressElevation: 0,
-        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+        shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
         side: BorderSide(
           color: isSelected
               ? AppTheme.primaryColor
@@ -360,7 +369,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             ),
             const SizedBox(height: 15),
             _buildDetailRow("ผู้ขอถอนเงิน", userName, isDark),
-            _buildDetailRow("จำนวนเงิน", "${amount.toStringAsFixed(2)} ฿", isDark, isHighlight: true),
+            _buildDetailRow(
+              "จำนวนเงิน",
+              "${amount.toStringAsFixed(2)} ฿",
+              isDark,
+              isHighlight: true,
+            ),
             const Divider(height: 30),
             _buildDetailRow("ธนาคาร", bankName, isDark),
             _buildDetailRow("ชื่อบัญชี", accountName, isDark),
@@ -382,7 +396,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text("ปฏิเสธ/คืนเงิน", style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "ปฏิเสธ/คืนเงิน",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 15),
@@ -400,7 +417,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text("โอนเงินเรียบร้อย", style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "โอนเงินเรียบร้อย",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
@@ -413,7 +433,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value, bool isDark, {bool isHighlight = false}) {
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    bool isDark, {
+    bool isHighlight = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -423,7 +448,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             width: 100,
             child: Text(
               label,
-              style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+              style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
             ),
           ),
           Expanded(
@@ -452,7 +479,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           final isDark = theme.brightness == Brightness.dark;
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             backgroundColor: theme.scaffoldBackgroundColor,
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -465,13 +494,20 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   ),
                   const SizedBox(height: 20),
                   GestureDetector(
-                    onTap: isUploading ? null : () async {
-                      final picker = ImagePicker();
-                      final image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-                      if (image != null) {
-                        setStateDialog(() => slipImage = File(image.path));
-                      }
-                    },
+                    onTap: isUploading
+                        ? null
+                        : () async {
+                            final picker = ImagePicker();
+                            final image = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 80,
+                            );
+                            if (image != null) {
+                              setStateDialog(
+                                () => slipImage = File(image.path),
+                              );
+                            }
+                          },
                     child: Container(
                       height: 200,
                       width: double.infinity,
@@ -479,7 +515,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         color: isDark ? Colors.grey[800] : Colors.grey[100],
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: slipImage != null ? Colors.green : Colors.grey.shade400,
+                          color: slipImage != null
+                              ? Colors.green
+                              : Colors.grey.shade400,
                           width: 2,
                           style: BorderStyle.solid,
                         ),
@@ -492,7 +530,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(CupertinoIcons.photo_on_rectangle, size: 50, color: Colors.grey[400]),
+                                Icon(
+                                  CupertinoIcons.photo_on_rectangle,
+                                  size: 50,
+                                  color: Colors.grey[400],
+                                ),
                                 const SizedBox(height: 10),
                                 Text(
                                   "แตะเพื่อเลือกรูปสลิป",
@@ -510,7 +552,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           onPressed: isUploading ? null : () => Get.back(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text("ยกเลิก"),
                         ),
@@ -522,7 +566,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                               ? null
                               : () async {
                                   setStateDialog(() => isUploading = true);
-                                  bool success = await _uploadSlipAndApprove(docId, slipImage!, expectedAmount);
+                                  bool success = await _uploadSlipAndApprove(
+                                    docId,
+                                    slipImage!,
+                                    expectedAmount,
+                                  );
                                   if (context.mounted) {
                                     setStateDialog(() => isUploading = false);
                                     if (success) {
@@ -533,15 +581,26 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: isUploading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
                                 )
-                              : const Text("ยืนยัน", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              : const Text(
+                                  "ยืนยัน",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -556,10 +615,14 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     );
   }
 
-  Future<bool> _uploadSlipAndApprove(String docId, File imageFile, double expectedAmount) async {
+  Future<bool> _uploadSlipAndApprove(
+    String docId,
+    File imageFile,
+    double expectedAmount,
+  ) async {
     try {
       final String slipokApiKey = dotenv.env['SLIPOK_API_KEY'] ?? '';
-      
+
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
@@ -579,9 +642,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
         if (transferredAmount != expectedAmount) {
           Get.snackbar(
-            "สลิปไม่ถูกต้อง", 
-            "จำนวนเงินในสลิป ($transferredAmount ฿) ไม่ตรงกับยอดถอน ($expectedAmount ฿)", 
-            backgroundColor: Colors.red, 
+            "สลิปไม่ถูกต้อง",
+            "จำนวนเงินในสลิป ($transferredAmount ฿) ไม่ตรงกับยอดถอน ($expectedAmount ฿)",
+            backgroundColor: Colors.red,
             colorText: Colors.white,
             duration: const Duration(seconds: 4),
           );
@@ -590,14 +653,18 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
         // Upload to Firebase Storage
         String fileName = 'slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        Reference storageRef = FirebaseStorage.instance.ref().child('slips/withdrawals/$docId/$fileName');
+        Reference storageRef = FirebaseStorage.instance.ref().child(
+          'slips/withdrawals/$docId/$fileName',
+        );
 
         UploadTask uploadTask = storageRef.putFile(imageFile);
         TaskSnapshot snapshot = await uploadTask;
         String downloadUrl = await snapshot.ref.getDownloadURL();
 
         // Transaction to deduct wallet balance and update transaction status to success
-        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc(docId);
+        DocumentReference txRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc(docId);
         DocumentSnapshot txSnap = await txRef.get();
         if (!txSnap.exists) {
           throw Exception("ไม่พบข้อมูลรายการถอนเงิน");
@@ -609,15 +676,22 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         }
 
         await FirebaseFirestore.instance.runTransaction((transaction) async {
-          DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+          DocumentReference userRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid);
           DocumentSnapshot userSnap = await transaction.get(userRef);
           if (!userSnap.exists) {
             throw Exception("ไม่พบข้อมูลผู้ใช้");
           }
 
-          double currentBalance = (userSnap.data() as Map<String, dynamic>)['walletBalance']?.toDouble() ?? 0.0;
+          double currentBalance =
+              (userSnap.data() as Map<String, dynamic>)['walletBalance']
+                  ?.toDouble() ??
+              0.0;
           if (currentBalance < expectedAmount) {
-            throw Exception("ยอดเงินคงเหลือของผู้ใช้ไม่เพียงพอสำหรับหักเงิน (คงเหลือ: ฿${currentBalance.toStringAsFixed(2)})");
+            throw Exception(
+              "ยอดเงินคงเหลือของผู้ใช้ไม่เพียงพอสำหรับหักเงิน (คงเหลือ: ฿${currentBalance.toStringAsFixed(2)})",
+            );
           }
 
           transaction.update(userRef, {
@@ -631,34 +705,61 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           });
         });
 
-        Get.snackbar("สำเร็จ", "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย", backgroundColor: Colors.green, colorText: Colors.white);
+        Get.snackbar(
+          "สำเร็จ",
+          "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
         return true;
       } else {
         Get.snackbar(
-          "ตรวจสอบสลิปไม่ผ่าน", 
-          jsonData['message'] ?? 'รูปภาพสลิปไม่ถูกต้อง หรือเซิร์ฟเวอร์มีปัญหา', 
-          backgroundColor: Colors.orange, 
+          "ตรวจสอบสลิปไม่ผ่าน",
+          jsonData['message'] ?? 'รูปภาพสลิปไม่ถูกต้อง หรือเซิร์ฟเวอร์มีปัญหา',
+          backgroundColor: Colors.orange,
           colorText: Colors.white,
           duration: const Duration(seconds: 4),
         );
         return false;
       }
     } catch (e) {
-      Get.snackbar("เกิดข้อผิดพลาด", e.toString().replaceAll('Exception: ', ''), backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "เกิดข้อผิดพลาด",
+        e.toString().replaceAll('Exception: ', ''),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return false;
     }
   }
 
-  Future<void> _rejectWithdrawal(String docId, String uid, double amount) async {
+  Future<void> _rejectWithdrawal(
+    String docId,
+    String uid,
+    double amount,
+  ) async {
     try {
-      await FirebaseFirestore.instance.collection('transactions').doc(docId).update({
-        'status': 'cancelled',
-        'updatedAt': FieldValue.serverTimestamp(),
-        'note': 'แอดมินปฏิเสธรายการถอนเงิน',
-      });
-      Get.snackbar("ปฏิเสธรายการ", "ปฏิเสธรายการถอนเงินเรียบร้อยแล้ว", backgroundColor: Colors.orange, colorText: Colors.white);
+      await FirebaseFirestore.instance
+          .collection('transactions')
+          .doc(docId)
+          .update({
+            'status': 'cancelled',
+            'updatedAt': FieldValue.serverTimestamp(),
+            'note': 'แอดมินปฏิเสธรายการถอนเงิน',
+          });
+      Get.snackbar(
+        "ปฏิเสธรายการ",
+        "ปฏิเสธรายการถอนเงินเรียบร้อยแล้ว",
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
     } catch (e) {
-      Get.snackbar("เกิดข้อผิดพลาด", e.toString(), backgroundColor: Colors.red, colorText: Colors.white);
+      Get.snackbar(
+        "เกิดข้อผิดพลาด",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -681,7 +782,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     bool isAppIn = _isAppIncome(type);
 
     return FutureBuilder<DocumentSnapshot?>(
-      future: uid.isEmpty ? Future.value(null) : FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      future: uid.isEmpty
+          ? Future.value(null)
+          : FirebaseFirestore.instance.collection('users').doc(uid).get(),
       builder: (context, userSnapshot) {
         String userName = "กำลังโหลด...";
         String userImage = "";
@@ -700,125 +803,135 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
         return InkWell(
           onTap: isPendingWithdraw
-              ? () => _showWithdrawalActionDialog(context, docId, uid, data, userName)
+              ? () => _showWithdrawalActionDialog(
+                  context,
+                  docId,
+                  uid,
+                  data,
+                  userName,
+                )
               : null,
           borderRadius: BorderRadius.circular(20),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isPendingWithdraw 
-                  ? (isDark ? Colors.orange.withOpacity(0.15) : Colors.orange.withOpacity(0.05)) 
+              color: isPendingWithdraw
+                  ? (isDark
+                        ? Colors.orange.withValues(alpha: 0.15)
+                        : Colors.orange.withValues(alpha: 0.05))
                   : theme.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isPendingWithdraw 
-                    ? Colors.orangeAccent 
+                color: isPendingWithdraw
+                    ? Colors.orangeAccent
                     : (isDark ? Colors.white10 : Colors.grey.shade100),
                 width: isPendingWithdraw ? 1.5 : 1.0,
               ),
-              boxShadow: isPendingWithdraw ? [
-                BoxShadow(
-                  color: Colors.orangeAccent.withOpacity(0.2), 
-                  blurRadius: 8, 
-                  spreadRadius: 1
-                )
-              ] : [],
+              boxShadow: isPendingWithdraw
+                  ? [
+                      BoxShadow(
+                        color: Colors.orangeAccent.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : [],
             ),
             child: Row(
               children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: isDark
-                        ? Colors.grey[800]
-                        : Colors.grey[100],
-                    backgroundImage: userImage.isNotEmpty
-                        ? NetworkImage(userImage)
-                        : null,
-                    child: userImage.isEmpty
-                        ? Icon(
-                            CupertinoIcons.person_fill,
-                            color: Colors.grey[400],
-                          )
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: -2,
-                    right: -2,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: isAppIn ? Colors.green : Colors.redAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: theme.cardColor, width: 2),
-                      ),
-                      child: Icon(
-                        isAppIn
-                            ? CupertinoIcons.arrow_down_left
-                            : CupertinoIcons.arrow_up_right,
-                        size: 10,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: isDark
+                          ? Colors.grey[800]
+                          : Colors.grey[100],
+                      backgroundImage: userImage.isNotEmpty
+                          ? NetworkImage(userImage)
+                          : null,
+                      child: userImage.isEmpty
+                          ? Icon(
+                              CupertinoIcons.person_fill,
+                              color: Colors.grey[400],
+                            )
+                          : null,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _getTransactionTypeName(type),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isAppIn ? Colors.green : Colors.redAccent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: theme.cardColor, width: 2),
+                        ),
+                        child: Icon(
+                          isAppIn
+                              ? CupertinoIcons.arrow_down_left
+                              : CupertinoIcons.arrow_up_right,
+                          size: 10,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      formattedDate,
-                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    "${isAppIn ? '+' : '-'}${amount.toStringAsFixed(2)} ฿",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-
-                      color: isAppIn ? Colors.green : Colors.redAccent,
-                    ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        userName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _getTransactionTypeName(type),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        formattedDate,
+                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  _buildStatusBadge(status),
-                ],
-              ),
-            ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      "${isAppIn ? '+' : '-'}${amount.toStringAsFixed(2)} ฿",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+
+                        color: isAppIn ? Colors.green : Colors.redAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _buildStatusBadge(status),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildStatusBadge(String status) {
     Color color;
@@ -840,7 +953,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -893,7 +1006,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),

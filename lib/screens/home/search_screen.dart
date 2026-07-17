@@ -269,7 +269,7 @@ class _SearchScreenState extends State<SearchScreen> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -347,7 +347,7 @@ class _SearchScreenState extends State<SearchScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -374,7 +374,7 @@ class _SearchScreenState extends State<SearchScreen> {
         color: theme.scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
@@ -393,7 +393,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 borderRadius: BorderRadius.circular(15),
               ),
               elevation: 5,
-              shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+              shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -441,7 +441,9 @@ class _SearchScreenState extends State<SearchScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),

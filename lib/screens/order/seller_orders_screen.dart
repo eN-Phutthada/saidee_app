@@ -114,7 +114,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                             Container(
                               padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
+                                color: Colors.blue.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -138,7 +138,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
+                                color: Colors.blue.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -279,7 +279,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                             Container(
                               padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                                color: Colors.orange.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -313,10 +313,10 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? Colors.grey[800]
-                                    : Colors.blue.withOpacity(0.05),
+                                    : Colors.blue.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.blue.withOpacity(0.3),
+                                  color: Colors.blue.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Text(
@@ -371,11 +371,13 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                         barrierDismissible: false,
                                       );
                                       try {
-                                        var orderDoc = await FirebaseFirestore.instance
+                                        var orderDoc = await FirebaseFirestore
+                                            .instance
                                             .collection('orders')
                                             .doc(orderId)
                                             .get();
-                                        String buyerId = orderDoc.data()?['buyerId'] ?? '';
+                                        String buyerId =
+                                            orderDoc.data()?['buyerId'] ?? '';
 
                                         await FirebaseFirestore.instance
                                             .collection('orders')
@@ -390,7 +392,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                         if (buyerId.isNotEmpty) {
                                           NotificationService.sendNotification(
                                             userId: buyerId,
-                                            title: "สินค้าของคุณถูกจัดส่งแล้ว! 🚚",
+                                            title:
+                                                "สินค้าของคุณถูกจัดส่งแล้ว! 🚚",
                                             body: "เลขพัสดุ: $finalTracking",
                                             type: 'order',
                                             orderId: orderId,
@@ -488,9 +491,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: user != null
                   ? FirebaseFirestore.instance
-                      .collection('orders')
-                      .where('sellerId', isEqualTo: user.uid)
-                      .snapshots()
+                        .collection('orders')
+                        .where('sellerId', isEqualTo: user.uid)
+                        .snapshots()
                   : null,
               builder: (context, snapshot) {
                 int pendingCount = 0;
@@ -509,8 +512,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   tabAlignment: TabAlignment.fill,
                   labelColor: AppTheme.primaryColor,
                   indicatorColor: AppTheme.primaryColor,
-                  unselectedLabelColor:
-                      isDark ? Colors.grey[500] : Colors.grey[400],
+                  unselectedLabelColor: isDark
+                      ? Colors.grey[500]
+                      : Colors.grey[400],
                   labelStyle: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -580,12 +584,17 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           final theme = Theme.of(context);
           return AlertDialog(
             backgroundColor: theme.cardColor,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             title: const Row(
               children: [
                 Icon(CupertinoIcons.xmark_circle_fill, color: Colors.red),
                 SizedBox(width: 10),
-                Text("ยกเลิกคำสั่งซื้อ", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  "ยกเลิกคำสั่งซื้อ",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             content: SingleChildScrollView(
@@ -593,23 +602,42 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("ระบุสาเหตุที่ต้องการยกเลิก (ระบบจะคืนเงินผู้ซื้อ 100% ทันที):", style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const Text(
+                    "ระบุสาเหตุที่ต้องการยกเลิก (ระบบจะคืนเงินผู้ซื้อ 100% ทันที):",
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedReason,
+                    initialValue: selectedReason,
                     decoration: InputDecoration(
                       filled: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                     ),
                     items: const [
-                      DropdownMenuItem(value: "สินค้าหมด / สต็อกไม่พอ", child: Text("สินค้าหมด / สต็อกไม่พอ")),
-                      DropdownMenuItem(value: "สินค้าชำรุดมีตำหนิก่อนจัดส่ง", child: Text("สินค้าชำรุดมีตำหนิก่อนจัดส่ง")),
-                      DropdownMenuItem(value: "ไม่สะดวกจัดส่งตามกำหนด", child: Text("ไม่สะดวกจัดส่งตามกำหนด")),
+                      DropdownMenuItem(
+                        value: "สินค้าหมด / สต็อกไม่พอ",
+                        child: Text("สินค้าหมด / สต็อกไม่พอ"),
+                      ),
+                      DropdownMenuItem(
+                        value: "สินค้าชำรุดมีตำหนิก่อนจัดส่ง",
+                        child: Text("สินค้าชำรุดมีตำหนิก่อนจัดส่ง"),
+                      ),
+                      DropdownMenuItem(
+                        value: "ไม่สะดวกจัดส่งตามกำหนด",
+                        child: Text("ไม่สะดวกจัดส่งตามกำหนด"),
+                      ),
                       DropdownMenuItem(value: "อื่นๆ", child: Text("อื่นๆ")),
                     ],
                     onChanged: (val) {
-                      if (val != null) setModalState(() => selectedReason = val);
+                      if (val != null) {
+                        setModalState(() => selectedReason = val);
+                      }
                     },
                   ),
                   const SizedBox(height: 10),
@@ -618,7 +646,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                       controller: reasonCtrl,
                       decoration: InputDecoration(
                         hintText: "อธิบายเหตุผลเพิ่มเติม",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   const SizedBox(height: 15),
@@ -626,30 +656,54 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                     onTap: () {
                       Get.back();
                       var address = orderData['shippingAddress'] ?? {};
-                      Get.to(() => ChatScreen(
-                            targetUserId: orderData['buyerId'] ?? '',
-                            targetUserName: address['name'] ?? address['receiver_name'] ?? 'ผู้ซื้อ',
-                            targetUserImage: '',
-                          ));
+                      Get.to(
+                        () => ChatScreen(
+                          targetUserId: orderData['buyerId'] ?? '',
+                          targetUserName:
+                              address['name'] ??
+                              address['receiver_name'] ??
+                              'ผู้ซื้อ',
+                          targetUserImage: '',
+                        ),
+                      );
                     },
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: const Row(
                         children: [
-                          Icon(CupertinoIcons.chat_bubble_2_fill, color: Colors.blue, size: 20),
+                          Icon(
+                            CupertinoIcons.chat_bubble_2_fill,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
                           SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("ทักแชตกับผู้ซื้อเพื่อเปลี่ยนสินค้า", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                                Text(
+                                  "ทักแชตกับผู้ซื้อเพื่อเปลี่ยนสินค้า",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Colors.blue,
+                                  ),
+                                ),
                                 SizedBox(height: 2),
-                                Text("ลองคุยเจรจาขอเปลี่ยนสี/รุ่นทดแทนก่อนยกเลิก", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text(
+                                  "ลองคุยเจรจาขอเปลี่ยนสี/รุ่นทดแทนก่อนยกเลิก",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -661,18 +715,27 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                child: const Text("ปิด"),
-              ),
+              TextButton(onPressed: () => Get.back(), child: const Text("ปิด")),
               ElevatedButton(
                 onPressed: () async {
                   Get.back();
-                  String reasonText = selectedReason == "อื่นๆ" ? reasonCtrl.text.trim() : selectedReason;
-                  _executeSellerCancel(orderId, orderData, reasonText.isEmpty ? selectedReason : reasonText);
+                  String reasonText = selectedReason == "อื่นๆ"
+                      ? reasonCtrl.text.trim()
+                      : selectedReason;
+                  _executeSellerCancel(
+                    orderId,
+                    orderData,
+                    reasonText.isEmpty ? selectedReason : reasonText,
+                  );
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text("ยืนยันยกเลิกคำสั่งซื้อ", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "ยืนยันยกเลิกคำสั่งซื้อ",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ],
           );
@@ -681,7 +744,11 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     );
   }
 
-  Future<void> _executeSellerCancel(String orderId, Map<String, dynamic> orderData, String reason) async {
+  Future<void> _executeSellerCancel(
+    String orderId,
+    Map<String, dynamic> orderData,
+    String reason,
+  ) async {
     String buyerId = orderData['buyerId'] ?? '';
     double totalAmount = (orderData['total'] ?? 0).toDouble();
 
@@ -693,7 +760,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     try {
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
-      DocumentReference orderRef = FirebaseFirestore.instance.collection('orders').doc(orderId);
+      DocumentReference orderRef = FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId);
       batch.update(orderRef, {
         'status': 'cancelled',
         'cancelReason': reason,
@@ -702,12 +771,16 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       });
 
       if (buyerId.isNotEmpty && totalAmount > 0) {
-        DocumentReference buyerRef = FirebaseFirestore.instance.collection('users').doc(buyerId);
+        DocumentReference buyerRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(buyerId);
         batch.update(buyerRef, {
           'walletBalance': FieldValue.increment(totalAmount),
         });
 
-        DocumentReference txRef = FirebaseFirestore.instance.collection('transactions').doc();
+        DocumentReference txRef = FirebaseFirestore.instance
+            .collection('transactions')
+            .doc();
         batch.set(txRef, {
           'uid': buyerId,
           'type': 'refund',
@@ -734,7 +807,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         NotificationService.sendNotification(
           userId: buyerId,
           title: "คำสั่งซื้อถูกยกเลิกโดยผู้ขาย ❌",
-          body: "คำสั่งซื้อถูกยกเลิก (สาเหตุ: $reason) ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ได้ถูกคืนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
+          body:
+              "คำสั่งซื้อถูกยกเลิก (สาเหตุ: $reason) ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ได้ถูกคืนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
           type: 'order',
           orderId: orderId,
         );
@@ -744,7 +818,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
 
       AppDialog.showCustomDialog(
         title: "ยกเลิกคำสั่งซื้อสำเร็จ",
-        message: "ยกเลิกคำสั่งซื้อเรียบร้อยแล้ว ระบบได้โอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
+        message:
+            "ยกเลิกคำสั่งซื้อเรียบร้อยแล้ว ระบบได้โอนเงินคืนเข้าวอลเล็ทของผู้ซื้อทันที",
         icon: CupertinoIcons.check_mark_circled_solid,
         iconColor: Colors.green,
         confirmText: "ตกลง",
@@ -828,24 +903,24 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
 
             String statusText = "";
             Color statusColor = AppTheme.primaryColor;
-            Color bgColor = AppTheme.primaryColor.withOpacity(0.1);
+            Color bgColor = AppTheme.primaryColor.withValues(alpha: 0.1);
 
             if (currentStatus == 'pending') {
               statusText = "ต้องจัดส่ง";
               statusColor = Colors.orange;
-              bgColor = Colors.orange.withOpacity(0.1);
+              bgColor = Colors.orange.withValues(alpha: 0.1);
             } else if (currentStatus == 'shipping') {
               statusText = "กำลังจัดส่ง";
               statusColor = Colors.blue;
-              bgColor = Colors.blue.withOpacity(0.1);
+              bgColor = Colors.blue.withValues(alpha: 0.1);
             } else if (currentStatus == 'completed') {
               statusText = "จัดส่งสำเร็จ";
               statusColor = Colors.green;
-              bgColor = Colors.green.withOpacity(0.1);
+              bgColor = Colors.green.withValues(alpha: 0.1);
             } else if (currentStatus == 'cancelled') {
               statusText = "ยกเลิกแล้ว";
               statusColor = Colors.red;
-              bgColor = Colors.red.withOpacity(0.1);
+              bgColor = Colors.red.withValues(alpha: 0.1);
             }
 
             return GestureDetector(
@@ -859,7 +934,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.3 : 0.05,
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -1112,11 +1189,14 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                               children: [
                                 Expanded(
                                   child: OutlinedButton(
-                                    onPressed: () => _showSellerCancelDialog(doc.id, data),
+                                    onPressed: () =>
+                                        _showSellerCancelDialog(doc.id, data),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: Colors.red,
                                       side: const BorderSide(color: Colors.red),
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
@@ -1144,7 +1224,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppTheme.primaryColor,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
@@ -1170,10 +1252,10 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
+                                color: Colors.blue.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: Colors.blue.withOpacity(0.3),
+                                  color: Colors.blue.withValues(alpha: 0.3),
                                 ),
                               ),
                               child: Row(
@@ -1220,8 +1302,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           .where('sellerId', isEqualTo: sellerId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
 
         var docs = snapshot.data!.docs.where((doc) {
           var data = doc.data() as Map<String, dynamic>;
@@ -1256,7 +1339,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -1365,8 +1448,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                               borderRadius: BorderRadius.circular(15),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(
-                                    isDark ? 0.2 : 0.05,
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.05,
                                   ),
                                   blurRadius: 5,
                                   offset: const Offset(0, 2),
@@ -1398,8 +1481,12 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: isCancelled
-                                              ? Colors.red.withOpacity(0.1)
-                                              : Colors.green.withOpacity(0.1),
+                                              ? Colors.red.withValues(
+                                                  alpha: 0.1,
+                                                )
+                                              : Colors.green.withValues(
+                                                  alpha: 0.1,
+                                                ),
                                           borderRadius: BorderRadius.circular(
                                             6,
                                           ),

@@ -23,7 +23,9 @@ class GuestView extends StatelessWidget {
               width: 300,
               height: 300,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(isDark ? 0.05 : 0.1),
+                color: AppTheme.primaryColor.withValues(
+                  alpha: isDark ? 0.05 : 0.1,
+                ),
                 shape: BoxShape.circle,
               ),
             ),
@@ -38,7 +40,7 @@ class GuestView extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Image.asset(
@@ -91,7 +93,9 @@ class GuestView extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         elevation: 5,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                        shadowColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                       child: const Text(
                         "เข้าสู่ระบบ",

@@ -169,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -242,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -298,7 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           offset: const Offset(0, 4),
                           blurRadius: 6,
                         ),
@@ -314,7 +314,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: FilledButton.tonal(
                       onPressed: () => Get.to(() => const LoginScreen()),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                        backgroundColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.1,
+                        ),
                         foregroundColor: AppTheme.primaryColor,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         minimumSize: const Size(60, 36),
@@ -342,8 +344,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withOpacity(
-                                      0.1,
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.1,
                                     ),
                                     shape: BoxShape.circle,
                                   ),
@@ -411,8 +413,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withOpacity(
-                                      0.1,
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.1,
                                     ),
                                     shape: BoxShape.circle,
                                   ),
@@ -703,7 +705,10 @@ class _HomeContentState extends State<HomeContent> {
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
-              Container(height: 220, color: Colors.black.withOpacity(0.3)),
+              Container(
+                height: 220,
+                color: Colors.black.withValues(alpha: 0.3),
+              ),
               Column(
                 children: [
                   const Text(
@@ -940,7 +945,7 @@ class _HomeContentState extends State<HomeContent> {
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -1153,8 +1158,8 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
           colors: isDarkTheme
               ? [const Color(0xFF2C2C2C), const Color(0xFF1A1A1A)]
               : [
-                  AppTheme.primaryColor.withOpacity(0.6),
-                  AppTheme.primaryColor.withOpacity(0.9),
+                  AppTheme.primaryColor.withValues(alpha: 0.6),
+                  AppTheme.primaryColor.withValues(alpha: 0.9),
                 ],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
@@ -1166,7 +1171,7 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
               ? CupertinoIcons.group_solid
               : CupertinoIcons.tag_fill,
           size: 50,
-          color: Colors.white.withOpacity(0.3),
+          color: Colors.white.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -1210,7 +1215,9 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(bgImage != null ? 0.7 : 0.4),
+                        Colors.black.withValues(
+                          alpha: bgImage != null ? 0.7 : 0.4,
+                        ),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -1349,7 +1356,7 @@ class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -1376,7 +1383,7 @@ class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -1424,7 +1431,7 @@ class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: isDark
-                          ? Colors.white.withOpacity(0.03)
+                          ? Colors.white.withValues(alpha: 0.03)
                           : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
@@ -1435,7 +1442,7 @@ class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
                           ? []
                           : [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
+                                color: Colors.black.withValues(alpha: 0.02),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -1514,14 +1521,14 @@ class _MarqueeAnnouncementState extends State<MarqueeAnnouncement> {
           gradient: LinearGradient(
             colors: [
               widget.backgroundColor,
-              widget.backgroundColor.withOpacity(0.85),
+              widget.backgroundColor.withValues(alpha: 0.85),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: widget.backgroundColor.withOpacity(0.3),
+              color: widget.backgroundColor.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

@@ -226,7 +226,9 @@ class _CartScreenState extends State<CartScreen> {
                     color: theme.cardColor,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.3 : 0.05,
+                        ),
                         blurRadius: 10,
                         offset: const Offset(0, -5),
                       ),
@@ -571,7 +573,7 @@ class _CartScreenState extends State<CartScreen> {
                   radius: const Radius.circular(15),
                   color: isAvailable
                       ? Colors.transparent
-                      : Colors.orange.withOpacity(0.5),
+                      : Colors.orange.withValues(alpha: 0.5),
                   strokeWidth: 1.2,
                   dashPattern: const [5, 4],
                 ),

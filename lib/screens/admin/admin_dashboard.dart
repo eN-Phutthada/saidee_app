@@ -49,34 +49,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .where('status', isEqualTo: 'pending')
         .snapshots()
         .listen((snapshot) {
-      if (_isInitialLoad) {
-        _isInitialLoad = false;
-        return;
-      }
-      
-      for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          var data = change.doc.data() as Map<String, dynamic>;
-          _showWithdrawalNotification(data);
-        }
-      }
-    });
+          if (_isInitialLoad) {
+            _isInitialLoad = false;
+            return;
+          }
+
+          for (var change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.added) {
+              var data = change.doc.data() as Map<String, dynamic>;
+              _showWithdrawalNotification(data);
+            }
+          }
+        });
   }
 
   Future<void> _showWithdrawalNotification(Map<String, dynamic> data) async {
     double amount = (data['amount'] ?? 0).toDouble();
-    
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
     );
-    
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
-    
+
     await flutterLocalNotificationsPlugin.show(
       id: DateTime.now().millisecond,
       title: 'คำร้องขอถอนเงินใหม่!',
@@ -94,7 +97,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       duration: const Duration(seconds: 4),
       boxShadows: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withValues(alpha: 0.1),
           blurRadius: 10,
           offset: const Offset(0, 5),
         ),
@@ -247,7 +250,7 @@ class AdminDashboardContent extends StatelessWidget {
                         color: Colors.white,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             offset: const Offset(0, 4),
                             blurRadius: 6,
                           ),
@@ -441,7 +444,7 @@ class AdminDashboardContent extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -584,8 +587,8 @@ class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
               end: Alignment.bottomRight,
               colors: [
                 isDark
-                    ? baseColor.withOpacity(0.8)
-                    : Colors.white.withOpacity(0.9),
+                    ? baseColor.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.9),
                 baseColor,
               ],
             ),
@@ -593,14 +596,14 @@ class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
                 ? [
                     BoxShadow(
                       color: isDark
-                          ? Colors.black.withOpacity(0.6)
-                          : Colors.black.withOpacity(0.15),
+                          ? Colors.black.withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.15),
                       offset: const Offset(1, 1),
                       blurRadius: 2,
                     ),
                     BoxShadow(
                       color: isDark
-                          ? Colors.white.withOpacity(0.02)
+                          ? Colors.white.withValues(alpha: 0.02)
                           : Colors.white,
                       offset: const Offset(-1, -1),
                       blurRadius: 2,
@@ -609,14 +612,14 @@ class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
                 : [
                     BoxShadow(
                       color: isDark
-                          ? Colors.black.withOpacity(0.6)
-                          : Colors.black.withOpacity(0.15),
+                          ? Colors.black.withValues(alpha: 0.6)
+                          : Colors.black.withValues(alpha: 0.15),
                       offset: const Offset(5, 5),
                       blurRadius: 10,
                     ),
                     BoxShadow(
                       color: isDark
-                          ? Colors.white.withOpacity(0.05)
+                          ? Colors.white.withValues(alpha: 0.05)
                           : Colors.white,
                       offset: const Offset(-5, -5),
                       blurRadius: 10,
@@ -646,7 +649,7 @@ class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: textColor.withOpacity(0.8),
+                        color: textColor.withValues(alpha: 0.8),
                       ),
                     ),
                   ),
@@ -671,7 +674,9 @@ class _AnimatedDashboardCardState extends State<_AnimatedDashboardCard> {
                         color: textColor,
                         shadows: [
                           Shadow(
-                            color: Colors.black.withOpacity(isDark ? 0.5 : 0.1),
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.5 : 0.1,
+                            ),
                             offset: const Offset(1, 2),
                             blurRadius: 2,
                           ),

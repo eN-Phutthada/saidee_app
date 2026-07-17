@@ -26,7 +26,7 @@ class UserGuideScreen extends StatelessWidget {
                 elevation: 0,
                 leading: IconButton(
                   icon: CircleAvatar(
-                    backgroundColor: Colors.black.withOpacity(0.3),
+                    backgroundColor: Colors.black.withValues(alpha: 0.3),
                     child: const Icon(
                       Icons.arrow_back_ios_new,
                       color: Colors.white,
@@ -43,7 +43,7 @@ class UserGuideScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              AppTheme.primaryColor.withOpacity(0.8),
+                              AppTheme.primaryColor.withValues(alpha: 0.8),
                               AppTheme.primaryColor,
                             ],
                             begin: Alignment.topLeft,
@@ -56,7 +56,7 @@ class UserGuideScreen extends StatelessWidget {
                         top: -50,
                         child: CircleAvatar(
                           radius: 100,
-                          backgroundColor: Colors.white.withOpacity(0.1),
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
                         ),
                       ),
                       Column(
@@ -66,7 +66,7 @@ class UserGuideScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.all(15),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -292,7 +292,7 @@ class UserGuideScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(15),
                   ),
                   elevation: 5,
-                  shadowColor: accentColor.withOpacity(0.4),
+                  shadowColor: accentColor.withValues(alpha: 0.4),
                 ),
                 child: Text(
                   btnText,
@@ -320,7 +320,7 @@ class UserGuideScreen extends StatelessWidget {
             boxShadow: [
               if (!isDark)
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 5),
                 ),
@@ -339,8 +339,8 @@ class UserGuideScreen extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     fontStyle: FontStyle.italic,
                     color: isDark
-                        ? Colors.white.withOpacity(0.03)
-                        : Colors.black.withOpacity(0.03),
+                        ? Colors.white.withValues(alpha: 0.03)
+                        : Colors.black.withValues(alpha: 0.03),
                   ),
                 ),
               ),
@@ -353,7 +353,7 @@ class UserGuideScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.15),
+                        color: accentColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(step['icon'], color: accentColor, size: 26),

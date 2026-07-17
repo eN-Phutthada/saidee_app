@@ -102,7 +102,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           NotificationService.sendNotification(
             userId: sellerId,
             title: "ได้รับโอนเงินแล้ว! 💰",
-            body: "ผู้ซื้อยืนยันรับสินค้าแล้ว ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ถูกโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
+            body:
+                "ผู้ซื้อยืนยันรับสินค้าแล้ว ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ถูกโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
             type: 'wallet',
             orderId: widget.orderId,
           );
@@ -110,7 +111,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           NotificationService.sendNotification(
             userId: FirebaseAuth.instance.currentUser?.uid ?? '',
             title: "คำสั่งซื้อเสร็จสมบูรณ์ ✨",
-            body: "ขอบคุณที่อุดหนุนและใช้งานบริการ อย่าลืมให้คะแนนและรีวิวสินค้านะครับ",
+            body:
+                "ขอบคุณที่อุดหนุนและใช้งานบริการ อย่าลืมให้คะแนนและรีวิวสินค้านะครับ",
             type: 'order',
             orderId: widget.orderId,
           );
@@ -443,7 +445,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -668,12 +670,14 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                               });
 
                           String sellerId = widget.orderData['sellerId'] ?? '';
-                          String currentUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                          String currentUid =
+                              FirebaseAuth.instance.currentUser?.uid ?? '';
 
                           NotificationService.sendNotification(
                             userId: sellerId,
                             title: "แจ้งเตือนข้อพาทคำสั่งซื้อ ⚠️",
-                            body: "ผู้ซื้อรายงานปัญหาในคำสั่งซื้อ ระบบระงับการโอนเงินชั่วคราว ทีมงานกำลังเข้าตรวจสอบ",
+                            body:
+                                "ผู้ซื้อรายงานปัญหาในคำสั่งซื้อ ระบบระงับการโอนเงินชั่วคราว ทีมงานกำลังเข้าตรวจสอบ",
                             type: 'dispute',
                             orderId: widget.orderId,
                           );
@@ -681,7 +685,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                           NotificationService.sendNotification(
                             userId: currentUid,
                             title: "ส่งรายงานข้อพาทเรียบร้อย ⚠️",
-                            body: "ระบบได้รับเรื่องรายงานของคุณแล้ว และได้ทำการระงับการปล่อยเงินชั่วคราวเรียบร้อยแล้ว",
+                            body:
+                                "ระบบได้รับเรื่องรายงานของคุณแล้ว และได้ทำการระงับการปล่อยเงินชั่วคราวเรียบร้อยแล้ว",
                             type: 'dispute',
                             orderId: widget.orderId,
                           );
@@ -965,7 +970,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(
@@ -992,9 +1000,9 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.05),
+              color: Colors.blue.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -1024,7 +1032,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 3,
                           ),
                         ],
@@ -1054,9 +1062,9 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: Colors.orange.withOpacity(0.1),
+        color: Colors.orange.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1100,7 +1108,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(
@@ -1142,7 +1153,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(
@@ -1246,7 +1260,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(
@@ -1301,7 +1318,10 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+          ),
         ],
       ),
       child: Column(
@@ -1327,7 +1347,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         color: theme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, -5),
           ),

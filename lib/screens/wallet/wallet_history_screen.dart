@@ -55,13 +55,17 @@ class WalletHistoryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -83,15 +87,17 @@ class WalletHistoryScreen extends StatelessWidget {
                   if (progress == null) return child;
                   return const SizedBox(
                     height: 200,
-                    child: Center(child: CircularProgressIndicator(color: AppTheme.primaryColor)),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
                   );
                 },
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 200,
                   color: Colors.white,
-                  child: const Center(
-                    child: Text("ไม่สามารถโหลดรูปภาพได้"),
-                  ),
+                  child: const Center(child: Text("ไม่สามารถโหลดรูปภาพได้")),
                 ),
               ),
             ),
@@ -99,7 +105,11 @@ class WalletHistoryScreen extends StatelessWidget {
               top: 10,
               right: 10,
               child: IconButton(
-                icon: const Icon(CupertinoIcons.clear_circled_solid, color: Colors.white, size: 30),
+                icon: const Icon(
+                  CupertinoIcons.clear_circled_solid,
+                  color: Colors.white,
+                  size: 30,
+                ),
                 onPressed: () => Get.back(),
               ),
             ),
@@ -117,7 +127,10 @@ class WalletHistoryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ประวัติธุรกรรม', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'ประวัติธุรกรรม',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
@@ -132,7 +145,9 @@ class WalletHistoryScreen extends StatelessWidget {
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
-                    child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                    ),
                   );
                 }
 
@@ -147,11 +162,18 @@ class WalletHistoryScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.doc_text_search, size: 80, color: Colors.grey[400]),
+                        Icon(
+                          CupertinoIcons.doc_text_search,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(height: 15),
                         Text(
                           "ยังไม่มีประวัติธุรกรรม",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
                         ),
                       ],
                     ),
@@ -159,7 +181,7 @@ class WalletHistoryScreen extends StatelessWidget {
                 }
 
                 var docs = snapshot.data!.docs.toList();
-                
+
                 // Sort locally to avoid needing a Firestore composite index
                 docs.sort((a, b) {
                   var dataA = a.data() as Map<String, dynamic>;
@@ -190,7 +212,9 @@ class WalletHistoryScreen extends StatelessWidget {
                     bool isAppIn = _isAppIncome(type);
 
                     return GestureDetector(
-                      onTap: slipUrl != null ? () => _showSlipDialog(context, slipUrl) : null,
+                      onTap: slipUrl != null
+                          ? () => _showSlipDialog(context, slipUrl)
+                          : null,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 15),
                         padding: const EdgeInsets.all(16),
@@ -199,7 +223,9 @@ class WalletHistoryScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(15),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.05,
+                              ),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -211,12 +237,14 @@ class WalletHistoryScreen extends StatelessWidget {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: isAppIn
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.red.withOpacity(0.1),
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.red.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                isAppIn ? CupertinoIcons.arrow_down_left : CupertinoIcons.arrow_up_right,
+                                isAppIn
+                                    ? CupertinoIcons.arrow_down_left
+                                    : CupertinoIcons.arrow_up_right,
                                 color: isAppIn ? Colors.green : Colors.red,
                                 size: 24,
                               ),
@@ -230,26 +258,39 @@ class WalletHistoryScreen extends StatelessWidget {
                                     children: [
                                       Text(
                                         _getTransactionTypeName(type),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
                                       ),
                                       if (slipUrl != null) ...[
                                         const SizedBox(width: 5),
-                                        const Icon(CupertinoIcons.photo, size: 14, color: AppTheme.primaryColor),
+                                        const Icon(
+                                          CupertinoIcons.photo,
+                                          size: 14,
+                                          color: AppTheme.primaryColor,
+                                        ),
                                       ],
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     formattedDate,
-                                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
+                                    ),
                                   ),
                                   if (note != null && note.isNotEmpty) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       "หมายเหตุ: $note",
-                                      style: TextStyle(color: Colors.orange[700], fontSize: 12),
+                                      style: TextStyle(
+                                        color: Colors.orange[700],
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                  ]
+                                  ],
                                 ],
                               ),
                             ),

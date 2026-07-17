@@ -56,7 +56,7 @@ dependencies:
   flutter_markdown: ^0.7.2
   flutter_secure_storage: ^10.3.1
   flutter_jailbreak_detection: ^1.10.0
-  flutter_windowmanager: ^0.2.0
+  flutter_windowmanager_plus: ^1.0.1
   secure_application: ^4.1.0
 
 flutter_launcher_icons:

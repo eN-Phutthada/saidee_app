@@ -39,9 +39,9 @@ class BuyerOrdersScreen extends StatelessWidget {
             child: StreamBuilder<QuerySnapshot>(
               stream: user != null
                   ? FirebaseFirestore.instance
-                      .collection('orders')
-                      .where('buyerId', isEqualTo: user.uid)
-                      .snapshots()
+                        .collection('orders')
+                        .where('buyerId', isEqualTo: user.uid)
+                        .snapshots()
                   : null,
               builder: (context, snapshot) {
                 int pendingCount = 0;
@@ -60,8 +60,9 @@ class BuyerOrdersScreen extends StatelessWidget {
                   tabAlignment: TabAlignment.fill,
                   labelColor: AppTheme.primaryColor,
                   indicatorColor: AppTheme.primaryColor,
-                  unselectedLabelColor:
-                      isDark ? Colors.grey[500] : Colors.grey[400],
+                  unselectedLabelColor: isDark
+                      ? Colors.grey[500]
+                      : Colors.grey[400],
                   labelStyle: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -200,24 +201,24 @@ class BuyerOrdersScreen extends StatelessWidget {
 
             String statusText = "";
             Color statusColor = AppTheme.primaryColor;
-            Color bgColor = AppTheme.primaryColor.withOpacity(0.1);
+            Color bgColor = AppTheme.primaryColor.withValues(alpha: 0.1);
 
             if (status == 'pending') {
               statusText = "ที่ต้องจัดส่ง";
               statusColor = Colors.orange;
-              bgColor = Colors.orange.withOpacity(0.1);
+              bgColor = Colors.orange.withValues(alpha: 0.1);
             } else if (status == 'shipping') {
               statusText = "กำลังจัดส่ง";
               statusColor = Colors.blue;
-              bgColor = Colors.blue.withOpacity(0.1);
+              bgColor = Colors.blue.withValues(alpha: 0.1);
             } else if (status == 'completed') {
               statusText = "จัดส่งสำเร็จ";
               statusColor = Colors.green;
-              bgColor = Colors.green.withOpacity(0.1);
+              bgColor = Colors.green.withValues(alpha: 0.1);
             } else if (status == 'cancelled') {
               statusText = "ยกเลิกแล้ว";
               statusColor = Colors.red;
-              bgColor = Colors.red.withOpacity(0.1);
+              bgColor = Colors.red.withValues(alpha: 0.1);
             }
 
             return GestureDetector(
@@ -234,7 +235,9 @@ class BuyerOrdersScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.3 : 0.05,
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

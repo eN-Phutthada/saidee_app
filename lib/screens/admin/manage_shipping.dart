@@ -41,7 +41,7 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
+                    color: Colors.blue.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -142,7 +142,7 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                         value: isActive,
-                        activeColor: AppTheme.primaryColor,
+                        activeThumbColor: AppTheme.primaryColor,
                         onChanged: (val) => setState(() => isActive = val),
                       ),
                     ),
@@ -364,7 +364,9 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                   borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.2 : 0.05,
+                      ),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -448,10 +450,12 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                                             ),
                                             decoration: BoxDecoration(
                                               color: isActive
-                                                  ? Colors.green.withOpacity(
-                                                      0.1,
+                                                  ? Colors.green.withValues(
+                                                      alpha: 0.1,
                                                     )
-                                                  : Colors.red.withOpacity(0.1),
+                                                  : Colors.red.withValues(
+                                                      alpha: 0.1,
+                                                    ),
                                               borderRadius:
                                                   BorderRadius.circular(5),
                                             ),
@@ -517,7 +521,7 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                             ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               );

@@ -262,7 +262,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (couponData['end_date'] != null) {
         DateTime endDate = (couponData['end_date'] as Timestamp).toDate();
         // ให้คูปองหมดอายุในเวลา 23:59:59 ของวันที่กำหนด
-        endDate = DateTime(endDate.year, endDate.month, endDate.day, 23, 59, 59);
+        endDate = DateTime(
+          endDate.year,
+          endDate.month,
+          endDate.day,
+          23,
+          59,
+          59,
+        );
         if (DateTime.now().isAfter(endDate)) {
           AppDialog.showCustomDialog(
             title: "ไม่สามารถใช้โค้ดได้",
@@ -278,7 +285,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (couponData['start_date'] != null) {
         DateTime startDate = (couponData['start_date'] as Timestamp).toDate();
-        startDate = DateTime(startDate.year, startDate.month, startDate.day, 0, 0, 0);
+        startDate = DateTime(
+          startDate.year,
+          startDate.month,
+          startDate.day,
+          0,
+          0,
+          0,
+        );
         if (DateTime.now().isBefore(startDate)) {
           AppDialog.showCustomDialog(
             title: "ไม่สามารถใช้โค้ดได้",
@@ -434,7 +448,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor.withOpacity(0.1),
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Text(
@@ -455,11 +471,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                 )
                               : null,
                           tileColor: isSelected
-                              ? AppTheme.primaryColor.withOpacity(0.05)
+                              ? AppTheme.primaryColor.withValues(alpha: 0.05)
                               : null,
                           onTap: () {
                             setState(() {
-                              _selectedAddress = Map<String, dynamic>.from(data);
+                              _selectedAddress = Map<String, dynamic>.from(
+                                data,
+                              );
                               _selectedAddress!['name'] = data['receiver_name'];
                               _selectedAddress!['address'] = fullAddress;
                             });
@@ -510,14 +528,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     if (_selectedPaymentMethod == 'promptpay_qr') {
-      Get.to(() => PromptPayCheckoutPaymentScreen(
-            grandTotal: _grandTotal,
-            shopGroups: _shopGroups,
-            selectedAddress: _selectedAddress,
-            discountAmount: _discountAmount,
-            appliedCoupon: _appliedCoupon,
-            itemsTotalAll: _itemsTotalAll,
-          ));
+      Get.to(
+        () => PromptPayCheckoutPaymentScreen(
+          grandTotal: _grandTotal,
+          shopGroups: _shopGroups,
+          selectedAddress: _selectedAddress,
+          discountAmount: _discountAmount,
+          appliedCoupon: _appliedCoupon,
+          itemsTotalAll: _itemsTotalAll,
+        ),
+      );
       return;
     }
 
@@ -551,7 +571,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -662,7 +682,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           borderRadius: BorderRadius.circular(15),
                         ),
                         elevation: 5,
-                        shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                        shadowColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.4,
+                        ),
                       ),
                       child: const Text(
                         "ชำระเงิน",
@@ -789,7 +811,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       NotificationService.sendNotification(
         userId: user.uid,
         title: "ชำระเงินสำเร็จแล้ว 💳",
-        body: "คำสั่งซื้อยอด ${_grandTotal.toStringAsFixed(2)} ฿ ชำระผ่าน SAIDEE Wallet เรียบร้อยแล้ว",
+        body:
+            "คำสั่งซื้อยอด ${_grandTotal.toStringAsFixed(2)} ฿ ชำระผ่าน SAIDEE Wallet เรียบร้อยแล้ว",
         type: 'order',
       );
 
@@ -797,7 +820,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         NotificationService.sendNotification(
           userId: group.sellerId,
           title: "มีคำสั่งซื้อใหม่เข้ามา! 📦",
-          body: "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
+          body:
+              "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
           type: 'order',
         );
       }
@@ -871,8 +895,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(
-                              isDark ? 0.2 : 0.05,
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
                             ),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
@@ -978,8 +1002,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(
-                              isDark ? 0.2 : 0.05,
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
                             ),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
@@ -1020,75 +1044,70 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               ],
                             ),
                           ),
-                          ...group.items
-                              .map(
-                                (item) => Padding(
-                                  padding: const EdgeInsets.all(15),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        width: 60,
-                                        height: 80,
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.grey[800]
-                                              : Colors.grey[200],
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          image:
-                                              (item['image'] != null &&
-                                                  item['image'] != '')
-                                              ? DecorationImage(
-                                                  image: NetworkImage(
-                                                    item['image'],
-                                                  ),
-                                                  fit: BoxFit.cover,
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 15),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item['name'] ?? '',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 15,
+                          ...group.items.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.all(15),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(10),
+                                      image:
+                                          (item['image'] != null &&
+                                              item['image'] != '')
+                                          ? DecorationImage(
+                                              image: NetworkImage(
+                                                item['image'],
                                               ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              "ไซส์: ${item['size'] ?? '-'} | นน: ${item['weight'] ?? 0}g",
-                                              style: TextStyle(
-                                                color: Colors.grey[500],
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              "${item['price'] ?? 0} ฿",
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
                                   ),
-                                ),
-                              )
-                              .toList(),
+                                  const SizedBox(width: 15),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['name'] ?? '',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "ไซส์: ${item['size'] ?? '-'} | นน: ${item['weight'] ?? 0}g",
+                                          style: TextStyle(
+                                            color: Colors.grey[500],
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "${item['price'] ?? 0} ฿",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           Divider(
                             height: 1,
                             color: isDark ? Colors.grey[800] : Colors.grey[200],
@@ -1130,7 +1149,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
 
                   const Text(
                     "โค้ดส่วนลด",
@@ -1144,7 +1163,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -1206,7 +1227,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               leading: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
+                                  color: Colors.green.withValues(alpha: 0.1),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -1264,15 +1285,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         border: Border.all(
                           color: _selectedPaymentMethod == 'wallet'
                               ? AppTheme.primaryColor
-                              : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                              : (isDark
+                                    ? Colors.grey[800]!
+                                    : Colors.grey[300]!),
                           width: _selectedPaymentMethod == 'wallet' ? 2 : 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (_selectedPaymentMethod == 'wallet'
-                                    ? AppTheme.primaryColor
-                                    : Colors.black)
-                                .withValues(alpha: isDark ? 0.2 : 0.05),
+                            color:
+                                (_selectedPaymentMethod == 'wallet'
+                                        ? AppTheme.primaryColor
+                                        : Colors.black)
+                                    .withValues(alpha: isDark ? 0.2 : 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1297,7 +1321,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             "ยอดเงินคงเหลือ: ${_walletBalance.toStringAsFixed(2)} ฿",
                             style: TextStyle(
                               color: _walletBalance >= _grandTotal
-                                  ? (isDark ? Colors.grey[400] : Colors.grey[600])
+                                  ? (isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600])
                                   : Colors.red,
                               fontSize: 12,
                             ),
@@ -1329,15 +1355,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         border: Border.all(
                           color: _selectedPaymentMethod == 'promptpay_qr'
                               ? AppTheme.primaryColor
-                              : (isDark ? Colors.grey[800]! : Colors.grey[300]!),
-                          width: _selectedPaymentMethod == 'promptpay_qr' ? 2 : 1,
+                              : (isDark
+                                    ? Colors.grey[800]!
+                                    : Colors.grey[300]!),
+                          width: _selectedPaymentMethod == 'promptpay_qr'
+                              ? 2
+                              : 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: (_selectedPaymentMethod == 'promptpay_qr'
-                                    ? AppTheme.primaryColor
-                                    : Colors.black)
-                                .withValues(alpha: isDark ? 0.2 : 0.05),
+                            color:
+                                (_selectedPaymentMethod == 'promptpay_qr'
+                                        ? AppTheme.primaryColor
+                                        : Colors.black)
+                                    .withValues(alpha: isDark ? 0.2 : 0.05),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1373,7 +1404,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           subtitle: Text(
                             "สแกน QR Code ชำระตรง (ระบบคนกลาง Escrow ถือเงินปลอดภัย 100%)",
                             style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                               fontSize: 11,
                             ),
                           ),
@@ -1401,7 +1434,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               color: theme.cardColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                   blurRadius: 15,
                   offset: const Offset(0, -5),
                 ),

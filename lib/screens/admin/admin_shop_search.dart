@@ -65,7 +65,7 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -179,7 +179,7 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.1 : 0.03),
+              color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.03),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -193,7 +193,7 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.5),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
                   width: 2,
                 ),
               ),
@@ -275,8 +275,8 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: isActive
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.red.withOpacity(0.1),
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

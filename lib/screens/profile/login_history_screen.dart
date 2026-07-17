@@ -22,7 +22,10 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text("ประวัติการเข้าสู่ระบบ", style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          "ประวัติการเข้าสู่ระบบ",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -39,11 +42,20 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: AppTheme.primaryColor));
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryColor,
+                    ),
+                  );
                 }
 
                 if (snapshot.hasError) {
-                  return Center(child: Text("เกิดข้อผิดพลาด: ${snapshot.error}", style: const TextStyle(color: Colors.red)));
+                  return Center(
+                    child: Text(
+                      "เกิดข้อผิดพลาด: ${snapshot.error}",
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -51,9 +63,19 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(CupertinoIcons.clock_fill, size: 80, color: Colors.grey[400]),
+                        Icon(
+                          CupertinoIcons.clock_fill,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(height: 15),
-                        Text("ไม่มีประวัติการเข้าสู่ระบบ", style: TextStyle(color: Colors.grey[600], fontSize: 16)),
+                        Text(
+                          "ไม่มีประวัติการเข้าสู่ระบบ",
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -81,7 +103,8 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
                     DateTime date = ts?.toDate() ?? DateTime.now();
                     String method = data['method'] ?? 'unknown';
 
-                    String formattedDate = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
+                    String formattedDate =
+                        "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -91,7 +114,9 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
                         borderRadius: BorderRadius.circular(15),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
+                            ),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -102,28 +127,52 @@ class _LoginHistoryScreenState extends State<LoginHistoryScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.1,
+                              ),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(CupertinoIcons.device_phone_portrait, color: AppTheme.primaryColor),
+                            child: const Icon(
+                              CupertinoIcons.device_phone_portrait,
+                              color: AppTheme.primaryColor,
+                            ),
                           ),
                           const SizedBox(width: 15),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("เข้าสู่ระบบสำเร็จ", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                const Text(
+                                  "เข้าสู่ระบบสำเร็จ",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 5),
-                                Text(formattedDate, style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                                Text(
+                                  formattedDate,
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 const SizedBox(height: 3),
                                 Text(
                                   "วิธี: ${method == 'email_password' ? 'อีเมล / รหัสผ่าน' : method}",
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(CupertinoIcons.check_mark_circled_solid, color: Colors.green, size: 24),
+                          const Icon(
+                            CupertinoIcons.check_mark_circled_solid,
+                            color: Colors.green,
+                            size: 24,
+                          ),
                         ],
                       ),
                     );

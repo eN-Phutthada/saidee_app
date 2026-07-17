@@ -185,7 +185,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -317,7 +317,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
                     blurRadius: 15,
                     offset: const Offset(0, 5),
                   ),
@@ -338,7 +338,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                       child: Image.asset(
                         'assets/images/promptpay_logo.jpg',
                         height: 30,
-                        errorBuilder: (_, __, ___) => const Text(
+                        errorBuilder: (_, _, _) => const Text(
                           "PromptPay",
                           style: TextStyle(
                             color: Colors.white,
@@ -378,7 +378,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                             border: Border.all(color: Colors.grey[300]!),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
+                                color: Colors.black.withValues(alpha: 0.05),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -486,7 +486,9 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withOpacity(0.1),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -574,7 +576,9 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                             Icon(
                               CupertinoIcons.photo_on_rectangle,
                               size: 50,
-                              color: AppTheme.primaryColor.withOpacity(0.5),
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                             const SizedBox(height: 15),
                             const Text(
@@ -604,7 +608,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 10,
                             offset: const Offset(0, 5),
                           ),
@@ -628,7 +632,9 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
                                       vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.7),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: const Row(
@@ -668,7 +674,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
           color: theme.scaffoldBackgroundColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),

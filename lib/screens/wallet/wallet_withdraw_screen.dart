@@ -8,7 +8,7 @@ import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class WalletWithdrawScreen extends StatefulWidget {
   final double currentBalance;
-  
+
   const WalletWithdrawScreen({super.key, required this.currentBalance});
 
   @override
@@ -17,9 +17,10 @@ class WalletWithdrawScreen extends StatefulWidget {
 
 class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
   final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _accountNumberController = TextEditingController();
+  final TextEditingController _accountNumberController =
+      TextEditingController();
   final TextEditingController _accountNameController = TextEditingController();
-  
+
   String? _selectedBank;
   final List<String> _banks = [
     'ธนาคารกสิกรไทย',
@@ -29,7 +30,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
     'ธนาคารกรุงศรีอยุธยา',
     'ธนาคารทหารไทยธนชาต (ttb)',
     'ธนาคารออมสิน',
-    'พร้อมเพย์ (PromptPay)'
+    'พร้อมเพย์ (PromptPay)',
   ];
 
   final List<String> _quickAmounts = ['100', '300', '500', '1000', 'ทั้งหมด'];
@@ -46,19 +47,25 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         if (mounted) {
           setState(() {
-            if (data['withdrawBank'] != null && _banks.contains(data['withdrawBank'])) {
+            if (data['withdrawBank'] != null &&
+                _banks.contains(data['withdrawBank'])) {
               _selectedBank = data['withdrawBank'];
             }
             if (data['withdrawAccountNumber'] != null) {
-              _accountNumberController.text = data['withdrawAccountNumber'].toString();
+              _accountNumberController.text = data['withdrawAccountNumber']
+                  .toString();
             }
             if (data['withdrawAccountName'] != null) {
-              _accountNameController.text = data['withdrawAccountName'].toString();
+              _accountNameController.text = data['withdrawAccountName']
+                  .toString();
             }
           });
         }
@@ -102,11 +109,15 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("ไม่พบผู้ใช้งาน");
 
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
       if (!userDoc.exists) throw Exception("ไม่พบข้อมูลผู้ใช้");
 
       final userData = userDoc.data() as Map<String, dynamic>;
-      double currentWalletBalance = (userData['walletBalance'] ?? 0.0).toDouble();
+      double currentWalletBalance = (userData['walletBalance'] ?? 0.0)
+          .toDouble();
 
       final pendingSnap = await FirebaseFirestore.instance
           .collection('transactions')
@@ -124,7 +135,9 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
 
       if (amount > availableBalance) {
         if (pendingTotal > 0) {
-          throw Exception("ยอดเงินคงเหลือไม่เพียงพอ (มีรายการรอถอนเงินอยู่ ฿${pendingTotal.toStringAsFixed(2)})");
+          throw Exception(
+            "ยอดเงินคงเหลือไม่เพียงพอ (มีรายการรอถอนเงินอยู่ ฿${pendingTotal.toStringAsFixed(2)})",
+          );
         } else {
           throw Exception("ยอดเงินในวอลเล็ทของคุณไม่เพียงพอสำหรับการถอน");
         }
@@ -132,14 +145,18 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
 
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
-      DocumentReference userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+      DocumentReference userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid);
       batch.update(userRef, {
         'withdrawBank': _selectedBank,
         'withdrawAccountNumber': _accountNumberController.text.trim(),
         'withdrawAccountName': _accountNameController.text.trim(),
       });
 
-      DocumentReference newTxRef = FirebaseFirestore.instance.collection('transactions').doc();
+      DocumentReference newTxRef = FirebaseFirestore.instance
+          .collection('transactions')
+          .doc();
       batch.set(newTxRef, {
         'uid': user.uid,
         'type': 'withdraw',
@@ -157,7 +174,8 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
 
       AppDialog.showCustomDialog(
         title: "ส่งคำขอถอนเงินสำเร็จ",
-        message: "ระบบได้รับคำขอถอนเงินของคุณแล้ว\nแอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง",
+        message:
+            "ระบบได้รับคำขอถอนเงินของคุณแล้ว\nแอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง",
         icon: CupertinoIcons.check_mark_circled_solid,
         iconColor: Colors.green,
         confirmText: "ตกลง",
@@ -168,7 +186,9 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      _showError("เกิดข้อผิดพลาดในการถอนเงิน: ${e.toString().replaceAll('Exception: ', '')}");
+      _showError(
+        "เกิดข้อผิดพลาดในการถอนเงิน: ${e.toString().replaceAll('Exception: ', '')}",
+      );
     }
   }
 
@@ -202,7 +222,9 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),
@@ -263,21 +285,26 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [isDark ? Colors.grey[800]! : Colors.white, isDark ? Colors.grey[900]! : Colors.grey[50]!],
+                        colors: [
+                          isDark ? Colors.grey[800]! : Colors.white,
+                          isDark ? Colors.grey[900]! : Colors.grey[50]!,
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
                       ],
                       border: Border.all(
                         color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                      )
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,12 +351,12 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.05),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.05),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -380,12 +407,19 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       runSpacing: 12,
                       alignment: WrapAlignment.center,
                       children: _quickAmounts.map((amtText) {
-                        bool isSelected = _amountController.text == amtText || (amtText == 'ทั้งหมด' && _amountController.text == widget.currentBalance.toStringAsFixed(0));
+                        bool isSelected =
+                            _amountController.text == amtText ||
+                            (amtText == 'ทั้งหมด' &&
+                                _amountController.text ==
+                                    widget.currentBalance.toStringAsFixed(0));
                         return GestureDetector(
                           onTap: () {
                             setState(() {
                               if (amtText == 'ทั้งหมด') {
-                                _amountController.text = widget.currentBalance.toStringAsFixed(0); // Optional: you can do exact .toString() for decimal
+                                _amountController
+                                    .text = widget.currentBalance.toStringAsFixed(
+                                  0,
+                                ); // Optional: you can do exact .toString() for decimal
                               } else {
                                 _amountController.text = amtText;
                               }
@@ -450,15 +484,26 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       decoration: BoxDecoration(
                         color: isDark ? Colors.grey[900] : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                        border: Border.all(
+                          color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedBank,
                           isExpanded: true,
-                          hint: Text("เลือกธนาคาร / พร้อมเพย์", style: TextStyle(color: Colors.grey[500])),
-                          dropdownColor: isDark ? Colors.grey[900] : Colors.white,
-                          icon: Icon(CupertinoIcons.chevron_down, size: 16, color: Colors.grey[500]),
+                          hint: Text(
+                            "เลือกธนาคาร / พร้อมเพย์",
+                            style: TextStyle(color: Colors.grey[500]),
+                          ),
+                          dropdownColor: isDark
+                              ? Colors.grey[900]
+                              : Colors.white,
+                          icon: Icon(
+                            CupertinoIcons.chevron_down,
+                            size: 16,
+                            color: Colors.grey[500],
+                          ),
                           items: _banks.map((String bank) {
                             return DropdownMenuItem<String>(
                               value: bank,
@@ -487,11 +532,19 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                         fillColor: isDark ? Colors.grey[900] : Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey[800]!
+                                : Colors.grey[300]!,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey[800]!
+                                : Colors.grey[300]!,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.all(16),
                       ),
@@ -509,11 +562,19 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                         fillColor: isDark ? Colors.grey[900] : Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey[800]!
+                                : Colors.grey[300]!,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.grey[800]!
+                                : Colors.grey[300]!,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.all(16),
                       ),
@@ -534,7 +595,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           color: theme.scaffoldBackgroundColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -552,7 +613,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 5,
-                shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
               ),
               child: _isLoading
                   ? const SizedBox(

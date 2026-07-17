@@ -135,7 +135,9 @@ class SellerOrderDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -221,11 +223,16 @@ class SellerOrderDetailScreen extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton.icon(
                             onPressed: () {
-                              Get.to(() => ChatScreen(
-                                    targetUserId: orderData['buyerId'] ?? '',
-                                    targetUserName: address['name'] ?? address['receiver_name'] ?? 'ผู้ซื้อ',
-                                    targetUserImage: '',
-                                  ));
+                              Get.to(
+                                () => ChatScreen(
+                                  targetUserId: orderData['buyerId'] ?? '',
+                                  targetUserName:
+                                      address['name'] ??
+                                      address['receiver_name'] ??
+                                      'ผู้ซื้อ',
+                                  targetUserImage: '',
+                                ),
+                              );
                             },
                             icon: const Icon(
                               CupertinoIcons.chat_bubble_2_fill,
@@ -285,7 +292,9 @@ class SellerOrderDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -395,7 +404,9 @@ class SellerOrderDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -461,7 +472,9 @@ class SellerOrderDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.2 : 0.05,
+                          ),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),

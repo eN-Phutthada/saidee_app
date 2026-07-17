@@ -305,9 +305,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
             child: Icon(icon, color: color, size: 30),
           ),
@@ -825,7 +825,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
                     return ListView.separated(
                       itemCount: docs.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           Divider(color: theme.dividerColor),
                       itemBuilder: (context, index) {
                         var data = docs[index].data() as Map<String, dynamic>;
@@ -880,7 +880,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               Expanded(
                 child: ListView.separated(
                   itemCount: items.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       Divider(color: theme.dividerColor),
                   itemBuilder: (context, index) {
                     return ListTile(
@@ -939,7 +939,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
               Expanded(
                 child: ListView.separated(
                   itemCount: _conditionOptions.length,
-                  separatorBuilder: (_, __) => Divider(
+                  separatorBuilder: (_, _) => Divider(
                     height: 1,
                     color: isDark ? Colors.grey[800] : Colors.grey[300],
                   ),
@@ -1018,9 +1018,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
               Container(
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1063,7 +1063,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     DottedBorder(
                       options: RoundedRectDottedBorderOptions(
                         radius: const Radius.circular(10),
-                        color: AppTheme.primaryColor.withOpacity(0.5),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
                         strokeWidth: 1,
                         dashPattern: const [6, 3],
                       ),
@@ -1073,7 +1073,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.05),
+                            color: AppTheme.primaryColor.withValues(
+                              alpha: 0.05,
+                            ),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Column(

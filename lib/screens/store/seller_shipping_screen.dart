@@ -193,13 +193,13 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
                           color: isEnabled
-                              ? AppTheme.primaryColor.withOpacity(0.5)
+                              ? AppTheme.primaryColor.withValues(alpha: 0.5)
                               : Colors.transparent,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(
-                              isDark ? 0.2 : 0.05,
+                            color: Colors.black.withValues(
+                              alpha: isDark ? 0.2 : 0.05,
                             ),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
@@ -220,8 +220,10 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
                                     color: isEnabled
-                                        ? AppTheme.primaryColor.withOpacity(0.1)
-                                        : Colors.grey.withOpacity(0.1),
+                                        ? AppTheme.primaryColor.withValues(
+                                            alpha: 0.1,
+                                          )
+                                        : Colors.grey.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -260,7 +262,7 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                                 ),
                                 Switch(
                                   value: isEnabled,
-                                  activeColor: AppTheme.primaryColor,
+                                  activeThumbColor: AppTheme.primaryColor,
                                   onChanged: (bool value) {
                                     setState(() {
                                       if (value) {
@@ -341,7 +343,7 @@ class _SellerShippingScreenState extends State<SellerShippingScreen> {
                 color: theme.scaffoldBackgroundColor,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),

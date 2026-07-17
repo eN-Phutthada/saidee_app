@@ -70,7 +70,9 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(baseOpacity * opacityFactor),
+          color: AppTheme.primaryColor.withValues(
+            alpha: baseOpacity * opacityFactor,
+          ),
           shape: BoxShape.circle,
         ),
       ),
@@ -137,7 +139,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.4),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -154,7 +156,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                               width: 150,
                               height: 150,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -166,7 +168,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                               width: 120,
                               height: 120,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -190,7 +192,9 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                                     ),
                                     Icon(
                                       CupertinoIcons.creditcard_fill,
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -248,12 +252,12 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                       color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.05),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.05),
                           blurRadius: 15,
                           offset: const Offset(0, 5),
                         ),
@@ -362,7 +366,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
           color: theme.scaffoldBackgroundColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -379,7 +383,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 elevation: 5,
-                shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+                shadowColor: AppTheme.primaryColor.withValues(alpha: 0.4),
               ),
               child: _isLoading
                   ? const SizedBox(
