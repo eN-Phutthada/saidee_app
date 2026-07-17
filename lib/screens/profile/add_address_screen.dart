@@ -125,10 +125,11 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 
   Future<void> _getAddressFromLatLng(LatLng position) async {
     try {
-      await setLocaleIdentifier('th_TH');
-      List<Placemark> placemarks = await placemarkFromCoordinates(
+      final geocoding = Geocoding();
+      List<Placemark> placemarks = await geocoding.placemarkFromCoordinates(
         position.latitude,
         position.longitude,
+        locale: const Locale('th', 'TH'),
       );
 
       if (placemarks.isNotEmpty) {

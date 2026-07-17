@@ -555,11 +555,12 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
               onTap: _isVerifying ? null : _pickSlipImage,
               child: _slipImage == null
                   ? DottedBorder(
-                      color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
-                      strokeWidth: 2,
-                      dashPattern: const [8, 4],
-                      borderType: BorderType.RRect,
-                      radius: const Radius.circular(20),
+                      options: RoundedRectDottedBorderOptions(
+                        radius: const Radius.circular(20),
+                        color: isDark ? Colors.grey[600]! : Colors.grey[400]!,
+                        strokeWidth: 2,
+                        dashPattern: const [8, 4],
+                      ),
                       child: Container(
                         height: 250,
                         width: double.infinity,

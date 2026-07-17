@@ -17,8 +17,31 @@ import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:flutter_windowmanager/flutter_windowmanager.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _secureScreen();
+  }
+
+  Future<void> _secureScreen() async {
+    await FlutterWindowManager.addFlags(FlutterWindowManager.FLAG_SECURE);
+  }
+
+  @override
+  void dispose() {
+    FlutterWindowManager.clearFlags(FlutterWindowManager.FLAG_SECURE);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

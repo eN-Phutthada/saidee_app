@@ -1061,11 +1061,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 child: Row(
                   children: [
                     DottedBorder(
-                      color: AppTheme.primaryColor.withOpacity(0.5),
-                      strokeWidth: 1,
-                      dashPattern: const [6, 3],
-                      borderType: BorderType.RRect,
-                      radius: const Radius.circular(10),
+                      options: RoundedRectDottedBorderOptions(
+                        radius: const Radius.circular(10),
+                        color: AppTheme.primaryColor.withOpacity(0.5),
+                        strokeWidth: 1,
+                        dashPattern: const [6, 3],
+                      ),
                       child: GestureDetector(
                         onTap: _showImageSourceOptions,
                         child: Container(

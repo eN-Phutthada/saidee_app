@@ -623,11 +623,12 @@ class _PromptPayCheckoutPaymentScreenState
                 ),
                 child: _slipImage == null
                     ? DottedBorder(
-                        color: isDark ? Colors.grey[700]! : Colors.grey[400]!,
-                        strokeWidth: 2,
-                        dashPattern: const [8, 4],
-                        borderType: BorderType.RRect,
-                        radius: const Radius.circular(15),
+                        options: RoundedRectDottedBorderOptions(
+                          radius: const Radius.circular(15),
+                          color: isDark ? Colors.grey[700]! : Colors.grey[400]!,
+                          strokeWidth: 2,
+                          dashPattern: const [8, 4],
+                        ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 30),
                           width: double.infinity,

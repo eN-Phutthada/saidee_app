@@ -567,13 +567,14 @@ class _CartScreenState extends State<CartScreen> {
             return Container(
               margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               child: DottedBorder(
-                color: isAvailable
-                    ? Colors.transparent
-                    : Colors.orange.withOpacity(0.5),
-                strokeWidth: 1.2,
-                dashPattern: const [5, 4],
-                borderType: BorderType.RRect,
-                radius: const Radius.circular(15),
+                options: RoundedRectDottedBorderOptions(
+                  radius: const Radius.circular(15),
+                  color: isAvailable
+                      ? Colors.transparent
+                      : Colors.orange.withOpacity(0.5),
+                  strokeWidth: 1.2,
+                  dashPattern: const [5, 4],
+                ),
                 child: Container(
                   padding: const EdgeInsets.only(
                     left: 5,

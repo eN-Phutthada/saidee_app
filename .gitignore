@@ -70,3 +70,12 @@ app.*.map.json
 
 # Coverage
 coverage/
+
+# App Security & Secrets
+google-services.json
+GoogleService-Info.plist
+firebase.json
+*.pem
+*.key
+*.cert
+.env*

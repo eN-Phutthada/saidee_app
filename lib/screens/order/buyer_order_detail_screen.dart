@@ -521,13 +521,14 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                     },
                     child: imageProof == null
                         ? DottedBorder(
-                            color: isDark
-                                ? Colors.grey[600]!
-                                : Colors.grey[400]!,
-                            strokeWidth: 1,
-                            dashPattern: const [6, 4],
-                            borderType: BorderType.RRect,
-                            radius: const Radius.circular(12),
+                            options: RoundedRectDottedBorderOptions(
+                              radius: const Radius.circular(12),
+                              color: isDark
+                                  ? Colors.grey[600]!
+                                  : Colors.grey[400]!,
+                              strokeWidth: 1,
+                              dashPattern: const [6, 4],
+                            ),
                             child: Container(
                               height: 100,
                               width: 100,

@@ -7,6 +7,9 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 
+import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
+import 'package:flutter/services.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,7 +21,41 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), _decideRoute);
+    _checkSecurity();
+  }
+
+  Future<void> _checkSecurity() async {
+    bool jailbroken;
+    try {
+      jailbroken = await FlutterJailbreakDetection.jailbroken;
+    } on PlatformException {
+      jailbroken = true;
+    }
+
+    if (jailbroken) {
+      if (mounted) _showSecurityWarning();
+    } else {
+      Future.delayed(const Duration(seconds: 2), _decideRoute);
+    }
+  }
+
+  void _showSecurityWarning() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('คำเตือนความปลอดภัย', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+        content: const Text('ไม่สามารถใช้งานแอปบนอุปกรณ์ที่ถูกดัดแปลง (Root/Jailbreak) ได้ เพื่อความปลอดภัยของข้อมูลของคุณ'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              SystemNavigator.pop();
+            },
+            child: const Text('ออก', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _decideRoute() async {
