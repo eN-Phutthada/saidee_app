@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class ShippingDataHelper {
   static Future<void> setupRealShippingData() async {
@@ -73,20 +74,20 @@ class ShippingDataHelper {
     ];
 
     try {
-      print("⏳ กำลังล้างข้อมูลขนส่งเก่า...");
+      debugPrint("⏳ กำลังล้างข้อมูลขนส่งเก่า...");
       // ลบข้อมูลเก่าก่อนเพื่อให้ข้อมูลใหม่สะอาด (Optional)
       var oldDocs = await shippingCollection.get();
       for (var doc in oldDocs.docs) {
         await doc.reference.delete();
       }
 
-      print("⏳ กำลังเพิ่มข้อมูลขนส่งจริง...");
+      debugPrint("⏳ กำลังเพิ่มข้อมูลขนส่งจริง...");
       for (var provider in shippingProviders) {
         await shippingCollection.add(provider);
       }
-      print("✅ เพิ่มข้อมูลบริษัทขนส่งสำเร็จ!");
+      debugPrint("✅ เพิ่มข้อมูลบริษัทขนส่งสำเร็จ!");
     } catch (e) {
-      print("❌ เกิดข้อผิดพลาด: $e");
+      debugPrint("❌ เกิดข้อผิดพลาด: $e");
     }
   }
 }

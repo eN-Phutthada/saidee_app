@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class CouponDataHelper {
   static Future<void> setupSampleCoupons() async {
@@ -45,20 +46,20 @@ class CouponDataHelper {
     ];
 
     try {
-      print("⏳ กำลังรีเซ็ตข้อมูลคูปอง...");
+      debugPrint("⏳ กำลังรีเซ็ตข้อมูลคูปอง...");
       // ล้างข้อมูลเก่า (Optional)
       var oldDocs = await couponCollection.get();
       for (var doc in oldDocs.docs) {
         await doc.reference.delete();
       }
 
-      print("⏳ กำลังเพิ่มคูปองจำลอง...");
+      debugPrint("⏳ กำลังเพิ่มคูปองจำลอง...");
       for (var coupon in coupons) {
         await couponCollection.add(coupon);
       }
-      print("✅ เพิ่มข้อมูลคูปองสำเร็จ!");
+      debugPrint("✅ เพิ่มข้อมูลคูปองสำเร็จ!");
     } catch (e) {
-      print("❌ เกิดข้อผิดพลาด: $e");
+      debugPrint("❌ เกิดข้อผิดพลาด: $e");
     }
   }
 }

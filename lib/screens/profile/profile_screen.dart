@@ -101,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     margin: const EdgeInsets.only(right: 6, top: 6, bottom: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -126,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     margin: const EdgeInsets.only(right: 16, top: 6, bottom: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -166,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: 130,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                           ),
                         ),
                       ),
@@ -178,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: 100,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.06),
+                            color: Colors.white.withValues(alpha: 0.06),
                           ),
                         ),
                       ),
@@ -190,7 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           height: 50,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.04),
+                            color: Colors.white.withValues(alpha: 0.04),
                           ),
                         ),
                       ),
@@ -211,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: Colors.white,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.15),
+                                        color: Colors.black.withValues(alpha: 0.15),
                                         blurRadius: 8,
                                         offset: const Offset(0, 3),
                                       ),
@@ -220,7 +220,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: CircleAvatar(
                                     radius: 32,
                                     backgroundColor: AppTheme.primaryColor
-                                        .withOpacity(0.2),
+                                        .withValues(alpha: 0.2),
                                     backgroundImage:
                                         (userData['profileImage'] != null &&
                                             userData['profileImage'] != '')
@@ -305,10 +305,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.white.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: Colors.white.withOpacity(0.25),
+                                        color: Colors.white.withValues(alpha: 0.25),
                                         width: 0.8,
                                       ),
                                     ),

@@ -167,6 +167,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
 
       await batch.commit();
 
+      if (!mounted) return;
       final theme = Theme.of(context);
 
       Get.dialog(

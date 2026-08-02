@@ -78,6 +78,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       String shareText =
           "🛍️ แวะมาช้อปเสื้อผ้ามือสองสภาพดีที่ร้าน '$storeName' กันเถอะ!\n\n👉 เปิดแอป SAIDEE แล้วพิมพ์ชื่อร้านเพื่อเลือกซื้อสินค้าได้เลย!";
 
+      // ignore: deprecated_member_use
       await Share.share(shareText);
     } catch (e) {
       debugPrint("Error sharing store: $e");

@@ -322,6 +322,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _appliedCoupon = couponData;
         _calculateGrandTotal();
       });
+      if (!mounted) return;
       FocusScope.of(context).unfocus();
 
       AppDialog.showCustomDialog(

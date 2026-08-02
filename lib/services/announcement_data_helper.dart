@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class AnnouncementDataHelper {
   static Future<void> setupSampleAnnouncements() async {
@@ -34,7 +35,7 @@ class AnnouncementDataHelper {
     ];
 
     try {
-      print("⏳ กำลังรีเซ็ตประกาศข่าวสาร...");
+      debugPrint("⏳ กำลังรีเซ็ตประกาศข่าวสาร...");
       // ล้างข้อมูลเก่า
       var oldDocs = await collection.get();
       for (var doc in oldDocs.docs) {
@@ -47,9 +48,9 @@ class AnnouncementDataHelper {
         announcement['updatedAt'] = FieldValue.serverTimestamp();
         await collection.add(announcement);
       }
-      print("✅ เพิ่มประกาศตัวอย่างสำเร็จ!");
+      debugPrint("✅ เพิ่มประกาศตัวอย่างสำเร็จ!");
     } catch (e) {
-      print("❌ Error: $e");
+      debugPrint("❌ Error: $e");
     }
   }
 }
