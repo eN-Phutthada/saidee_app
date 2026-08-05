@@ -399,10 +399,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 return 'กรุณากรอกรหัสผ่าน';
                               }
                               if (val.length < 6) {
-                                return 'ต้องมีอย่างน้อย 6 ตัวอักษร';
+                                return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.08,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: const [
+                                    Icon(
+                                      CupertinoIcons.lightbulb_fill,
+                                      color: AppTheme.primaryColor,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      "คำแนะนำการตั้งรหัสผ่าน:",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "• อย่างน้อย 6 ตัวอักษร (แนะนำ 8 ตัวอักษรขึ้นไป)\n"
+                                  "• ควรผสมตัวอักษรภาษาอังกฤษ (A-Z, a-z) และตัวเลข (0-9)\n"
+                                  "• หลีกเลี่ยงเบอร์โทรศัพท์ วันเกิด หรือตัวเลขซ้ำซ้อน",
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.grey[300]
+                                        : Colors.grey[700],
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 15),
                           _buildInputField(
