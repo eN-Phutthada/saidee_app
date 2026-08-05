@@ -73,7 +73,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
           importance: Importance.high,
           priority: Priority.high,
-          icon: '@mipmap/ic_launcher',
+          icon: '@mipmap/launcher_icon',
         );
 
     const NotificationDetails platformDetails = NotificationDetails(

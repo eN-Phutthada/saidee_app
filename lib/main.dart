@@ -65,7 +65,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
   Future<void> _setupPushNotifications() async {
     // 1. Initialize FlutterLocalNotificationsPlugin
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
     await flutterLocalNotificationsPlugin.initialize(
@@ -179,7 +179,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
               channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
               importance: Importance.high,
               priority: Priority.high,
-              icon: '@mipmap/ic_launcher',
+              icon: '@mipmap/launcher_icon',
             );
         const NotificationDetails platformDetails = NotificationDetails(
           android: androidDetails,
