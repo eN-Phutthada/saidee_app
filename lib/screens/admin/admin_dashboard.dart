@@ -18,6 +18,7 @@ import 'manage_report.dart';
 import 'manage_announcement.dart';
 import 'admin_transaction.dart';
 import 'admin_shop_search.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -39,6 +40,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RoleGuardService.checkAdminAccess(context);
+    });
     _listenForNewWithdrawals();
   }
 

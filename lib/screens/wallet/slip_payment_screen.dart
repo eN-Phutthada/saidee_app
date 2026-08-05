@@ -12,6 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 
 class SlipPaymentScreen extends StatefulWidget {
   final double amount;
@@ -29,6 +30,24 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
   final String accountName = "นายพุทธดา หาญนอก";
 
   final String slipokAuthToken = dotenv.env['SLIPOK_API_KEY'] ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _secureScreen();
+  }
+
+  Future<void> _secureScreen() async {
+    await FlutterWindowManagerPlus.addFlags(
+      FlutterWindowManagerPlus.FLAG_SECURE,
+    );
+  }
+
+  @override
+  void dispose() {
+    FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    super.dispose();
+  }
 
   void _copyPromptPay() {
     Clipboard.setData(ClipboardData(text: promptPayNumber));

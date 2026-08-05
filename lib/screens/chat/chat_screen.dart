@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/security_service.dart';
 import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -94,7 +95,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _sendMessage() async {
-    String text = _messageController.text.trim();
+    String text = SecurityService.sanitizeText(_messageController.text);
     if (text.isEmpty) return;
 
     _messageController.clear();
