@@ -8,6 +8,8 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/wallet/slip_payment_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+
 class WalletTopUpScreen extends StatefulWidget {
   const WalletTopUpScreen({super.key});
 
@@ -20,6 +22,25 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
   final List<int> _quickAmounts = [100, 300, 500, 1000, 2000, 5000];
 
   final bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _secureScreen();
+  }
+
+  Future<void> _secureScreen() async {
+    await FlutterWindowManagerPlus.addFlags(
+      FlutterWindowManagerPlus.FLAG_SECURE,
+    );
+  }
+
+  @override
+  void dispose() {
+    FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    _amountController.dispose();
+    super.dispose();
+  }
 
   Future<void> _processTopUp() async {
     final amountText = _amountController.text.trim();

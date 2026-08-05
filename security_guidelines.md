@@ -23,20 +23,29 @@ flutter build ipa --obfuscate --split-debug-info=build/app/outputs/symbols
 
 *Note: Keep the files generated in the `symbols` directory in a safe place. They are required if you need to de-obfuscate crash logs later.*
 
-## 2. Screenshot Prevention
+## 2. Screenshot & Screen Recording Prevention (FLAG_SECURE)
 
-Screenshot prevention has been applied to sensitive screens using `flutter_windowmanager_plus`:
-- `ProfileScreen`
-- `PrivacyPolicyScreen`
+Screenshot and screen recording prevention has been applied to sensitive personal and financial screens using `flutter_windowmanager_plus`:
+- `ProfileScreen` (Personal Info)
+- `PrivacyPolicyScreen` (Legal Docs)
+- `WalletTopUpScreen` (Payment & Slip Upload)
+- `WalletWithdrawScreen` (Bank Account Info & Transfers)
 
 When users enter these screens on Android, they cannot take a screenshot or record the screen. The content will appear completely black in screenshots or multitasking views.
 
-## 3. Root / Jailbreak Detection
+## 3. Password Security Policy & Strength Indicator
+
+Enhanced password security policies are enforced on registration (`RegisterScreen`) and password change (`AccountSecurityScreen`):
+- Minimum length of **8 characters**.
+- Must contain a combination of **English letters (A-Z, a-z)** and **digits (0-9)**.
+- Real-time **Password Strength Meter** (LinearProgressIndicator) feedback during registration (Weak / Medium / Strong).
+
+## 4. Root / Jailbreak Detection
 
 The app checks for modified device environments during the `SplashScreen` initialization.
 If the device is detected as Rooted (Android) or Jailbroken (iOS), a security warning dialog is shown, and the user is forced to exit the app. This prevents runtime memory injection and other exploitation techniques.
 
-## 4. Git Security
+## 5. Git Security & API Secrets
 
 - A `pre-commit` hook is located at `.git/hooks/pre-commit` to prevent accidental commits of API Keys (like Xendit, SlipOK, or Google Maps).
 - The `.gitignore` file has been updated to ignore Firebase configuration files (`google-services.json`, `GoogleService-Info.plist`) and any `.env` files to prevent secret leakage into the repository.

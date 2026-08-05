@@ -196,7 +196,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       controller: newPasswordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        labelText: "รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)",
+                        labelText: "รหัสผ่านใหม่ (อย่างน้อย 8 ตัวอักษร)",
                         prefixIcon: const Icon(CupertinoIcons.lock_rotation),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -206,8 +206,11 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         if (value == null || value.isEmpty) {
                           return 'กรุณากรอกรหัสผ่านใหม่';
                         }
-                        if (value.length < 6) {
-                          return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                        if (value.length < 8) {
+                          return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
+                        }
+                        if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)').hasMatch(value)) {
+                          return 'รหัสผ่านต้องมีทั้งตัวอักษรภาษาอังกฤษและตัวเลข';
                         }
                         return null;
                       },

@@ -34,7 +34,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _agreeToTerms = false;
 
   @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_onPasswordChanged);
+  }
+
+  void _onPasswordChanged() {
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    _passwordController.removeListener(_onPasswordChanged);
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -398,12 +409,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               if (val == null || val.isEmpty) {
                                 return 'กรุณากรอกรหัสผ่าน';
                               }
-                              if (val.length < 6) {
-                                return 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+                              if (val.length < 8) {
+                                return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
+                              }
+                              if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)').hasMatch(val)) {
+                                return 'รหัสผ่านต้องมีทั้งตัวอักษรภาษาอังกฤษและตัวเลข';
                               }
                               return null;
                             },
                           ),
+                          _buildPasswordStrengthIndicator(isDark),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.all(10),
@@ -424,13 +439,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 Row(
                                   children: const [
                                     Icon(
-                                      CupertinoIcons.lightbulb_fill,
+                                      CupertinoIcons.shield_fill,
                                       color: AppTheme.primaryColor,
                                       size: 16,
                                     ),
                                     SizedBox(width: 6),
                                     Text(
-                                      "คำแนะนำการตั้งรหัสผ่าน:",
+                                      "ข้อกำหนดรหัสผ่านปลอดภัย:",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
@@ -441,9 +456,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "• อย่างน้อย 6 ตัวอักษร (แนะนำ 8 ตัวอักษรขึ้นไป)\n"
-                                  "• ควรผสมตัวอักษรภาษาอังกฤษ (A-Z, a-z) และตัวเลข (0-9)\n"
-                                  "• หลีกเลี่ยงเบอร์โทรศัพท์ วันเกิด หรือตัวเลขซ้ำซ้อน",
+                                  "• ความยาวอย่างน้อย 8 ตัวอักษรขึ้นไป\n"
+                                  "• ต้องมีทั้งตัวอักษรภาษาอังกฤษ (A-Z, a-z) และตัวเลข (0-9)\n"
+                                  "• หลีกเลี่ยงเบอร์โทรศัพท์ วันเกิด หรือรหัสผ่านเดาง่าย",
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: isDark
@@ -702,4 +717,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+
+  Widget _buildPasswordStrengthIndicator(bool isDark) {
+    final password = _passwordController.text;
+    if (password.isEmpty) return const SizedBox.shrink();
+
+    final strength = _calculatePasswordStrength(password);
+    final text = _getPasswordStrengthText(strength);
+    final color = _getPasswordStrengthColor(strength);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "ความแข็งแกร่งรหัสผ่าน:",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: strength,
+              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+              color: color,
+              minHeight: 6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _calculatePasswordStrength(String password) {
+    if (password.isEmpty) return 0.0;
+    double strength = 0.0;
+    if (password.length >= 8) strength += 0.35;
+    if (password.length >= 10) strength += 0.15;
+    if (RegExp(r'[a-z]').hasMatch(password) &&
+        RegExp(r'[A-Z]').hasMatch(password)) {
+      strength += 0.2;
+    }
+    if (RegExp(r'\d').hasMatch(password)) strength += 0.15;
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) strength += 0.15;
+    return strength.clamp(0.0, 1.0);
+  }
+
+  String _getPasswordStrengthText(double strength) {
+    if (strength < 0.4) return 'อ่อน (Weak)';
+    if (strength < 0.75) return 'ปานกลาง (Medium)';
+    return 'แข็งแกร่ง (Strong)';
+  }
+
+  Color _getPasswordStrengthColor(double strength) {
+    if (strength < 0.4) return Colors.red;
+    if (strength < 0.75) return Colors.orange;
+    return Colors.green;
+  }
 }
+

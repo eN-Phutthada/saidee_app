@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
+import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+
 class WalletWithdrawScreen extends StatefulWidget {
   final double currentBalance;
 
@@ -40,7 +42,23 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
   @override
   void initState() {
     super.initState();
+    _secureScreen();
     _loadSavedAccount();
+  }
+
+  Future<void> _secureScreen() async {
+    await FlutterWindowManagerPlus.addFlags(
+      FlutterWindowManagerPlus.FLAG_SECURE,
+    );
+  }
+
+  @override
+  void dispose() {
+    FlutterWindowManagerPlus.clearFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+    _amountController.dispose();
+    _accountNumberController.dispose();
+    _accountNameController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSavedAccount() async {
