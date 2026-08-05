@@ -16,6 +16,7 @@ import '../../models/product_model.dart';
 import '../../widgets/custom_dialog.dart';
 import '../../widgets/guest_view.dart';
 import '../store/seller_shipping_screen.dart';
+import '../../services/guided_tour_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? product;
@@ -28,6 +29,12 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  final GlobalKey _imageSectionKey = GlobalKey();
+  final GlobalKey _categorySectionKey = GlobalKey();
+  final GlobalKey _detailsSectionKey = GlobalKey();
+  final GlobalKey _priceWeightSectionKey = GlobalKey();
+  final GlobalKey _submitButtonKey = GlobalKey();
 
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
@@ -95,7 +102,43 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.initState();
     if (_isEditing) {
       _loadExistingData();
+    } else {
+      _checkGuidedTour();
     }
+  }
+
+  void _checkGuidedTour() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      bool hasSeen = await GuidedTourService.hasSeenAddProductTour();
+      if (!hasSeen && mounted) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (mounted) {
+          _startGuidedTour();
+        }
+      }
+    });
+  }
+
+  void _startGuidedTour() async {
+    if (_imageSectionKey.currentContext != null) {
+      await Scrollable.ensureVisible(
+        _imageSectionKey.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        alignment: 0.0,
+      );
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+
+    if (!mounted) return;
+
+    GuidedTourService.showAddProductTour(
+      context: context,
+      imageKey: _imageSectionKey,
+      categoryKey: _categorySectionKey,
+      detailsKey: _detailsSectionKey,
+      priceWeightKey: _priceWeightSectionKey,
+      submitKey: _submitButtonKey,
+    );
   }
 
   void _loadExistingData() {
@@ -1007,6 +1050,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(CupertinoIcons.question_circle),
+            tooltip: "แนะนำการลงขาย",
+            onPressed: _startGuidedTour,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -1046,270 +1096,301 @@ class _AddProductScreenState extends State<AddProductScreen> {
               ),
               const SizedBox(height: 25),
 
-              _buildSectionHeader("รูปภาพ (3-5 รูป) *"),
-              const SizedBox(height: 4),
-              Text(
-                "แนะนำ: รูปภาพคมชัด ช่วยเพิ่มโอกาสขายได้มากขึ้น",
-                style: TextStyle(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+              Container(
+                key: _imageSectionKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    DottedBorder(
-                      options: RoundedRectDottedBorderOptions(
-                        radius: const Radius.circular(10),
-                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                        strokeWidth: 1,
-                        dashPattern: const [6, 3],
+                    _buildSectionHeader("รูปภาพ (3-5 รูป) *"),
+                    const SizedBox(height: 4),
+                    Text(
+                      "แนะนำ: รูปภาพคมชัด ช่วยเพิ่มโอกาสขายได้มากขึ้น",
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 12,
                       ),
-                      child: GestureDetector(
-                        onTap: _showImageSourceOptions,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(
-                              alpha: 0.05,
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          DottedBorder(
+                            options: RoundedRectDottedBorderOptions(
+                              radius: const Radius.circular(10),
+                              color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                              strokeWidth: 1,
+                              dashPattern: const [6, 3],
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(
-                                CupertinoIcons.camera,
-                                color: AppTheme.primaryColor,
-                                size: 28,
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "เพิ่มรูป",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.bold,
+                            child: GestureDetector(
+                              onTap: _showImageSourceOptions,
+                              child: Container(
+                                width: 100,
+                                height: 100,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.05,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      CupertinoIcons.camera,
+                                      color: AppTheme.primaryColor,
+                                      size: 28,
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      "เพิ่มรูป",
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
+                          ),
+                          ..._existingImages.map(
+                            (url) => _buildImageThumbnail(
+                              NetworkImage(url),
+                              () => setState(() => _existingImages.remove(url)),
+                            ),
+                          ),
+                          ..._selectedImages.map(
+                            (file) => _buildImageThumbnail(
+                              FileImage(file),
+                              () => setState(() => _selectedImages.remove(file)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+                    _buildSectionHeader("วิดีโอ (ไม่เกิน 15 วิ) *"),
+                    const SizedBox(height: 4),
+                    Text(
+                      "ระบบจะช่วยบีบอัดขนาดไฟล์ให้อัตโนมัติ",
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: _showVideoSourceOptions,
+                      child: Container(
+                        width: double.infinity,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
                           ),
                         ),
-                      ),
-                    ),
-                    ..._existingImages.map(
-                      (url) => _buildImageThumbnail(
-                        NetworkImage(url),
-                        () => setState(() => _existingImages.remove(url)),
-                      ),
-                    ),
-                    ..._selectedImages.map(
-                      (file) => _buildImageThumbnail(
-                        FileImage(file),
-                        () => setState(() => _selectedImages.remove(file)),
+                        child:
+                            (_selectedVideo == null &&
+                                (_existingVideoUrl == null ||
+                                    _existingVideoUrl!.isEmpty))
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    CupertinoIcons.video_camera,
+                                    size: 40,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    "แตะเพื่อเพิ่มวิดีโอ",
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  if (_videoController != null &&
+                                      _videoController!.value.isInitialized)
+                                    AspectRatio(
+                                      aspectRatio:
+                                          _videoController!.value.aspectRatio,
+                                      child: VideoPlayer(_videoController!),
+                                    )
+                                  else
+                                    const Center(child: Text("วิดีโอพร้อม")),
+                                  Positioned(
+                                    top: 5,
+                                    right: 5,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedVideo = null;
+                                          _existingVideoUrl = null;
+                                          _videoController?.dispose();
+                                          _videoController = null;
+                                        });
+                                      },
+                                      child: const CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.red,
+                                        child: Icon(
+                                          CupertinoIcons.xmark,
+                                          size: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(
+                                    CupertinoIcons.play_circle_fill,
+                                    size: 50,
+                                    color: Colors.white70,
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 25),
 
-              _buildSectionHeader("วิดีโอ (ไม่เกิน 15 วิ) *"),
-              const SizedBox(height: 4),
-              Text(
-                "ระบบจะช่วยบีบอัดขนาดไฟล์ให้อัตโนมัติ",
-                style: TextStyle(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 10),
-              GestureDetector(
-                onTap: _showVideoSourceOptions,
-                child: Container(
-                  width: double.infinity,
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                    ),
-                  ),
-                  child:
-                      (_selectedVideo == null &&
-                          (_existingVideoUrl == null ||
-                              _existingVideoUrl!.isEmpty))
-                      ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              CupertinoIcons.video_camera,
-                              size: 40,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              "แตะเพื่อเพิ่มวิดีโอ",
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            if (_videoController != null &&
-                                _videoController!.value.isInitialized)
-                              AspectRatio(
-                                aspectRatio:
-                                    _videoController!.value.aspectRatio,
-                                child: VideoPlayer(_videoController!),
-                              )
-                            else
-                              const Center(child: Text("วิดีโอพร้อม")),
-                            Positioned(
-                              top: 5,
-                              right: 5,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedVideo = null;
-                                    _existingVideoUrl = null;
-                                    _videoController?.dispose();
-                                    _videoController = null;
-                                  });
-                                },
-                                child: const CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: Colors.red,
-                                  child: Icon(
-                                    CupertinoIcons.xmark,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const Icon(
-                              CupertinoIcons.play_circle_fill,
-                              size: 50,
-                              color: Colors.white70,
-                            ),
-                          ],
-                        ),
-                ),
-              ),
               const SizedBox(height: 30),
 
-              _buildSectionHeader("การจัดหมวดหมู่ (สำคัญสำหรับการค้นหา)"),
-              const SizedBox(height: 15),
-
-              _buildClickableField(
-                label: _selectedCategory ?? "หมวดหมู่ผู้สวมใส่ *",
-                onTap: () => _showDynamicSelectionSheet(
-                  "หมวดหมู่",
-                  "categories",
-                  (val) => setState(() => _selectedCategory = val),
-                ),
-              ),
-              _buildClickableField(
-                label: _selectedType ?? "ประเภทสินค้า *",
-                onTap: () => _showDynamicSelectionSheet(
-                  "ประเภทสินค้า",
-                  "types",
-                  (val) => setState(() => _selectedType = val),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildClickableField(
-                      label: _selectedSize ?? "ไซส์ *",
-                      onTap: () => _showSimpleSelectionSheet(
-                        "ไซส์",
-                        _sizeList,
-                        (val) => setState(() => _selectedSize = val),
+              Container(
+                key: _categorySectionKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader("การจัดหมวดหมู่ (สำคัญสำหรับการค้นหา)"),
+                    const SizedBox(height: 15),
+                    _buildClickableField(
+                      label: _selectedCategory ?? "หมวดหมู่ผู้สวมใส่ *",
+                      onTap: () => _showDynamicSelectionSheet(
+                        "หมวดหมู่",
+                        "categories",
+                        (val) => setState(() => _selectedCategory = val),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildClickableField(
-                      label: _selectedCondition != null
-                          ? _selectedCondition!.split('(')[0].trim()
-                          : "สภาพ *",
-                      onTap: _showConditionSelectionSheet,
+                    _buildClickableField(
+                      label: _selectedType ?? "ประเภทสินค้า *",
+                      onTap: () => _showDynamicSelectionSheet(
+                        "ประเภทสินค้า",
+                        "types",
+                        (val) => setState(() => _selectedType = val),
+                      ),
                     ),
-                  ),
-                ],
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildClickableField(
+                            label: _selectedSize ?? "ไซส์ *",
+                            onTap: () => _showSimpleSelectionSheet(
+                              "ไซส์",
+                              _sizeList,
+                              (val) => setState(() => _selectedSize = val),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: _buildClickableField(
+                            label: _selectedCondition != null
+                                ? _selectedCondition!.split('(')[0].trim()
+                                : "สภาพ *",
+                            onTap: _showConditionSelectionSheet,
+                          ),
+                        ),
+                      ],
+                    ),
+                    _buildTextField(
+                      label: "แบรนด์",
+                      controller: _brandController,
+                      hint: "เช่น Zara, H&M, Uniqlo (เว้นว่างได้)",
+                    ),
+                  ],
+                ),
               ),
-              _buildTextField(
-                label: "แบรนด์",
-                controller: _brandController,
-                hint: "เช่น Zara, H&M, Uniqlo (เว้นว่างได้)",
-              ),
-
               const SizedBox(height: 15),
-              _buildSectionHeader("รายละเอียดข้อมูล"),
-              const SizedBox(height: 15),
-              _buildTextField(
-                label: "ชื่อสินค้า *",
-                controller: _nameController,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return "กรุณาระบุชื่อสินค้า";
-                  }
-                  if (v.trim().length < 5) {
-                    return "ชื่อสินค้าควรมีความยาวอย่างน้อย 5 ตัวอักษร";
-                  }
-                  return null;
-                },
+              Container(
+                key: _detailsSectionKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader("รายละเอียดข้อมูล"),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      label: "ชื่อสินค้า *",
+                      controller: _nameController,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return "กรุณาระบุชื่อสินค้า";
+                        }
+                        if (v.trim().length < 5) {
+                          return "ชื่อสินค้าควรมีความยาวอย่างน้อย 5 ตัวอักษร";
+                        }
+                        return null;
+                      },
+                    ),
+                    _buildTextField(
+                      label: "รายละเอียดเพิ่มเติม",
+                      controller: _descController,
+                      maxLines: 4,
+                      hint: "อธิบายจุดเด่นหรือตำหนิของสินค้าให้ชัดเจน",
+                    ),
+                  ],
+                ),
               ),
-              _buildTextField(
-                label: "รายละเอียดเพิ่มเติม",
-                controller: _descController,
-                maxLines: 4,
-                hint: "อธิบายจุดเด่นหรือตำหนิของสินค้าให้ชัดเจน",
-              ),
-              _buildTextField(
-                label: "ราคา (บาท) *",
-                controller: _priceController,
-                isNumber: true,
-                hint: "เช่น 150",
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return "กรุณาระบุราคา";
-                  final price = double.tryParse(v.trim());
-                  if (price == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
-                  if (price <= 0) return "ราคาต้องมากกว่า 0 บาท";
-                  if (price > 100000) return "ราคาไม่ควรเกิน 100,000 บาท";
-                  return null;
-                },
-              ),
-              _buildTextField(
-                label: "น้ำหนักรวมกล่องพัสดุ (กรัม) *",
-                controller: _weightController,
-                isNumber: true,
-                hint: "เช่น เสื้อยืด=200, กางเกงยีนส์=500",
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return "กรุณาระบุน้ำหนัก";
-                  final double? weight = double.tryParse(v.trim());
-                  if (weight == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
-                  if (weight <= 0) return "น้ำหนักต้องมากกว่า 0 กรัม";
-                  if (weight > 20000) {
-                    return "น้ำหนักเกินกำหนด (สูงสุด 20,000 กรัม)";
-                  }
-                  return null;
-                },
+              Container(
+                key: _priceWeightSectionKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTextField(
+                      label: "ราคา (บาท) *",
+                      controller: _priceController,
+                      isNumber: true,
+                      hint: "เช่น 150",
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return "กรุณาระบุราคา";
+                        final price = double.tryParse(v.trim());
+                        if (price == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
+                        if (price <= 0) return "ราคาต้องมากกว่า 0 บาท";
+                        if (price > 100000) return "ราคาไม่ควรเกิน 100,000 บาท";
+                        return null;
+                      },
+                    ),
+                    _buildTextField(
+                      label: "น้ำหนักรวมกล่องพัสดุ (กรัม) *",
+                      controller: _weightController,
+                      isNumber: true,
+                      hint: "เช่น เสื้อยืด=200, กางเกงยีนส์=500",
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return "กรุณาระบุน้ำหนัก";
+                        final double? weight = double.tryParse(v.trim());
+                        if (weight == null) return "กรุณาระบุเป็นตัวเลขเท่านั้น";
+                        if (weight <= 0) return "น้ำหนักต้องมากกว่า 0 กรัม";
+                        if (weight > 20000) {
+                          return "น้ำหนักเกินกำหนด (สูงสุด 20,000 กรัม)";
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 30),
 
               SizedBox(
+                key: _submitButtonKey,
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(

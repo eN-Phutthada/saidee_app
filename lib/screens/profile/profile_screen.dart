@@ -16,6 +16,7 @@ import 'package:saidee_app/widgets/guest_view.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'package:saidee_app/screens/store/store_profile_screen.dart';
+import 'package:saidee_app/services/guided_tour_service.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 
@@ -458,6 +459,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         child: Column(
                           children: [
+                            _buildMenuTile(
+                              context,
+                              icon: CupertinoIcons.sparkles,
+                              title: "แนะนำการใช้งานแอป (Guided Tour)",
+                              hasBorder: true,
+                              onTap: () async {
+                                await GuidedTourService.resetTour();
+                                Get.offAll(() => const HomeScreen());
+                              },
+                            ),
                             _buildMenuTile(
                               context,
                               icon: CupertinoIcons.book_solid,

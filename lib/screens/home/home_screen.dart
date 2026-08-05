@@ -18,6 +18,7 @@ import 'package:saidee_app/models/product_model.dart';
 import 'package:saidee_app/services/recommendation_service.dart';
 import 'search_screen.dart';
 import 'search_results_screen.dart';
+import 'package:saidee_app/services/guided_tour_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,12 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isBannedAlertShown = false;
   bool _isNotifInitialLoad = true;
 
+  final GlobalKey _searchKey = GlobalKey();
+  final GlobalKey _chatKey = GlobalKey();
+  final GlobalKey _cartKey = GlobalKey();
+  final GlobalKey _sellKey = GlobalKey();
+  final GlobalKey _profileKey = GlobalKey();
+
   final List<Widget> _pages = [
     const HomeContent(),
     const CartScreen(),
@@ -45,6 +52,26 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _listenToUserStatus();
     _listenToNotifications();
+    _checkGuidedTour();
+  }
+
+  void _checkGuidedTour() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      bool hasSeen = await GuidedTourService.hasSeenTour();
+      if (!hasSeen && mounted) {
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (mounted) {
+          GuidedTourService.showTour(
+            context: context,
+            searchKey: _searchKey,
+            chatKey: _chatKey,
+            cartKey: _cartKey,
+            sellKey: _sellKey,
+            profileKey: _profileKey,
+          );
+        }
+      }
+    });
   }
 
   @override
@@ -239,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: Padding(
                 padding: const EdgeInsets.only(left: 12.0),
                 child: IconButton(
+                  key: _searchKey,
                   icon: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
@@ -410,6 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             alignment: Alignment.center,
                             children: [
                               IconButton(
+                                key: _chatKey,
                                 icon: Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
@@ -508,22 +537,31 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: 'หน้าหลัก',
                       ),
                       BottomNavigationBarItem(
-                        icon: Badge(
-                          isLabelVisible: cartCount > 0,
-                          label: Text(cartCount.toString()),
-                          child: const Icon(CupertinoIcons.cart_fill),
+                        icon: KeyedSubtree(
+                          key: _cartKey,
+                          child: Badge(
+                            isLabelVisible: cartCount > 0,
+                            label: Text(cartCount.toString()),
+                            child: const Icon(CupertinoIcons.cart_fill),
+                          ),
                         ),
                         label: 'ตะกร้า',
                       ),
-                      const BottomNavigationBarItem(
-                        icon: Icon(CupertinoIcons.plus_circle),
+                      BottomNavigationBarItem(
+                        icon: KeyedSubtree(
+                          key: _sellKey,
+                          child: const Icon(CupertinoIcons.plus_circle),
+                        ),
                         label: 'ขาย',
                       ),
                       BottomNavigationBarItem(
-                        icon: Badge(
-                          isLabelVisible: profileTotalBadge > 0,
-                          label: Text(profileTotalBadge.toString()),
-                          child: const Icon(CupertinoIcons.person_fill),
+                        icon: KeyedSubtree(
+                          key: _profileKey,
+                          child: Badge(
+                            isLabelVisible: profileTotalBadge > 0,
+                            label: Text(profileTotalBadge.toString()),
+                            child: const Icon(CupertinoIcons.person_fill),
+                          ),
                         ),
                         label: 'บัญชี',
                       ),

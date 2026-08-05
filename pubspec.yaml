@@ -58,6 +58,8 @@ dependencies:
   flutter_jailbreak_detection: ^1.10.0
   flutter_windowmanager_plus: ^1.0.1
   secure_application: ^4.1.0
+  shared_preferences: ^2.5.2
+  tutorial_coach_mark: ^1.2.11
 
 flutter_launcher_icons:
   android: "launcher_icon"
