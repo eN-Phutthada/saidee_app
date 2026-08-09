@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class ShippingDataHelper {
   static Future<void> setupRealShippingData() async {
     final db = FirebaseFirestore.instance;
-    final shippingCollection = db.collection('shipping');
+    final shippingCollection = db.collection(FirestoreCollections.shippings);
 
     // ข้อมูลบริษัทขนส่งจริง (ราคาประมาณการสำหรับพัสดุขนาดเล็ก/ซอง)
     final List<Map<String, dynamic>> shippingProviders = [

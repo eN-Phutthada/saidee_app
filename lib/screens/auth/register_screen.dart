@@ -10,6 +10,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/screens/profile/privacy_policy_screen.dart';
 import 'package:saidee_app/services/security_service.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -136,7 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(userCredential.user!.uid)
           .set({
             'uid': userCredential.user!.uid,

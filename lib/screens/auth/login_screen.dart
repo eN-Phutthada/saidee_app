@@ -8,6 +8,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -438,7 +439,7 @@ class _LoginScreenState extends State<LoginScreen> {
           String? fcmToken = await FirebaseMessaging.instance.getToken();
 
           if (fcmToken != null) {
-            String collectionPath = isAdmin ? 'admins' : 'users';
+            String collectionPath = isAdmin ? FirestoreCollections.admins : FirestoreCollections.users;
 
             await FirebaseFirestore.instance
                 .collection(collectionPath)
@@ -454,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         try {
-          await FirebaseFirestore.instance.collection('login_history').add({
+          await FirebaseFirestore.instance.collection(FirestoreCollections.loginHistory).add({
             'uid': user.uid,
             'email': user.email,
             'timestamp': FieldValue.serverTimestamp(),

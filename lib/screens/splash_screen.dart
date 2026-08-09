@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:flutter/services.dart';
@@ -64,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (user != null) {
       try {
         final adminDoc = await FirebaseFirestore.instance
-            .collection('admins')
+            .collection(FirestoreCollections.admins)
             .doc(user.uid)
             .get();
             

@@ -13,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class SlipPaymentScreen extends StatefulWidget {
   final double amount;
@@ -117,7 +118,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
         }
 
         var existingTx = await FirebaseFirestore.instance
-            .collection('transactions')
+            .collection(FirestoreCollections.transactions)
             .where('transRef', isEqualTo: transRef)
             .where('status', isEqualTo: 'success')
             .get();
@@ -163,14 +164,14 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       DocumentReference userRef = FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid);
       batch.update(userRef, {
         'walletBalance': FieldValue.increment(widget.amount),
       });
 
       DocumentReference txRef = FirebaseFirestore.instance
-          .collection('transactions')
+          .collection(FirestoreCollections.transactions)
           .doc();
 
       batch.set(txRef, {

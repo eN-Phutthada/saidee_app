@@ -212,7 +212,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: Colors.white,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 3),
                                       ),
@@ -306,10 +308,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.25),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.25,
+                                        ),
                                         width: 0.8,
                                       ),
                                     ),
@@ -462,7 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildMenuTile(
                               context,
                               icon: CupertinoIcons.sparkles,
-                              title: "แนะนำการใช้งานแอป (Guided Tour)",
+                              title: "แนะนำการใช้งานแอป",
                               hasBorder: true,
                               onTap: () async {
                                 await GuidedTourService.resetTour();

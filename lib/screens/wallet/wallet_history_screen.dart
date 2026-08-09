@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class WalletHistoryScreen extends StatelessWidget {
   const WalletHistoryScreen({super.key});
@@ -139,7 +140,7 @@ class WalletHistoryScreen extends StatelessWidget {
           ? const Center(child: Text("กรุณาเข้าสู่ระบบ"))
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('transactions')
+                  .collection(FirestoreCollections.transactions)
                   .where('uid', isEqualTo: user.uid)
                   .snapshots(),
               builder: (context, snapshot) {

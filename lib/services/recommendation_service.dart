@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:saidee_app/models/product_model.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class ScoredProduct {
   final QueryDocumentSnapshot doc;
@@ -19,7 +20,7 @@ class RecommendationService {
     if (userId.isEmpty || userId == product.sellerId) return;
 
     try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+      final userRef = FirebaseFirestore.instance.collection(FirestoreCollections.users).doc(userId);
       Map<String, dynamic> updateData = {};
 
       if (product.category.isNotEmpty) {
@@ -45,7 +46,7 @@ class RecommendationService {
     if (userId.isEmpty || userId == product.sellerId) return;
 
     try {
-      final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+      final userRef = FirebaseFirestore.instance.collection(FirestoreCollections.users).doc(userId);
       Map<String, dynamic> updateData = {};
 
       if (product.category.isNotEmpty) {
@@ -74,7 +75,7 @@ class RecommendationService {
 
     if (userId != null && userId.isNotEmpty) {
       try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+        final userDoc = await FirebaseFirestore.instance.collection(FirestoreCollections.users).doc(userId).get();
         if (userDoc.exists && userDoc.data() != null) {
           userInterests = userDoc.data()!;
         }

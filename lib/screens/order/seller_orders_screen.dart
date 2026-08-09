@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class SellerOrdersScreen extends StatefulWidget {
   const SellerOrdersScreen({super.key});
@@ -30,7 +31,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
 
     try {
       var shippingOrdersSnap = await FirebaseFirestore.instance
-          .collection('orders')
+          .collection(FirestoreCollections.orders)
           .where('sellerId', isEqualTo: user.uid)
           .where('status', isEqualTo: 'shipping')
           .get();
@@ -56,14 +57,14 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
             });
 
             DocumentReference sellerRef = FirebaseFirestore.instance
-                .collection('users')
+                .collection(FirestoreCollections.users)
                 .doc(user.uid);
             batch.update(sellerRef, {
               'walletBalance': FieldValue.increment(totalAmount),
             });
 
             DocumentReference txRef = FirebaseFirestore.instance
-                .collection('transactions')
+                .collection(FirestoreCollections.transactions)
                 .doc();
             batch.set(txRef, {
               'uid': user.uid,

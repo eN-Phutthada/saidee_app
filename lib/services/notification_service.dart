@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -33,7 +34,11 @@ class NotificationService {
     if (userId.isEmpty) return;
 
     try {
-      await _db.collection('users').doc(userId).collection('notifications').add({
+      await _db
+          .collection(FirestoreCollections.users)
+          .doc(userId)
+          .collection(FirestoreCollections.notifications)
+          .add({
         'title': title,
         'body': body,
         'type': type,
@@ -50,9 +55,9 @@ class NotificationService {
   /// อ่านการแจ้งเตือนทั้งหมดของผู้ใช้
   static Stream<QuerySnapshot> getUserNotifications(String userId) {
     return _db
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('notifications')
+        .collection(FirestoreCollections.notifications)
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
@@ -60,9 +65,9 @@ class NotificationService {
   /// อ่านจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
   static Stream<int> getUnreadCount(String userId) {
     return _db
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('notifications')
+        .collection(FirestoreCollections.notifications)
         .where('isRead', isEqualTo: false)
         .snapshots()
         .map((snap) => snap.docs.length);
@@ -72,9 +77,9 @@ class NotificationService {
   static Future<void> markAsRead(String userId, String notificationId) async {
     try {
       await _db
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(userId)
-          .collection('notifications')
+          .collection(FirestoreCollections.notifications)
           .doc(notificationId)
           .update({'isRead': true});
     } catch (e) {
@@ -86,9 +91,9 @@ class NotificationService {
   static Future<void> markAllAsRead(String userId) async {
     try {
       var unreadDocs = await _db
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(userId)
-          .collection('notifications')
+          .collection(FirestoreCollections.notifications)
           .where('isRead', isEqualTo: false)
           .get();
 

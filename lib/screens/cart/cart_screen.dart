@@ -11,6 +11,7 @@ import '../../widgets/guest_view.dart';
 import '../store/store_profile_screen.dart';
 import '../product/product_detail_screen.dart';
 import '../../models/product_model.dart';
+import '../../config/firestore_collections.dart';
 
 class CartScreen extends StatefulWidget {
   final bool showBackButton;
@@ -39,7 +40,7 @@ class _CartScreenState extends State<CartScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _cartStream = FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid)
           .collection('cart')
           .orderBy('addedAt', descending: true)
@@ -68,7 +69,7 @@ class _CartScreenState extends State<CartScreen> {
 
     for (String docId in _selectedCartIds) {
       await FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid)
           .collection('cart')
           .doc(docId)

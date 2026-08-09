@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/coupon_data_helper.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class ManageCouponScreen extends StatefulWidget {
   const ManageCouponScreen({super.key});
@@ -348,11 +349,11 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
                       try {
                         if (docId == null) {
                           await FirebaseFirestore.instance
-                              .collection('coupons')
+                              .collection(FirestoreCollections.coupons)
                               .add(newData);
                         } else {
                           await FirebaseFirestore.instance
-                              .collection('coupons')
+                              .collection(FirestoreCollections.coupons)
                               .doc(docId)
                               .update(newData);
                         }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class RoleGuardService {
   /// Check if the currently logged in user is an Admin
@@ -14,7 +15,7 @@ class RoleGuardService {
 
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('admins')
+          .collection(FirestoreCollections.admins)
           .doc(user.uid)
           .get();
       return doc.exists;

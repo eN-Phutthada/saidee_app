@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/shipping_data_helper.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class ManageShippingScreen extends StatefulWidget {
   const ManageShippingScreen({super.key});
@@ -200,11 +201,11 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
                           };
                           if (docId == null) {
                             await FirebaseFirestore.instance
-                                .collection('shipping')
+                                .collection(FirestoreCollections.shippings)
                                 .add(newData);
                           } else {
                             await FirebaseFirestore.instance
-                                .collection('shipping')
+                                .collection(FirestoreCollections.shippings)
                                 .doc(docId)
                                 .update(newData);
                           }

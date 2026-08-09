@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class AnnouncementDataHelper {
   static Future<void> setupSampleAnnouncements() async {
     final db = FirebaseFirestore.instance;
-    final collection = db.collection('announcements');
+    final collection = db.collection(FirestoreCollections.announcements);
 
     final List<Map<String, dynamic>> announcements = [
       {

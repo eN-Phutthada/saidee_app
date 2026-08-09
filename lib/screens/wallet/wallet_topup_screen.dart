@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/wallet/slip_payment_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 
@@ -222,7 +223,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
                                 const SizedBox(height: 20),
                                 StreamBuilder<DocumentSnapshot>(
                                   stream: FirebaseFirestore.instance
-                                      .collection('users')
+                                      .collection(FirestoreCollections.users)
                                       .doc(user?.uid)
                                       .snapshots(),
                                   builder: (context, snapshot) {

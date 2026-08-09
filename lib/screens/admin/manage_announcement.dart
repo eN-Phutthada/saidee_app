@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/announcement_data_helper.dart';
 import 'package:saidee_app/services/security_service.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class ManageAnnouncementScreen extends StatefulWidget {
   const ManageAnnouncementScreen({super.key});
@@ -144,11 +145,11 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                           if (docId == null) {
                             data['createdAt'] = FieldValue.serverTimestamp();
                             await FirebaseFirestore.instance
-                                .collection('announcements')
+                                .collection(FirestoreCollections.announcements)
                                 .add(data);
                           } else {
                             await FirebaseFirestore.instance
-                                .collection('announcements')
+                                .collection(FirestoreCollections.announcements)
                                 .doc(docId)
                                 .update(data);
                           }

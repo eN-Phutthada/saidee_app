@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'buyer_order_detail_screen.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class BuyerOrdersScreen extends StatelessWidget {
   const BuyerOrdersScreen({super.key});
@@ -146,7 +147,7 @@ class BuyerOrdersScreen extends StatelessWidget {
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('orders')
+          .collection(FirestoreCollections.orders)
           .where('buyerId', isEqualTo: buyerId)
           .snapshots(),
       builder: (context, snapshot) {

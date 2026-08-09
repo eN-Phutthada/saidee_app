@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class CouponDataHelper {
   static Future<void> setupSampleCoupons() async {
     final db = FirebaseFirestore.instance;
-    final couponCollection = db.collection('coupons');
+    final couponCollection = db.collection(FirestoreCollections.coupons);
 
     // รายการคูปองจำลองที่เหมาะกับร้านเสื้อผ้ามือสอง
     final List<Map<String, dynamic>> coupons = [

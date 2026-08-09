@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 
@@ -66,7 +67,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
       final doc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid)
           .get();
       if (doc.exists && doc.data() != null) {
@@ -128,7 +129,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       if (user == null) throw Exception("ไม่พบผู้ใช้งาน");
 
       final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid)
           .get();
       if (!userDoc.exists) throw Exception("ไม่พบข้อมูลผู้ใช้");
@@ -138,7 +139,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           .toDouble();
 
       final pendingSnap = await FirebaseFirestore.instance
-          .collection('transactions')
+          .collection(FirestoreCollections.transactions)
           .where('uid', isEqualTo: user.uid)
           .where('type', isEqualTo: 'withdraw')
           .where('status', isEqualTo: 'pending')
@@ -164,7 +165,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       DocumentReference userRef = FirebaseFirestore.instance
-          .collection('users')
+          .collection(FirestoreCollections.users)
           .doc(user.uid);
       batch.update(userRef, {
         'withdrawBank': _selectedBank,
@@ -173,7 +174,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       });
 
       DocumentReference newTxRef = FirebaseFirestore.instance
-          .collection('transactions')
+          .collection(FirestoreCollections.transactions)
           .doc();
       batch.set(newTxRef, {
         'uid': user.uid,
