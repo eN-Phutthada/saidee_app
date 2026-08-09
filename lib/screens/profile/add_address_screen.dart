@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/security_service.dart';
 
 class AddAddressScreen extends StatefulWidget {
   final String? docId;
@@ -45,6 +46,18 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   void initState() {
     super.initState();
     _initialLoad();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressDetailController.dispose();
+    _subDistrictController.dispose();
+    _districtController.dispose();
+    _provinceController.dispose();
+    _postcodeController.dispose();
+    super.dispose();
   }
 
   Future<void> _initialLoad() async {
@@ -191,13 +204,13 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 
     try {
       final addressData = {
-        'receiver_name': _nameController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'address_detail': _addressDetailController.text.trim(),
-        'sub_district': _subDistrictController.text.trim(),
-        'district': _districtController.text.trim(),
-        'province': _provinceController.text.trim(),
-        'postcode': _postcodeController.text.trim(),
+        'receiver_name': SecurityService.sanitizeText(_nameController.text),
+        'phone': SecurityService.sanitizeText(_phoneController.text),
+        'address_detail': SecurityService.sanitizeText(_addressDetailController.text),
+        'sub_district': SecurityService.sanitizeText(_subDistrictController.text),
+        'district': SecurityService.sanitizeText(_districtController.text),
+        'province': SecurityService.sanitizeText(_provinceController.text),
+        'postcode': SecurityService.sanitizeText(_postcodeController.text),
         'latitude': _currentPosition.latitude,
         'longitude': _currentPosition.longitude,
         'is_default': _isDefault,

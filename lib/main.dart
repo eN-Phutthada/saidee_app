@@ -36,7 +36,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await dotenv.load(fileName: ".env");
+
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint("Info: .env file not loaded from assets: $e");
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 

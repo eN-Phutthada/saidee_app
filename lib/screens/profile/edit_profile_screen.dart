@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/security_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -218,8 +219,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .collection('users')
           .doc(currentUser!.uid)
           .update({
-            'name': _nameController.text.trim(),
-            'bio': _bioController.text.trim(),
+            'name': SecurityService.sanitizeText(_nameController.text),
+            'bio': SecurityService.sanitizeText(_bioController.text),
             'profileImage': imageUrl,
           });
 

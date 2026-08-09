@@ -19,6 +19,15 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
   final _minWeightController = TextEditingController();
   final _maxWeightController = TextEditingController();
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _minWeightController.dispose();
+    _maxWeightController.dispose();
+    super.dispose();
+  }
+
   void _showEditDialog({String? docId, Map<String, dynamic>? data}) {
     _nameController.text = data?['name'] ?? '';
     _priceController.text = data?['price']?.toString() ?? '';

@@ -18,6 +18,14 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
   final _valueController = TextEditingController();
   final _minOrderController = TextEditingController();
 
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _valueController.dispose();
+    _minOrderController.dispose();
+    super.dispose();
+  }
+
   bool _isActive = true;
   DateTime? _startDate;
   DateTime? _endDate;

@@ -17,6 +17,7 @@ import '../../widgets/custom_dialog.dart';
 import '../../widgets/guest_view.dart';
 import '../store/seller_shipping_screen.dart';
 import '../../services/guided_tour_service.dart';
+import '../../services/security_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? product;
@@ -707,12 +708,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       Map<String, dynamic> productData = {
         'sellerId': user.uid,
-        'name': _nameController.text.trim(),
+        'name': SecurityService.sanitizeText(_nameController.text),
         'type': _selectedType,
         'category': _selectedCategory,
-        'description': _descController.text.trim(),
+        'description': SecurityService.sanitizeText(_descController.text),
         'price': double.parse(_priceController.text.trim()),
-        'brand': _brandController.text.trim(),
+        'brand': SecurityService.sanitizeText(_brandController.text),
         'size': _selectedSize,
         'condition': _selectedCondition,
         'weight': double.tryParse(_weightController.text.trim()) ?? 0.0,

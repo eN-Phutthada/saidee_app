@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/announcement_data_helper.dart';
+import 'package:saidee_app/services/security_service.dart';
 
 class ManageAnnouncementScreen extends StatefulWidget {
   const ManageAnnouncementScreen({super.key});
@@ -17,6 +18,13 @@ class ManageAnnouncementScreen extends StatefulWidget {
 class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
   final _titleController = TextEditingController();
   final _detailController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _detailController.dispose();
+    super.dispose();
+  }
 
   void _showAnnouncementDialog({
     String? docId,
@@ -122,8 +130,8 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                               'Unknown';
 
                           final data = {
-                            'title': _titleController.text,
-                            'detail': _detailController.text,
+                            'title': SecurityService.sanitizeText(_titleController.text),
+                            'detail': SecurityService.sanitizeText(_detailController.text),
                             'adminId': currentAdminId,
                             'updatedAt': FieldValue.serverTimestamp(),
                           };

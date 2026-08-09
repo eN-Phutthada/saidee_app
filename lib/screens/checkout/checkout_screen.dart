@@ -65,6 +65,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _loadCheckoutData();
   }
 
+  @override
+  void dispose() {
+    _couponController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadCheckoutData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;

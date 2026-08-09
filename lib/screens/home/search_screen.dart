@@ -15,6 +15,12 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   final List<String> _selectedCategories = [];
   final List<String> _selectedTypes = [];
   final List<String> _selectedSizes = [];

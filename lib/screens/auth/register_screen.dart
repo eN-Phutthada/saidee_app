@@ -9,6 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/screens/profile/privacy_policy_screen.dart';
+import 'package:saidee_app/services/security_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -139,9 +140,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .doc(userCredential.user!.uid)
           .set({
             'uid': userCredential.user!.uid,
-            'name': _nameController.text.trim(),
+            'name': SecurityService.sanitizeText(_nameController.text),
             'email': _emailController.text.trim(),
-            'phone': _phoneController.text.trim(),
+            'phone': SecurityService.sanitizeText(_phoneController.text),
             'profileImage': imageUrl ?? '',
             'createdAt': FieldValue.serverTimestamp(),
           });
