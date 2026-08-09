@@ -943,7 +943,6 @@ class _HomeContentState extends State<HomeContent> {
                             data,
                             doc.id,
                             isDark,
-                            badgeText: scored.badgeText,
                           );
                         },
                       );
@@ -963,9 +962,8 @@ class _HomeContentState extends State<HomeContent> {
     BuildContext context,
     Map<String, dynamic> data,
     String docId,
-    bool isDark, {
-    String? badgeText,
-  }) {
+    bool isDark,
+  ) {
     final theme = Theme.of(context);
     String? imageUrl =
         (data['images'] != null && (data['images'] as List).isNotEmpty)
@@ -993,61 +991,27 @@ class _HomeContentState extends State<HomeContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : Colors.grey[200],
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(15),
-                      ),
-                      image: imageUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(imageUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                    ),
-                    child: imageUrl == null
-                        ? const Center(
-                            child: Icon(
-                              CupertinoIcons.photo,
-                              color: Colors.grey,
-                            ),
-                          )
-                        : null,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15),
                   ),
-                  if (badgeText != null && badgeText.isNotEmpty)
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                  image: imageUrl != null
+                      ? DecorationImage(
+                          image: NetworkImage(imageUrl),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: imageUrl == null
+                    ? const Center(
+                        child: Icon(
+                          CupertinoIcons.photo,
+                          color: Colors.grey,
                         ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                      )
+                    : null,
               ),
             ),
             Padding(

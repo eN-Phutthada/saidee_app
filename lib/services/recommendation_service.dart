@@ -6,12 +6,10 @@ import 'package:saidee_app/models/product_model.dart';
 class ScoredProduct {
   final QueryDocumentSnapshot doc;
   final double score;
-  final String badgeText;
 
   ScoredProduct({
     required this.doc,
     required this.score,
-    required this.badgeText,
   });
 }
 
@@ -104,7 +102,6 @@ class RecommendationService {
       }
 
       double score = 0.0;
-      String badgeText = "";
 
       String category = data['category'] ?? '';
       String type = data['type'] ?? '';
@@ -132,30 +129,11 @@ class RecommendationService {
         double brandScore = brandCount * 15.0;
 
         score += categoryScore + typeScore + brandScore;
-
-        if (typeCount > 0 && typeCount >= categoryCount) {
-          badgeText = "💡 แนะนำจากหมวด $type";
-        } else if (categoryCount > 0) {
-          badgeText = "✨ ตรงใจคุณ";
-        } else if (brandCount > 0) {
-          badgeText = "🏷️ แบรนด์ที่คุณชอบ";
-        } else if (views >= 10) {
-          badgeText = "🔥 ยอดนิยม";
-        } else {
-          badgeText = "✨ แนะนำสำหรับคุณ";
-        }
-      } else {
-        if (views >= 10) {
-          badgeText = "🔥 ยอดนิยม";
-        } else {
-          badgeText = "✨ สินค้าแนะนำ";
-        }
       }
 
       scoredList.add(ScoredProduct(
         doc: doc,
         score: score,
-        badgeText: badgeText,
       ));
     }
 
