@@ -194,19 +194,38 @@ class GuidedTourService {
     VoidCallback? onFinish,
     VoidCallback? onSkip,
   }) {
+    double getAlignmentForTarget(String identify) {
+      switch (identify) {
+        case "TargetImage":
+          return 0.1;
+        case "TargetCategory":
+          return 0.15;
+        case "TargetDetails":
+          return 0.15;
+        case "TargetPriceWeight":
+          return 0.60;
+        case "TargetSubmit":
+          return 0.85;
+        default:
+          return 0.15;
+      }
+    }
+
     Future<void> scrollToAndNext(
       GlobalKey? nextKey,
+      String nextIdentify,
       TutorialCoachMarkController controller,
     ) async {
+      controller.next();
+      await Future.delayed(const Duration(milliseconds: 250));
       if (nextKey?.currentContext != null) {
         await Scrollable.ensureVisible(
           nextKey!.currentContext!,
-          duration: const Duration(milliseconds: 300),
-          alignment: 0.1,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
+          alignment: getAlignmentForTarget(nextIdentify),
         );
-        await Future.delayed(const Duration(milliseconds: 150));
       }
-      controller.next();
     }
 
     List<TargetFocus> targets = [
@@ -226,7 +245,7 @@ class GuidedTourService {
                 description:
                     "อัปโหลดรูปถ่ายสินค้า 3-5 รูป และคลิปสั้นไม่เกิน 15 วินาที แสดงสภาพสินค้าจริงเพื่อเพิ่มความน่าเชื่อถือให้ร้านค้า",
                 stepText: "1 จาก 5",
-                onNext: () => scrollToAndNext(categoryKey, controller),
+                onNext: () => scrollToAndNext(categoryKey, "TargetCategory", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -249,7 +268,7 @@ class GuidedTourService {
                 description:
                     "เลือกหมวดหมู่ ประเภท ไซส์ สภาพสินค้า และระบุแบรนด์ให้ถูกต้อง ช่วยให้สินค้าถูกค้นพบได้ง่าย",
                 stepText: "2 จาก 5",
-                onNext: () => scrollToAndNext(detailsKey, controller),
+                onNext: () => scrollToAndNext(detailsKey, "TargetDetails", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -272,7 +291,7 @@ class GuidedTourService {
                 description:
                     "ระบุชื่อสินค้าที่ชัดเจน น่าดึงดูด พร้อมอธิบายจุดเด่น สภาพจริง หรือตำหนิให้ผู้ซื้อรับทราบ",
                 stepText: "3 จาก 5",
-                onNext: () => scrollToAndNext(priceWeightKey, controller),
+                onNext: () => scrollToAndNext(priceWeightKey, "TargetPriceWeight", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -295,7 +314,7 @@ class GuidedTourService {
                 description:
                     "กำหนดราคาสินค้า และระบุน้ำหนักรวมกล่องพัสดุ (กรัม) เพื่อให้ระบบคำนวณค่าส่งอัตโนมัติได้อย่างแม่นยำ",
                 stepText: "4 จาก 5",
-                onNext: () => scrollToAndNext(submitKey, controller),
+                onNext: () => scrollToAndNext(submitKey, "TargetSubmit", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -328,21 +347,50 @@ class GuidedTourService {
       ),
     ];
 
-
-    if (imageKey.currentContext != null) {
-      Scrollable.ensureVisible(
-        imageKey.currentContext!,
-        duration: const Duration(milliseconds: 200),
-        alignment: 0.1,
-      );
-    }
-
     TutorialCoachMark tutorial = TutorialCoachMark(
       targets: targets,
       colorShadow: Colors.black,
       textSkip: "ข้าม",
       paddingFocus: 8,
       opacityShadow: 0.8,
+      onClickTarget: (target) {
+        int index = targets.indexOf(target);
+        if (index >= 0 && index < targets.length - 1) {
+          TargetFocus nextTarget = targets[index + 1];
+          if (nextTarget.keyTarget is GlobalKey) {
+            GlobalKey key = nextTarget.keyTarget as GlobalKey;
+            Future.delayed(const Duration(milliseconds: 250), () {
+              if (key.currentContext != null) {
+                Scrollable.ensureVisible(
+                  key.currentContext!,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeInOutCubic,
+                  alignment: getAlignmentForTarget(nextTarget.identify),
+                );
+              }
+            });
+          }
+        }
+      },
+      onClickOverlay: (target) {
+        int index = targets.indexOf(target);
+        if (index >= 0 && index < targets.length - 1) {
+          TargetFocus nextTarget = targets[index + 1];
+          if (nextTarget.keyTarget is GlobalKey) {
+            GlobalKey key = nextTarget.keyTarget as GlobalKey;
+            Future.delayed(const Duration(milliseconds: 250), () {
+              if (key.currentContext != null) {
+                Scrollable.ensureVisible(
+                  key.currentContext!,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeInOutCubic,
+                  alignment: getAlignmentForTarget(nextTarget.identify),
+                );
+              }
+            });
+          }
+        }
+      },
       onFinish: () {
         markAddProductTourAsSeen();
         onFinish?.call();
