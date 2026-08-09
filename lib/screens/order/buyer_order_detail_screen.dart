@@ -304,6 +304,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                   TextField(
                     controller: reviewCtrl,
                     maxLines: 4,
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                     decoration: InputDecoration(
                       hintText: "แบ่งปันประสบการณ์ของคุณกับสินค้านี้...",
                       hintStyle: TextStyle(color: Colors.grey[400]),

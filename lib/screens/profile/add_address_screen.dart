@@ -389,6 +389,9 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 
   Widget _buildMapSection() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return SizedBox(
       height: 250,
       child: Stack(
@@ -422,11 +425,11 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
             right: 10,
             child: FloatingActionButton.small(
               heroTag: "fs",
-              backgroundColor: Colors.white,
+              backgroundColor: isDark ? theme.cardColor : Colors.white,
               onPressed: _openFullScreenMap,
-              child: const Icon(
+              child: Icon(
                 CupertinoIcons.fullscreen,
-                color: Colors.black87,
+                color: isDark ? theme.colorScheme.onSurface : Colors.black87,
               ),
             ),
           ),
@@ -658,6 +661,9 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -716,11 +722,11 @@ class _FullScreenMapPickerState extends State<FullScreenMapPicker> {
             top: 50,
             left: 20,
             child: CircleAvatar(
-              backgroundColor: Colors.white,
+              backgroundColor: isDark ? theme.cardColor : Colors.white,
               child: IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.arrow_back_ios_new,
-                  color: Colors.black,
+                  color: isDark ? theme.colorScheme.onSurface : Colors.black,
                   size: 18,
                 ),
                 onPressed: () => Get.back(),
