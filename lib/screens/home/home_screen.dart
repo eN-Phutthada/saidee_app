@@ -529,38 +529,50 @@ class _HomeScreenState extends State<HomeScreen> {
                     unselectedItemColor: Colors.grey,
                     items: [
                       BottomNavigationBarItem(
-                        icon: Badge(
-                          isLabelVisible: unreadNotifs > 0,
-                          label: Text(unreadNotifs.toString()),
-                          child: const Icon(CupertinoIcons.house_fill),
+                        icon: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Badge(
+                            isLabelVisible: unreadNotifs > 0,
+                            label: Text(unreadNotifs.toString()),
+                            child: const Icon(CupertinoIcons.house_fill),
+                          ),
                         ),
                         label: 'หน้าหลัก',
                       ),
                       BottomNavigationBarItem(
-                        icon: KeyedSubtree(
-                          key: _cartKey,
-                          child: Badge(
-                            isLabelVisible: cartCount > 0,
-                            label: Text(cartCount.toString()),
-                            child: const Icon(CupertinoIcons.cart_fill),
+                        icon: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: KeyedSubtree(
+                            key: _cartKey,
+                            child: Badge(
+                              isLabelVisible: cartCount > 0,
+                              label: Text(cartCount.toString()),
+                              child: const Icon(CupertinoIcons.cart_fill),
+                            ),
                           ),
                         ),
                         label: 'ตะกร้า',
                       ),
                       BottomNavigationBarItem(
-                        icon: KeyedSubtree(
-                          key: _sellKey,
-                          child: const Icon(CupertinoIcons.plus_circle),
+                        icon: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: KeyedSubtree(
+                            key: _sellKey,
+                            child: const Icon(CupertinoIcons.plus_circle),
+                          ),
                         ),
                         label: 'ขาย',
                       ),
                       BottomNavigationBarItem(
-                        icon: KeyedSubtree(
-                          key: _profileKey,
-                          child: Badge(
-                            isLabelVisible: profileTotalBadge > 0,
-                            label: Text(profileTotalBadge.toString()),
-                            child: const Icon(CupertinoIcons.person_fill),
+                        icon: Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: KeyedSubtree(
+                            key: _profileKey,
+                            child: Badge(
+                              isLabelVisible: profileTotalBadge > 0,
+                              label: Text(profileTotalBadge.toString()),
+                              child: const Icon(CupertinoIcons.person_fill),
+                            ),
                           ),
                         ),
                         label: 'บัญชี',
@@ -970,8 +982,8 @@ class _HomeContentState extends State<HomeContent> {
     final theme = Theme.of(context);
     String? imageUrl =
         (data['images'] != null && (data['images'] as List).isNotEmpty)
-            ? data['images'][0]
-            : null;
+        ? data['images'][0]
+        : null;
 
     return GestureDetector(
       onTap: () {
@@ -1021,10 +1033,7 @@ class _HomeContentState extends State<HomeContent> {
                     : Container(
                         color: isDark ? Colors.grey[800] : Colors.grey[200],
                         child: const Center(
-                          child: Icon(
-                            CupertinoIcons.photo,
-                            color: Colors.grey,
-                          ),
+                          child: Icon(CupertinoIcons.photo, color: Colors.grey),
                         ),
                       ),
               ),

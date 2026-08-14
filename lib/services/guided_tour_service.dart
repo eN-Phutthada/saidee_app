@@ -102,6 +102,7 @@ class GuidedTourService {
         keyTarget: cartKey,
         alignSkip: Alignment.topRight,
         enableOverlayTab: true,
+        paddingFocus: 22,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -123,6 +124,7 @@ class GuidedTourService {
         keyTarget: sellKey,
         alignSkip: Alignment.topRight,
         enableOverlayTab: true,
+        paddingFocus: 22,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -144,6 +146,7 @@ class GuidedTourService {
         keyTarget: profileKey,
         alignSkip: Alignment.topRight,
         enableOverlayTab: true,
+        paddingFocus: 22,
         contents: [
           TargetContent(
             align: ContentAlign.top,
@@ -245,7 +248,8 @@ class GuidedTourService {
                 description:
                     "อัปโหลดรูปถ่ายสินค้า 3-5 รูป และคลิปสั้นไม่เกิน 15 วินาที แสดงสภาพสินค้าจริงเพื่อเพิ่มความน่าเชื่อถือให้ร้านค้า",
                 stepText: "1 จาก 5",
-                onNext: () => scrollToAndNext(categoryKey, "TargetCategory", controller),
+                onNext: () =>
+                    scrollToAndNext(categoryKey, "TargetCategory", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -268,7 +272,8 @@ class GuidedTourService {
                 description:
                     "เลือกหมวดหมู่ ประเภท ไซส์ สภาพสินค้า และระบุแบรนด์ให้ถูกต้อง ช่วยให้สินค้าถูกค้นพบได้ง่าย",
                 stepText: "2 จาก 5",
-                onNext: () => scrollToAndNext(detailsKey, "TargetDetails", controller),
+                onNext: () =>
+                    scrollToAndNext(detailsKey, "TargetDetails", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -291,7 +296,11 @@ class GuidedTourService {
                 description:
                     "ระบุชื่อสินค้าที่ชัดเจน น่าดึงดูด พร้อมอธิบายจุดเด่น สภาพจริง หรือตำหนิให้ผู้ซื้อรับทราบ",
                 stepText: "3 จาก 5",
-                onNext: () => scrollToAndNext(priceWeightKey, "TargetPriceWeight", controller),
+                onNext: () => scrollToAndNext(
+                  priceWeightKey,
+                  "TargetPriceWeight",
+                  controller,
+                ),
                 onSkip: () => controller.skip(),
               );
             },
@@ -314,7 +323,8 @@ class GuidedTourService {
                 description:
                     "กำหนดราคาสินค้า และระบุน้ำหนักรวมกล่องพัสดุ (กรัม) เพื่อให้ระบบคำนวณค่าส่งอัตโนมัติได้อย่างแม่นยำ",
                 stepText: "4 จาก 5",
-                onNext: () => scrollToAndNext(submitKey, "TargetSubmit", controller),
+                onNext: () =>
+                    scrollToAndNext(submitKey, "TargetSubmit", controller),
                 onSkip: () => controller.skip(),
               );
             },
@@ -405,7 +415,6 @@ class GuidedTourService {
     tutorial.show(context: context);
   }
 
-
   static Widget _buildTooltipCard({
     required String title,
     required String description,
@@ -436,8 +445,10 @@ class GuidedTourService {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF28B431).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -455,8 +466,10 @@ class GuidedTourService {
                 onTap: onSkip,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   child: Text(
                     "ข้าม",
                     style: GoogleFonts.kanit(
@@ -500,8 +513,10 @@ class GuidedTourService {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 isLast ? "เริ่มใช้งานเลย!" : "ถัดไป",
