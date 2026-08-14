@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/recommendation_service.dart';
 import 'search_results_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -41,9 +43,21 @@ class _SearchScreenState extends State<SearchScreen> {
   ];
 
   void _onSearch() {
+    final keyword = _searchController.text.trim();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      RecommendationService.trackSearch(
+        userId: user.uid,
+        keyword: keyword,
+        categories: _selectedCategories,
+        types: _selectedTypes,
+        sizes: _selectedSizes,
+      );
+    }
+
     Get.to(
       () => SearchResultsScreen(
-        keyword: _searchController.text.trim(),
+        keyword: keyword,
         categories: _selectedCategories,
         types: _selectedTypes,
         sizes: _selectedSizes,

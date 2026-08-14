@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/screens/profile/add_address_screen.dart';
 import 'package:saidee_app/screens/checkout/promptpay_checkout_payment_screen.dart';
 import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/services/recommendation_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class CheckoutShopGroup {
@@ -814,6 +815,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       await batch.commit();
+
+      List<dynamic> allPurchasedItems = [];
+      for (var g in _shopGroups) {
+        allPurchasedItems.addAll(g.items);
+      }
+      RecommendationService.trackOrderPurchase(user.uid, allPurchasedItems);
 
       NotificationService.sendNotification(
         userId: user.uid,

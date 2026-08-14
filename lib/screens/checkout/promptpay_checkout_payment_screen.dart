@@ -13,6 +13,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/services/recommendation_service.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
@@ -234,6 +235,12 @@ class _PromptPayCheckoutPaymentScreenState
       }
 
       await batch.commit();
+
+      List<dynamic> allPurchasedItems = [];
+      for (var g in widget.shopGroups) {
+        allPurchasedItems.addAll(g.items);
+      }
+      RecommendationService.trackOrderPurchase(user.uid, allPurchasedItems);
 
       // ส่งการแจ้งเตือนไปยังผู้ซื้อและผู้ขาย
       NotificationService.sendNotification(

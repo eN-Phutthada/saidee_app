@@ -902,7 +902,7 @@ class _HomeContentState extends State<HomeContent> {
                     future: RecommendationService.getRecommendedProducts(
                       userId: user?.uid,
                       rawProducts: validProducts,
-                      limit: 10,
+                      limit: 18,
                     ),
                     builder: (context, recSnapshot) {
                       if (recSnapshot.connectionState ==
