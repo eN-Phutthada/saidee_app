@@ -925,13 +925,16 @@ class _HomeContentState extends State<HomeContent> {
                       return GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
-                              childAspectRatio: 0.58,
-                              crossAxisSpacing: 15,
-                              mainAxisSpacing: 15,
+                              childAspectRatio: 0.65,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 12,
                             ),
                         itemCount: recommendedList.length,
                         itemBuilder: (context, index) {
@@ -967,8 +970,8 @@ class _HomeContentState extends State<HomeContent> {
     final theme = Theme.of(context);
     String? imageUrl =
         (data['images'] != null && (data['images'] as List).isNotEmpty)
-        ? data['images'][0]
-        : null;
+            ? data['images'][0]
+            : null;
 
     return GestureDetector(
       onTap: () {
@@ -978,11 +981,15 @@ class _HomeContentState extends State<HomeContent> {
       child: Container(
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.grey[800]! : const Color(0xFFEEEEEE),
+            width: 0.8,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
@@ -991,68 +998,110 @@ class _HomeContentState extends State<HomeContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[200],
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(15),
-                  ),
-                  image: imageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(imageUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(11.2),
                 ),
-                child: imageUrl == null
-                    ? const Center(
-                        child: Icon(
-                          CupertinoIcons.photo,
-                          color: Colors.grey,
+                child: imageUrl != null && imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: isDark ? Colors.grey[800] : Colors.grey[200],
+                          child: const Center(
+                            child: Icon(
+                              CupertinoIcons.photo,
+                              color: Colors.grey,
+                            ),
+                          ),
                         ),
                       )
-                    : null,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          data['name']?.isNotEmpty == true
-                              ? data['name']
-                              : (data['brand'] ?? ''),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                    : Container(
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                        child: const Center(
+                          child: Icon(
+                            CupertinoIcons.photo,
+                            color: Colors.grey,
                           ),
                         ),
                       ),
-                      Text(
-                        "${data['price']}฿",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    data['size'] ?? '-',
-                    style: TextStyle(
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                      fontSize: 12,
+                    data['name']?.isNotEmpty == true
+                        ? data['name']
+                        : (data['brand'] ?? ''),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13.5,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      if (data['size'] != null &&
+                          data['size'].toString().isNotEmpty &&
+                          data['size'] != '-') ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.grey[800]
+                                : const Color(0xFFF2F2F2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            "ไซส์ ${data['size']}",
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                      ],
+                      if (data['type'] != null &&
+                          data['type'].toString().isNotEmpty)
+                        Expanded(
+                          child: Text(
+                            data['type'].toString(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[500],
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "${data['price']} ฿",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
                   FutureBuilder<DocumentSnapshot>(
                     future: FirebaseFirestore.instance
                         .collection('users')
@@ -1070,30 +1119,32 @@ class _HomeContentState extends State<HomeContent> {
                       return Row(
                         children: [
                           CircleAvatar(
-                            radius: 10,
+                            radius: 8.5,
                             backgroundImage: sellerImg.isNotEmpty
                                 ? NetworkImage(sellerImg)
                                 : null,
-                            backgroundColor: Colors.grey[300],
+                            backgroundColor: isDark
+                                ? Colors.grey[700]
+                                : Colors.grey[300],
                             child: sellerImg.isEmpty
                                 ? const Icon(
                                     Icons.person,
-                                    size: 12,
+                                    size: 11,
                                     color: Colors.grey,
                                   )
                                 : null,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               sellerName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 10.5,
                                 color: isDark
                                     ? Colors.grey[400]
-                                    : Colors.grey[800],
+                                    : Colors.grey[600],
                               ),
                             ),
                           ),

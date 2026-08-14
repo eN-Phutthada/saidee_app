@@ -1027,13 +1027,13 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
         });
 
         return GridView.builder(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           physics: const BouncingScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 0.55,
-            crossAxisSpacing: 15,
-            mainAxisSpacing: 15,
+            childAspectRatio: 0.65,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 12,
           ),
           itemCount: products.length,
           itemBuilder: (context, index) {
@@ -1050,13 +1050,17 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               child: Container(
                 decoration: BoxDecoration(
                   color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[800]! : const Color(0xFFEEEEEE),
+                    width: 0.8,
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(
-                        alpha: isDark ? 0.3 : 0.05,
+                        alpha: isDark ? 0.25 : 0.04,
                       ),
-                      blurRadius: 5,
+                      blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ],
@@ -1069,7 +1073,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(15),
+                              top: Radius.circular(11.2),
                             ),
                             child: imgUrl.isNotEmpty
                                 ? Image.network(
@@ -1077,40 +1081,56 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     height: double.infinity,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: isDark
+                                                  ? Colors.grey[800]
+                                                  : Colors.grey[200],
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.image,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ),
                                   )
                                 : Container(
                                     color: isDark
                                         ? Colors.grey[800]
                                         : Colors.grey[200],
                                     child: const Center(
-                                      child: Icon(Icons.image),
+                                      child: Icon(
+                                        Icons.image,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ),
                           ),
                           if (isSold)
                             Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.7),
+                                color: Colors.black.withValues(alpha: 0.4),
                                 borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(15),
+                                  top: Radius.circular(11.2),
                                 ),
                               ),
                               child: Center(
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
+                                    horizontal: 10,
+                                    vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.black87,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: const Text(
                                     "ขายแล้ว",
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 12,
+                                      fontSize: 11,
                                     ),
                                   ),
                                 ),
@@ -1120,7 +1140,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(12.0),
+                      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1130,21 +1150,47 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                 : product.brand,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 3),
+                          if (product.size.isNotEmpty && product.size != '-')
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.grey[800]
+                                    : const Color(0xFFF2F2F2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                "ไซส์ ${product.size}",
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.grey[300]
+                                      : Colors.grey[700],
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
                           const SizedBox(height: 4),
                           Text(
                             "${product.price.toStringAsFixed(0)} ฿",
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w900,
+                              fontSize: 14.5,
                               color: isSold
                                   ? Colors.grey
                                   : AppTheme.primaryColor,
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1172,10 +1218,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                   ),
                                   child: Icon(
                                     CupertinoIcons.square_pencil_fill,
-                                    size: 24,
+                                    size: 20,
                                     color: isDark
                                         ? Colors.grey[400]
-                                        : Colors.grey,
+                                        : Colors.grey[600],
                                   ),
                                 ),
                             ],
