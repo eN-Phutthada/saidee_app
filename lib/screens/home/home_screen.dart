@@ -631,46 +631,28 @@ class _HomeContentState extends State<HomeContent> {
 
       for (var doc in snapshot.docs) {
         var data = doc.data();
-        if (data['type'] != null && data['type'].toString().isNotEmpty) {
-          typesSet.add(data['type']);
+        String? t = data['type']?.toString().trim();
+        String? c = data['category']?.toString().trim();
+
+        if (t != null && t.isNotEmpty) {
+          typesSet.add(t);
         }
-        if (data['category'] != null &&
-            data['category'].toString().isNotEmpty) {
-          categoriesSet.add(data['category']);
+        if (c != null && c.isNotEmpty) {
+          categoriesSet.add(c);
         }
       }
 
       List<String> types = typesSet.toList()..shuffle();
       List<String> categories = categoriesSet.toList()..shuffle();
 
-      List<String> mockTypes = [
-        'เสื้อยืด',
-        'กางเกง',
-        'รองเท้า',
-        'หมวก',
-        'กระเป๋า',
-        'เครื่องประดับ',
-      ];
-      List<String> mockCategories = ['ผู้ชาย', 'ผู้หญิง', 'เด็ก', 'Unisex'];
-
       _displayTypes = types.take(4).toList();
-      mockTypes.shuffle();
-      for (var mock in mockTypes) {
-        if (_displayTypes.length >= 4) break;
-        if (!_displayTypes.contains(mock)) _displayTypes.add(mock);
-      }
-
       _displayCategories = categories.take(2).toList();
-      mockCategories.shuffle();
-      for (var mock in mockCategories) {
-        if (_displayCategories.length >= 2) break;
-        if (!_displayCategories.contains(mock)) _displayCategories.add(mock);
-      }
 
       if (mounted) setState(() => _isLoadingFilters = false);
     } catch (e) {
-      _displayTypes = ['เสื้อยืด', 'กางเกง', 'รองเท้า', 'หมวก'];
-      _displayCategories = ['ผู้ชาย', 'ผู้หญิง'];
+      debugPrint("Error fetching dynamic filters: $e");
+      _displayTypes = [];
+      _displayCategories = [];
       if (mounted) setState(() => _isLoadingFilters = false);
     }
   }
@@ -727,14 +709,29 @@ class _HomeContentState extends State<HomeContent> {
     return validProducts;
   }
 
+  Future<void> _onRefresh() async {
+    _sellerStatusCache.clear();
+    await _fetchDynamicFilters();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+    return RefreshIndicator(
+      color: AppTheme.primaryColor,
+      backgroundColor: Theme.of(context).cardColor,
+      onRefresh: _onRefresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('announcements')
@@ -803,10 +800,10 @@ class _HomeContentState extends State<HomeContent> {
 
           if (_isLoadingFilters)
             const SizedBox(
-              height: 200,
+              height: 120,
               child: Center(child: CircularProgressIndicator()),
             )
-          else
+          else if (_displayTypes.isNotEmpty) ...[
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -823,16 +820,16 @@ class _HomeContentState extends State<HomeContent> {
                 );
               },
             ),
+            const SizedBox(height: 25),
+          ],
 
-          const SizedBox(height: 25),
-
-          if (!_isLoadingFilters) ...[
-            const Text(
+          if (!_isLoadingFilters && _displayCategories.isNotEmpty) ...[
+            Text(
               "หมวดหมู่",
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E5B3D),
+                color: isDark ? Colors.white : const Color(0xFF1E5B3D),
               ),
             ),
             const SizedBox(height: 15),
@@ -860,17 +857,18 @@ class _HomeContentState extends State<HomeContent> {
                 }).toList(),
               ),
             ),
+            const SizedBox(height: 30),
+          ] else if (!_isLoadingFilters && _displayTypes.isEmpty && _displayCategories.isEmpty) ...[
+            const SizedBox(height: 20),
           ],
-
-          const SizedBox(height: 30),
 
           Text(
             "สินค้าแนะนำสำหรับคุณ",
             key: _productsSectionKey,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E5B3D),
+              color: isDark ? Colors.white : const Color(0xFF1E5B3D),
             ),
           ),
           const SizedBox(height: 15),
@@ -881,8 +879,12 @@ class _HomeContentState extends State<HomeContent> {
                 .where('status', isEqualTo: 'active')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.all(40.0),
+                  child: Center(child: CircularProgressIndicator()),
+                );
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Padding(
@@ -900,8 +902,12 @@ class _HomeContentState extends State<HomeContent> {
                 future: _filterValidProducts(rawProducts),
                 builder: (context, filterSnapshot) {
                   if (filterSnapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                          ConnectionState.waiting &&
+                      !filterSnapshot.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
                   }
 
                   var validProducts = filterSnapshot.data ?? [];
@@ -926,8 +932,12 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                     builder: (context, recSnapshot) {
                       if (recSnapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
+                              ConnectionState.waiting &&
+                          !recSnapshot.hasData) {
+                        return const Padding(
+                          padding: EdgeInsets.all(40.0),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
                       }
 
                       var recommendedList = recSnapshot.data ?? [];
@@ -978,6 +988,7 @@ class _HomeContentState extends State<HomeContent> {
           const SizedBox(height: 80),
         ],
       ),
+    ),
     );
   }
 
