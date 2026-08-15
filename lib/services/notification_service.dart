@@ -5,36 +5,45 @@ import 'package:saidee_app/config/firestore_collections.dart';
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static String _lastNotificationKey = '';
-  static int _lastNotificationTime = 0;
+  // Cache for deduplicating notifications across listeners (FCM & Firestore)
+  static final Map<String, int> _recentNotifications = {};
+  static const int _dedupTtlMs = 8000; // 8 seconds window
 
-  /// ตรวจสอบว่าเป็นการแจ้งเตือนซ้ำภายในระยะเวลา 2 วินาทีหรือไม่
-  static bool isDuplicateNotification(String title, String body) {
-    String key = "$title:$body";
+  /// ตรวจสอบว่าเป็นการแจ้งเตือนซ้ำภายในระยะเวลา TTL หรือไม่
+  static bool isDuplicateNotification(String title, String body, {String? customId}) {
     int now = DateTime.now().millisecondsSinceEpoch;
 
-    if (_lastNotificationKey == key && (now - _lastNotificationTime) < 2000) {
-      return true; // ข้ามการยิงซ้ำซ้อน
+    // Clean up expired entries
+    _recentNotifications.removeWhere((_, time) => now - time > _dedupTtlMs);
+
+    String key = customId != null && customId.isNotEmpty
+        ? customId
+        : "${title.trim()}:${body.trim()}";
+
+    if (_recentNotifications.containsKey(key)) {
+      int lastTime = _recentNotifications[key]!;
+      if (now - lastTime < _dedupTtlMs) {
+        return true; // ข้ามการยิงซ้ำซ้อน
+      }
     }
 
-    _lastNotificationKey = key;
-    _lastNotificationTime = now;
+    _recentNotifications[key] = now;
     return false;
   }
 
   /// ส่งการแจ้งเตือนไปยังผู้ใช้รายบุคคล (ทั้งผู้ซื้อและผู้ขาย)
-  static Future<void> sendNotification({
+  static Future<DocumentReference?> sendNotification({
     required String userId,
     required String title,
     required String body,
-    required String type, // 'order', 'wallet', 'dispute', 'system'
+    required String type, // 'order', 'wallet', 'dispute', 'system', 'chat'
     String? orderId,
     Map<String, dynamic>? extraData,
   }) async {
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) return null;
 
     try {
-      await _db
+      return await _db
           .collection(FirestoreCollections.users)
           .doc(userId)
           .collection(FirestoreCollections.notifications)
@@ -49,11 +58,15 @@ class NotificationService {
       });
     } catch (e) {
       debugPrint("Error sending notification to $userId: $e");
+      return null;
     }
   }
 
   /// อ่านการแจ้งเตือนทั้งหมดของผู้ใช้
   static Stream<QuerySnapshot> getUserNotifications(String userId) {
+    if (userId.isEmpty) {
+      return const Stream.empty();
+    }
     return _db
         .collection(FirestoreCollections.users)
         .doc(userId)
@@ -64,17 +77,25 @@ class NotificationService {
 
   /// อ่านจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
   static Stream<int> getUnreadCount(String userId) {
+    if (userId.isEmpty) {
+      return Stream.value(0);
+    }
     return _db
         .collection(FirestoreCollections.users)
         .doc(userId)
         .collection(FirestoreCollections.notifications)
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .map((snap) => snap.docs.length);
+        .map((snap) => snap.docs.length)
+        .handleError((error) {
+          debugPrint("Error fetching unread count: $error");
+          return 0;
+        });
   }
 
   /// ทำเครื่องหมายว่าอ่านแล้วสำหรับ 1 รายการ
   static Future<void> markAsRead(String userId, String notificationId) async {
+    if (userId.isEmpty || notificationId.isEmpty) return;
     try {
       await _db
           .collection(FirestoreCollections.users)
@@ -89,6 +110,7 @@ class NotificationService {
 
   /// ทำเครื่องหมายว่าอ่านแล้วทั้งหมด
   static Future<void> markAllAsRead(String userId) async {
+    if (userId.isEmpty) return;
     try {
       var unreadDocs = await _db
           .collection(FirestoreCollections.users)
@@ -96,6 +118,8 @@ class NotificationService {
           .collection(FirestoreCollections.notifications)
           .where('isRead', isEqualTo: false)
           .get();
+
+      if (unreadDocs.docs.isEmpty) return;
 
       WriteBatch batch = _db.batch();
       for (var doc in unreadDocs.docs) {

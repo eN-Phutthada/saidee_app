@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<DocumentSnapshot>? _userStatusSubscription;
   StreamSubscription<QuerySnapshot>? _notificationSubscription;
   bool _isBannedAlertShown = false;
+  final Set<String> _seenNotificationIds = {};
   bool _isNotifInitialLoad = true;
 
   final GlobalKey _searchKey = GlobalKey();
@@ -82,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _listenToNotifications() {
+    _notificationSubscription?.cancel();
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _notificationSubscription = FirebaseFirestore.instance
@@ -89,31 +91,40 @@ class _HomeScreenState extends State<HomeScreen> {
           .doc(user.uid)
           .collection('notifications')
           .orderBy('createdAt', descending: true)
-          .limit(1)
+          .limit(5)
           .snapshots()
           .listen((snapshot) {
             if (_isNotifInitialLoad) {
               _isNotifInitialLoad = false;
+              for (var doc in snapshot.docs) {
+                _seenNotificationIds.add(doc.id);
+              }
               return;
             }
 
             for (var change in snapshot.docChanges) {
               if (change.type == DocumentChangeType.added) {
-                var data = change.doc.data() as Map<String, dynamic>;
-                _showNotificationSnackbar(data);
+                String docId = change.doc.id;
+                if (!_seenNotificationIds.contains(docId)) {
+                  _seenNotificationIds.add(docId);
+                  var data = change.doc.data() as Map<String, dynamic>;
+                  _showNotificationSnackbar(data, docId: docId);
+                }
               }
             }
+          }, onError: (e) {
+            debugPrint("Notification stream error: $e");
           });
     }
   }
 
-  void _showNotificationSnackbar(Map<String, dynamic> data) {
+  void _showNotificationSnackbar(Map<String, dynamic> data, {String? docId}) {
     String title = data['title'] ?? 'การแจ้งเตือน';
     String body = data['body'] ?? '';
     String type = data['type'] ?? 'system';
 
-    // ป้องกันการยิงแจ้งเตือนซ้ำซ้อนภายใน 2 วินาที
-    if (NotificationService.isDuplicateNotification(title, body)) return;
+    // ป้องกันการยิงแจ้งเตือนซ้ำซ้อน
+    if (NotificationService.isDuplicateNotification(title, body, customId: docId)) return;
 
     IconData iconData = CupertinoIcons.bell_fill;
     Color iconColor = AppTheme.primaryColor;
@@ -127,6 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (type == 'dispute') {
       iconData = CupertinoIcons.exclamationmark_shield_fill;
       iconColor = Colors.red;
+    } else if (type == 'chat') {
+      iconData = CupertinoIcons.chat_bubble_text_fill;
+      iconColor = Colors.purple;
+    }
+
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
     }
 
     Get.snackbar(
@@ -145,6 +163,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
       icon: Icon(iconData, color: iconColor),
+      onTap: (_) {
+        Get.to(() => const NotificationScreen());
+      },
     );
   }
 
@@ -511,75 +532,62 @@ class _HomeScreenState extends State<HomeScreen> {
                 : null,
             builder: (context, sellerOrdersSnap) {
               int pendingSales = sellerOrdersSnap.data?.docs.length ?? 0;
+              int profileTotalBadge = pendingSales;
 
-              return StreamBuilder<int>(
-                stream: user != null
-                    ? NotificationService.getUnreadCount(user.uid)
-                    : null,
-                builder: (context, notifCountSnap) {
-                  int unreadNotifs = notifCountSnap.data ?? 0;
-                  int profileTotalBadge = pendingSales;
-
-                  return BottomNavigationBar(
-                    currentIndex: _selectedIndex,
-                    onTap: (index) => setState(() => _selectedIndex = index),
-                    type: BottomNavigationBarType.fixed,
-                    backgroundColor: Theme.of(context).cardColor,
-                    selectedItemColor: AppTheme.primaryColor,
-                    unselectedItemColor: Colors.grey,
-                    items: [
-                      BottomNavigationBarItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Badge(
-                            isLabelVisible: unreadNotifs > 0,
-                            label: Text(unreadNotifs.toString()),
-                            child: const Icon(CupertinoIcons.house_fill),
-                          ),
+              return BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) => setState(() => _selectedIndex = index),
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: Theme.of(context).cardColor,
+                selectedItemColor: AppTheme.primaryColor,
+                unselectedItemColor: Colors.grey,
+                items: [
+                  const BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Icon(CupertinoIcons.house_fill),
+                    ),
+                    label: 'หน้าหลัก',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: KeyedSubtree(
+                        key: _cartKey,
+                        child: Badge(
+                          isLabelVisible: cartCount > 0,
+                          label: Text(cartCount.toString()),
+                          child: const Icon(CupertinoIcons.cart_fill),
                         ),
-                        label: 'หน้าหลัก',
                       ),
-                      BottomNavigationBarItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: KeyedSubtree(
-                            key: _cartKey,
-                            child: Badge(
-                              isLabelVisible: cartCount > 0,
-                              label: Text(cartCount.toString()),
-                              child: const Icon(CupertinoIcons.cart_fill),
-                            ),
-                          ),
+                    ),
+                    label: 'ตะกร้า',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: KeyedSubtree(
+                        key: _sellKey,
+                        child: const Icon(CupertinoIcons.plus_circle),
+                      ),
+                    ),
+                    label: 'ขาย',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: KeyedSubtree(
+                        key: _profileKey,
+                        child: Badge(
+                          isLabelVisible: profileTotalBadge > 0,
+                          label: Text(profileTotalBadge.toString()),
+                          child: const Icon(CupertinoIcons.person_fill),
                         ),
-                        label: 'ตะกร้า',
                       ),
-                      BottomNavigationBarItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: KeyedSubtree(
-                            key: _sellKey,
-                            child: const Icon(CupertinoIcons.plus_circle),
-                          ),
-                        ),
-                        label: 'ขาย',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: KeyedSubtree(
-                            key: _profileKey,
-                            child: Badge(
-                              isLabelVisible: profileTotalBadge > 0,
-                              label: Text(profileTotalBadge.toString()),
-                              child: const Icon(CupertinoIcons.person_fill),
-                            ),
-                          ),
-                        ),
-                        label: 'บัญชี',
-                      ),
-                    ],
-                  );
-                },
+                    ),
+                    label: 'บัญชี',
+                  ),
+                ],
               );
             },
           );

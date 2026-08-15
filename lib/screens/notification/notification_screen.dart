@@ -9,15 +9,28 @@ import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/screens/order/buyer_order_detail_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
+import 'package:saidee_app/screens/chat/chat_screen.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return "เมื่อสักครู่";
-    DateTime date = (timestamp as Timestamp).toDate();
-    DateTime now = DateTime.now();
+    DateTime? date;
+    if (timestamp is Timestamp) {
+      date = timestamp.toDate();
+    } else if (timestamp is DateTime) {
+      date = timestamp;
+    } else if (timestamp is String) {
+      date = DateTime.tryParse(timestamp);
+    } else if (timestamp is int) {
+      date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    }
 
+    if (date == null) return "เมื่อสักครู่";
+
+    DateTime now = DateTime.now();
     Duration diff = now.difference(date);
     if (diff.inSeconds < 60) return "เมื่อสักครู่";
     if (diff.inMinutes < 60) return "${diff.inMinutes} นาทีที่แล้ว";
@@ -31,11 +44,32 @@ class NotificationScreen extends StatelessWidget {
     NotificationService.markAsRead(currentUserId, notifId);
 
     String type = data['type'] ?? '';
-    String orderId = data['orderId'] ?? '';
+    String orderId = (data['orderId'] ?? '').toString();
+    if (orderId.isEmpty && data['extraData'] is Map) {
+      orderId = (data['extraData']['orderId'] ?? '').toString();
+    }
 
     if (type == 'wallet') {
       Get.to(() => const WalletHistoryScreen());
       return;
+    }
+
+    if (type == 'chat') {
+      String senderId = '';
+      if (data['extraData'] is Map) {
+        senderId = (data['extraData']['senderId'] ?? '').toString();
+      }
+      if (senderId.isNotEmpty) {
+        try {
+          var userDoc = await FirebaseFirestore.instance.collection('users').doc(senderId).get();
+          if (userDoc.exists) {
+            String name = userDoc.data()?['name'] ?? 'ผู้ใช้งาน';
+            String image = userDoc.data()?['profileImage'] ?? '';
+            Get.to(() => ChatScreen(targetUserId: senderId, targetUserName: name, targetUserImage: image));
+            return;
+          }
+        } catch (_) {}
+      }
     }
 
     if (orderId.isNotEmpty) {
@@ -46,7 +80,9 @@ class NotificationScreen extends StatelessWidget {
 
       try {
         var doc = await FirebaseFirestore.instance.collection('orders').doc(orderId).get();
-        Get.back();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
 
         if (doc.exists) {
           var orderData = doc.data() as Map<String, dynamic>;
@@ -57,9 +93,20 @@ class NotificationScreen extends StatelessWidget {
           } else {
             Get.to(() => SellerOrderDetailScreen(orderId: orderId, orderData: orderData));
           }
+        } else {
+          AppDialog.showCustomDialog(
+            title: "ไม่พบคำสั่งซื้อ",
+            message: "คำสั่งซื้อนี้อาจถูกยกเลิกหรือไม่มีอยู่ในระบบ",
+            icon: CupertinoIcons.exclamationmark_circle,
+            iconColor: Colors.orange,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
+          );
         }
       } catch (e) {
-        Get.back();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
       }
     }
   }
@@ -72,6 +119,8 @@ class NotificationScreen extends StatelessWidget {
         return CupertinoIcons.money_dollar_circle_fill;
       case 'dispute':
         return CupertinoIcons.exclamationmark_shield_fill;
+      case 'chat':
+        return CupertinoIcons.chat_bubble_text_fill;
       default:
         return CupertinoIcons.bell_fill;
     }
@@ -85,6 +134,8 @@ class NotificationScreen extends StatelessWidget {
         return Colors.green;
       case 'dispute':
         return Colors.red;
+      case 'chat':
+        return Colors.purple;
       default:
         return AppTheme.primaryColor;
     }

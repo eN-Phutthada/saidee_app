@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -15,6 +16,7 @@ import 'package:saidee_app/screens/chat/chat_screen.dart';
 
 import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
+import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/services/notification_service.dart';
 
 import 'config/theme.dart';
@@ -77,6 +79,14 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
         debugPrint("Local notification clicked: ${details.payload}");
+        if (details.payload != null && details.payload!.isNotEmpty) {
+          try {
+            Map<String, dynamic> data = jsonDecode(details.payload!);
+            _handleNotificationClickFromData(data);
+          } catch (e) {
+            debugPrint("Error parsing notification payload: $e");
+          }
+        }
       },
     );
 
@@ -145,20 +155,28 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
 
         if (type == 'chat') {
           notifIcon = CupertinoIcons.chat_bubble_text_fill;
+          notifColor = Colors.purple;
         } else if (type == 'new_order') {
           notifIcon = CupertinoIcons.cube_box_fill;
           notifColor = Colors.orange;
-        } else if (type == 'order_status') {
+        } else if (type == 'order_status' || type == 'order') {
           notifIcon = CupertinoIcons.car_detailed;
           notifColor = Colors.blue;
-        } else if (type == 'return_status') {
+        } else if (type == 'return_status' || type == 'dispute') {
           notifIcon = CupertinoIcons.exclamationmark_triangle_fill;
           notifColor = Colors.red;
+        } else if (type == 'wallet') {
+          notifIcon = CupertinoIcons.money_dollar_circle_fill;
+          notifColor = Colors.green;
+        }
+
+        if (Get.isSnackbarOpen) {
+          Get.closeCurrentSnackbar();
         }
 
         Get.snackbar(
-          message.notification!.title ?? 'แจ้งเตือนใหม่',
-          message.notification!.body ?? '',
+          title,
+          body,
           backgroundColor: Colors.white,
           colorText: Colors.black87,
           snackPosition: SnackPosition.TOP,
@@ -173,7 +191,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           ],
           icon: Icon(notifIcon, color: notifColor),
           onTap: (_) {
-            _handleNotificationClick(message);
+            _handleNotificationClickFromData(message.data);
           },
         );
 
@@ -192,32 +210,33 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
 
         flutterLocalNotificationsPlugin.show(
           id: message.hashCode.abs() % 100000,
-          title: message.notification!.title ?? 'แจ้งเตือนใหม่',
-          body: message.notification!.body ?? '',
+          title: title,
+          body: body,
           notificationDetails: platformDetails,
+          payload: jsonEncode(message.data),
         );
       }
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('ผู้ใช้กดเปิดแอปจากการแจ้งเตือน!');
-      _handleNotificationClick(message);
+      _handleNotificationClickFromData(message.data);
     });
 
     RemoteMessage? initialMessage = await FirebaseMessaging.instance
         .getInitialMessage();
     if (initialMessage != null) {
       Future.delayed(const Duration(seconds: 2), () {
-        _handleNotificationClick(initialMessage);
+        _handleNotificationClickFromData(initialMessage.data);
       });
     }
   }
 
-  void _handleNotificationClick(RemoteMessage message) async {
-    String? type = message.data['type'];
+  void _handleNotificationClickFromData(Map<String, dynamic> data) async {
+    String? type = data['type'];
 
     if (type == 'chat') {
-      String senderId = message.data['senderId'] ?? '';
+      String senderId = (data['senderId'] ?? '').toString();
 
       if (senderId.isNotEmpty) {
         try {
@@ -247,8 +266,17 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       }
     } else if (type == 'new_order') {
       Get.to(() => const SellerOrdersScreen());
-    } else if (type == 'order_status' || type == 'return_status') {
-      String orderId = message.data['orderId'] ?? '';
+    } else if (type == 'wallet') {
+      Get.to(() => const WalletHistoryScreen());
+    } else if (type == 'order_status' ||
+        type == 'return_status' ||
+        type == 'order' ||
+        type == 'dispute') {
+      String orderId = (data['orderId'] ?? '').toString();
+      if (orderId.isEmpty && data['extraData'] is Map) {
+        orderId = (data['extraData']['orderId'] ?? '').toString();
+      }
+
       if (orderId.isNotEmpty) {
         try {
           var orderDoc = await FirebaseFirestore.instance
