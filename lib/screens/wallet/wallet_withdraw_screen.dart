@@ -649,15 +649,20 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
   Widget _buildPolicyCard(bool isDark, ThemeData theme) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey[900]
-            : Colors.blue.shade50.withValues(alpha: 0.5),
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.grey[800]! : Colors.blue.shade100,
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -736,7 +741,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
         Icon(
           icon,
           size: 18,
-          color: highlight ? Colors.amber[700] : AppTheme.primaryColor,
+          color: highlight ? AppTheme.primaryColor : (isDark ? Colors.grey[400] : Colors.grey[700]),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -749,7 +754,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                   color: highlight
-                      ? (isDark ? Colors.amber[300] : Colors.amber[900])
+                      ? AppTheme.primaryColor
                       : (isDark ? Colors.grey[200] : Colors.black87),
                 ),
               ),

@@ -825,212 +825,218 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
     Get.dialog(
       StatefulBuilder(
-        builder: (context, setStateDialog) {
-          final theme = Theme.of(context);
+        builder: (dialogContext, setStateDialog) {
+          final theme = Theme.of(dialogContext);
           final isDark = theme.brightness == Brightness.dark;
-          final screenH = MediaQuery.of(context).size.height;
 
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
             backgroundColor: theme.scaffoldBackgroundColor,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 20,
-              vertical: 24,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: screenH * 0.85),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         "อัปโหลดสลิปยืนยันการโอน",
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "แตะรูปเพื่อเลือกสลิปใหม่",
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[500],
+                      if (!isUploading)
+                        IconButton(
+                          icon: const Icon(CupertinoIcons.clear_circled_solid),
+                          color: Colors.grey,
+                          onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: isUploading
+                        ? null
+                        : () async {
+                            final picker = ImagePicker();
+                            final image = await picker.pickImage(
+                              source: ImageSource.gallery,
+                              imageQuality: 85,
+                            );
+                            if (image != null) {
+                              setStateDialog(
+                                () => slipImage = File(image.path),
+                              );
+                            }
+                          },
+                    child: Container(
+                      height: 360,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.grey[900] : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: slipImage != null
+                              ? Colors.green
+                              : (isDark ? Colors.grey[800]! : Colors.grey.shade300),
+                          width: 1.5,
                         ),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Slip image preview
-                      GestureDetector(
-                        onTap: isUploading
-                            ? null
-                            : () async {
-                                final picker = ImagePicker();
-                                final image = await picker.pickImage(
-                                  source: ImageSource.gallery,
-                                  imageQuality: 85,
-                                );
-                                if (image != null) {
-                                  setStateDialog(
-                                    () => slipImage = File(image.path),
-                                  );
-                                }
-                              },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          width: double.infinity,
-                          // Taller when slip selected so full image is visible
-                          constraints: BoxConstraints(
-                            minHeight: 180,
-                            maxHeight: slipImage != null
-                                ? screenH * 0.45
-                                : 180,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.grey[850]
-                                : Colors.grey[100],
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: slipImage != null
-                                  ? Colors.green
-                                  : (isDark
-                                      ? Colors.grey[700]!
-                                      : Colors.grey.shade400),
-                              width: 2,
-                            ),
-                          ),
-                          child: slipImage != null
-                              ? Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(13),
-                                      child: Image.file(
-                                        slipImage!,
-                                        // contain = เห็นทั้งสลิปโดยไม่ตัด
-                                        fit: BoxFit.contain,
-                                        width: double.infinity,
-                                      ),
-                                    ),
-                                    // Overlay hint to retap
-                                    Positioned(
-                                      bottom: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black54,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: const Text(
-                                          "แตะเพื่อเปลี่ยนสลิป",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.photo_on_rectangle,
-                                      size: 50,
-                                      color: Colors.grey[400],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      "แตะเพื่อเลือกรูปสลิป",
-                                      style: TextStyle(color: Colors.grey[500]),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "รองรับ JPG, PNG",
-                                      style: TextStyle(
-                                        color: Colors.grey[400],
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isUploading ? null : () => Get.back(),
-                              style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text("ยกเลิก"),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: (slipImage == null || isUploading)
-                                  ? null
-                                  : () async {
-                                      setStateDialog(
-                                        () => isUploading = true,
-                                      );
-                                      final File capturedSlip = slipImage!;
-                                      // Close dialog first so UI is not stuck
-                                      Get.back();
-                                      await _uploadSlipAndApprove(
-                                        docId,
-                                        capturedSlip,
-                                        expectedAmount,
-                                      );
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: isUploading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text(
-                                      "ยืนยัน",
-                                      style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                      child: slipImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  InteractiveViewer(
+                                    maxScale: 3.0,
+                                    child: Image.file(
+                                      slipImage!,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
+                                  Positioned(
+                                    bottom: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.6),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.arrow_right_arrow_left,
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            "แตะเพื่อเปลี่ยนรูป",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.photo_on_rectangle,
+                                  size: 48,
+                                  color: Colors.grey[400],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  "แตะเพื่อเลือกรูปสลิป",
+                                  style: TextStyle(
+                                    color: Colors.grey[500],
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "รองรับภาพแนวตั้ง เห็นรายละเอียดครบถ้วน",
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isUploading
+                              ? null
+                              : () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ],
+                          child: const Text("ยกเลิก"),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: (slipImage == null || isUploading)
+                              ? null
+                              : () async {
+                                  setStateDialog(() => isUploading = true);
+                                  bool success = await _uploadSlipAndApprove(
+                                    docId,
+                                    slipImage!,
+                                    expectedAmount,
+                                  );
+                                  if (dialogContext.mounted) {
+                                    setStateDialog(() => isUploading = false);
+                                    if (success) {
+                                      Navigator.of(dialogContext, rootNavigator: true).pop();
+                                      Get.snackbar(
+                                        "สำเร็จ",
+                                        "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย",
+                                        backgroundColor: Colors.green,
+                                        colorText: Colors.white,
+                                        icon: const Icon(
+                                          CupertinoIcons.check_mark_circled_solid,
+                                          color: Colors.white,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: isUploading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "ยืนยัน",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
                       ),
                     ],
                   ),
-                ),
+                ],
               ),
             ),
           );
@@ -1149,12 +1155,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           );
         }
 
-        Get.snackbar(
-          "สำเร็จ",
-          "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย",
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
         return true;
       } else {
         Get.snackbar(
@@ -1288,34 +1288,23 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isPendingWithdraw
-                  ? (isCritical
-                        ? (isDark
-                              ? Colors.red.withValues(alpha: 0.2)
-                              : Colors.red.shade50)
-                        : (isDark
-                              ? Colors.orange.withValues(alpha: 0.15)
-                              : Colors.orange.withValues(alpha: 0.05)))
-                  : theme.cardColor,
+              color: theme.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isPendingWithdraw
-                    ? (isCritical ? Colors.redAccent : Colors.orangeAccent)
+                    ? (isCritical
+                        ? Colors.redAccent.withValues(alpha: 0.6)
+                        : Colors.orange.withValues(alpha: 0.5))
                     : (isDark ? Colors.white10 : Colors.grey.shade100),
-                width: isPendingWithdraw ? 1.5 : 1.0,
+                width: isPendingWithdraw ? 1.2 : 1.0,
               ),
-              boxShadow: isPendingWithdraw
-                  ? [
-                      BoxShadow(
-                        color: (isCritical
-                                ? Colors.redAccent
-                                : Colors.orangeAccent)
-                            .withValues(alpha: 0.25),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ]
-                  : [],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [

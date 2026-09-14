@@ -344,7 +344,7 @@ class WalletHistoryScreen extends StatelessWidget {
 
                           // Interactive Action Box for Pending Withdrawals
                           if (isPendingWithdrawal) ...[
-                            const Divider(height: 1),
+                            Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey[200]),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
@@ -352,14 +352,8 @@ class WalletHistoryScreen extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? (isSlaExpired
-                                        ? Colors.red.withValues(alpha: 0.08)
-                                        : Colors.orange.withValues(alpha: 0.05))
-                                    : (isSlaExpired
-                                        ? Colors.red.shade50
-                                        : Colors.amber.shade50.withValues(
-                                            alpha: 0.6,
-                                          )),
+                                    ? Colors.grey[900]
+                                    : Colors.grey[50],
                                 borderRadius: const BorderRadius.vertical(
                                   bottom: Radius.circular(16),
                                 ),
