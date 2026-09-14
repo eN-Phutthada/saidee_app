@@ -43,6 +43,9 @@ void main() async {
     await dotenv.load(fileName: ".env");
   } catch (e) {
     debugPrint("Info: .env file not loaded from assets: $e");
+    try {
+      dotenv.loadFromString(envString: '');
+    } catch (_) {}
   }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

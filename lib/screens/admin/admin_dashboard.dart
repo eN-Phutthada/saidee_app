@@ -62,9 +62,51 @@ class _AdminDashboardState extends State<AdminDashboard> {
             if (change.type == DocumentChangeType.added) {
               var data = change.doc.data() as Map<String, dynamic>;
               _showWithdrawalNotification(data);
+            } else if (change.type == DocumentChangeType.modified) {
+              var data = change.doc.data() as Map<String, dynamic>;
+              if (data['lastNudgedAt'] != null) {
+                _showNudgeNotification(data);
+              }
             }
           }
         });
+  }
+
+  Future<void> _showNudgeNotification(Map<String, dynamic> data) async {
+    double amount = (data['amount'] ?? 0).toDouble();
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+          importance: Importance.max,
+          priority: Priority.max,
+          icon: '@mipmap/launcher_icon',
+        );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      id: DateTime.now().millisecond,
+      title: '🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!',
+      body:
+          'คำขอถอนเงิน ฿${amount.toStringAsFixed(2)} กำลังรอดำเนินการ โปรดตรวจสอบ',
+      notificationDetails: platformDetails,
+    );
+
+    Get.snackbar(
+      '🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!',
+      'คำขอถอนเงิน ฿${amount.toStringAsFixed(2)} กำลังรอดำเนินการ โปรดตรวจสอบ',
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(15),
+      duration: const Duration(seconds: 4),
+      icon: const Icon(CupertinoIcons.bell_fill, color: Colors.white),
+    );
   }
 
   Future<void> _showWithdrawalNotification(Map<String, dynamic> data) async {

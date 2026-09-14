@@ -107,6 +107,11 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       return;
     }
 
+    if (amount < 20) {
+      _showError("ยอดถอนขั้นต่ำคือ 20 บาท เพื่อให้ครอบคลุมการทำธุรกรรม");
+      return;
+    }
+
     if (_selectedBank == null) {
       _showError("กรุณาเลือกธนาคารปลายทาง");
       return;
@@ -128,73 +133,54 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("ไม่พบผู้ใช้งาน");
 
-      final userDoc = await FirebaseFirestore.instance
-          .collection(FirestoreCollections.users)
-          .doc(user.uid)
-          .get();
-      if (!userDoc.exists) throw Exception("ไม่พบข้อมูลผู้ใช้");
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentReference userRef = FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .doc(user.uid);
+        DocumentSnapshot userSnap = await transaction.get(userRef);
+        if (!userSnap.exists) throw Exception("ไม่พบข้อมูลผู้ใช้");
 
-      final userData = userDoc.data() as Map<String, dynamic>;
-      double currentWalletBalance = (userData['walletBalance'] ?? 0.0)
-          .toDouble();
+        final userData = userSnap.data() as Map<String, dynamic>;
+        double currentWalletBalance =
+            (userData['walletBalance'] ?? 0.0).toDouble();
 
-      final pendingSnap = await FirebaseFirestore.instance
-          .collection(FirestoreCollections.transactions)
-          .where('uid', isEqualTo: user.uid)
-          .where('type', isEqualTo: 'withdraw')
-          .where('status', isEqualTo: 'pending')
-          .get();
-
-      double pendingTotal = 0.0;
-      for (var doc in pendingSnap.docs) {
-        pendingTotal += (doc.data()['amount'] ?? 0).toDouble();
-      }
-
-      double availableBalance = currentWalletBalance - pendingTotal;
-
-      if (amount > availableBalance) {
-        if (pendingTotal > 0) {
+        if (amount > currentWalletBalance) {
           throw Exception(
-            "ยอดเงินคงเหลือไม่เพียงพอ (มีรายการรอถอนเงินอยู่ ฿${pendingTotal.toStringAsFixed(2)})",
+            "ยอดเงินคงเหลือไม่เพียงพอ (วอลเล็ทมี ฿${currentWalletBalance.toStringAsFixed(2)})",
           );
-        } else {
-          throw Exception("ยอดเงินในวอลเล็ทของคุณไม่เพียงพอสำหรับการถอน");
         }
-      }
 
-      WriteBatch batch = FirebaseFirestore.instance.batch();
+        // Deduct balance immediately
+        transaction.update(userRef, {
+          'walletBalance': FieldValue.increment(-amount),
+          'withdrawBank': _selectedBank,
+          'withdrawAccountNumber': _accountNumberController.text.trim(),
+          'withdrawAccountName': _accountNameController.text.trim(),
+        });
 
-      DocumentReference userRef = FirebaseFirestore.instance
-          .collection(FirestoreCollections.users)
-          .doc(user.uid);
-      batch.update(userRef, {
-        'withdrawBank': _selectedBank,
-        'withdrawAccountNumber': _accountNumberController.text.trim(),
-        'withdrawAccountName': _accountNameController.text.trim(),
+        DocumentReference newTxRef = FirebaseFirestore.instance
+            .collection(FirestoreCollections.transactions)
+            .doc();
+        transaction.set(newTxRef, {
+          'uid': user.uid,
+          'type': 'withdraw',
+          'amount': amount,
+          'status': 'pending',
+          'bankName': _selectedBank,
+          'accountNumber': _accountNumberController.text.trim(),
+          'accountName': _accountNameController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastNudgedAt': null,
+          'nudgedCount': 0,
+        });
       });
-
-      DocumentReference newTxRef = FirebaseFirestore.instance
-          .collection(FirestoreCollections.transactions)
-          .doc();
-      batch.set(newTxRef, {
-        'uid': user.uid,
-        'type': 'withdraw',
-        'amount': amount,
-        'status': 'pending',
-        'bankName': _selectedBank,
-        'accountNumber': _accountNumberController.text.trim(),
-        'accountName': _accountNameController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      await batch.commit();
 
       setState(() => _isLoading = false);
 
       AppDialog.showCustomDialog(
         title: "ส่งคำขอถอนเงินสำเร็จ",
         message:
-            "ระบบได้รับคำขอถอนเงินของคุณแล้ว\nแอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง",
+            "ระบบได้รับคำขอถอนเงินของคุณแล้ว\n• แอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง\n• มีสิทธิ์ยกเลิกหรือขอเงินคืนได้ในหน้าประวัติ\n• สายด่วนแอดมิน: 064-749-0079",
         icon: CupertinoIcons.check_mark_circled_solid,
         iconColor: Colors.green,
         confirmText: "ตกลง",
@@ -599,6 +585,8 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 25),
+                  _buildPolicyCard(isDark, theme),
 
                   const SizedBox(height: 100), // spacing for bottom bar
                 ],
@@ -655,6 +643,129 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPolicyCard(bool isDark, ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.grey[900]
+            : Colors.blue.shade50.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.blue.shade100,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  CupertinoIcons.shield_lefthalf_fill,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                "นโยบายและความเป็นธรรมในการถอนเงิน",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildPolicyItem(
+            icon: CupertinoIcons.money_dollar_circle_fill,
+            title: "ค่าธรรมเนียม 0 บาท",
+            subtitle: "ไม่มีการหักค่าบริการใดๆ คุณจะได้รับเงินเต็มจำนวนที่ขอถอน",
+            isDark: isDark,
+          ),
+          const SizedBox(height: 10),
+          _buildPolicyItem(
+            icon: CupertinoIcons.clock_fill,
+            title: "โอนเงินภายใน 24 ชั่วโมง (SLA)",
+            subtitle: "ดำเนินการตรวจสอบและโอนเงินเข้าบัญชีอย่างรวดเร็วและปลอดภัย",
+            isDark: isDark,
+          ),
+          const SizedBox(height: 10),
+          _buildPolicyItem(
+            icon: CupertinoIcons.arrow_uturn_left_circle_fill,
+            title: "คุ้มครองเงินทุนและสิทธิ์ยกเลิก",
+            subtitle:
+                "ยกเลิกคำขอรับเงินคืนทันทีในหน้าประวัติ หรือขอคืนเงินทันทีหากเกิน 24 ชม.",
+            isDark: isDark,
+          ),
+          const SizedBox(height: 10),
+          _buildPolicyItem(
+            icon: CupertinoIcons.phone_circle_fill,
+            title: "สายด่วนติดต่อแอดมิน: 064-749-0079",
+            subtitle:
+                "หากต้องการความช่วยเหลือเร่งด่วน โทรติดต่อได้ทุกวัน (08:00 - 22:00 น.)",
+            isDark: isDark,
+            highlight: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPolicyItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDark,
+    bool highlight = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: highlight ? Colors.amber[700] : AppTheme.primaryColor,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: highlight
+                      ? (isDark ? Colors.amber[300] : Colors.amber[900])
+                      : (isDark ? Colors.grey[200] : Colors.black87),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

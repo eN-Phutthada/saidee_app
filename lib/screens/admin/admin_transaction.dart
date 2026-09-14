@@ -4,11 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 class AdminTransactionScreen extends StatefulWidget {
   final bool isBottomNav;
@@ -136,7 +139,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         return type == _selectedFilter;
                       }).toList();
 
-                // DYNAMIC SORTING: Float pending withdrawals to the top
+                // DYNAMIC SORTING: Float pending withdrawals to the top, oldest/nudged first
                 filteredDocs.sort((a, b) {
                   var dataA = a.data() as Map<String, dynamic>;
                   var dataB = b.data() as Map<String, dynamic>;
@@ -149,6 +152,18 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
 
                   if (isPendingA && !isPendingB) return -1;
                   if (!isPendingA && isPendingB) return 1;
+
+                  if (isPendingA && isPendingB) {
+                    // If nudged, prioritize nudged requests
+                    int nudgeA = dataA['nudgedCount'] ?? 0;
+                    int nudgeB = dataB['nudgedCount'] ?? 0;
+                    if (nudgeA != nudgeB) return nudgeB.compareTo(nudgeA);
+
+                    // Oldest request first (FIFO) so older requests don't get ignored
+                    Timestamp? tsA = dataA['createdAt'];
+                    Timestamp? tsB = dataB['createdAt'];
+                    if (tsA != null && tsB != null) return tsA.compareTo(tsB);
+                  }
 
                   Timestamp? tsA = dataA['createdAt'];
                   Timestamp? tsB = dataB['createdAt'];
@@ -338,6 +353,33 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     );
   }
 
+  Color _getBankColor(String bankName) {
+    final b = bankName.toLowerCase();
+    if (b.contains('กสิกร')) return const Color(0xFF138f2d);
+    if (b.contains('ไทยพาณิชย์') || b.contains('scb')) {
+      return const Color(0xFF4e2e7f);
+    }
+    if (b.contains('กรุงเทพ') || b.contains('bbl')) {
+      return const Color(0xFF1e4598);
+    }
+    if (b.contains('กรุงไทย') || b.contains('ktb')) {
+      return const Color(0xFF00a5e5);
+    }
+    if (b.contains('กรุงศรี') || b.contains('bay')) {
+      return const Color(0xFFfec43b);
+    }
+    if (b.contains('ทหารไทย') || b.contains('ttb')) {
+      return const Color(0xFF002d63);
+    }
+    if (b.contains('ออมสิน') || b.contains('gsb')) {
+      return const Color(0xFFeb198d);
+    }
+    if (b.contains('พร้อมเพย์') || b.contains('promptpay')) {
+      return const Color(0xFF113566);
+    }
+    return AppTheme.primaryColor;
+  }
+
   void _showWithdrawalActionDialog(
     BuildContext context,
     String docId,
@@ -351,82 +393,259 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     final bankName = data['bankName'] ?? 'ไม่ระบุธนาคาร';
     final accountName = data['accountName'] ?? 'ไม่ระบุชื่อบัญชี';
     final accountNumber = data['accountNumber'] ?? 'ไม่ระบุเลขบัญชี';
+    final cleanNumber = accountNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    final bankColor = _getBankColor(bankName);
+    final bool isPromptPay = bankName.toLowerCase().contains('promptpay') ||
+        bankName.contains('พร้อมเพย์') ||
+        cleanNumber.length == 10 ||
+        cleanNumber.length == 13;
 
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
+        ),
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "ตรวจสอบการถอนเงิน",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 15),
-            _buildDetailRow("ผู้ขอถอนเงิน", userName, isDark),
-            _buildDetailRow(
-              "จำนวนเงิน",
-              "${amount.toStringAsFixed(2)} ฿",
-              isDark,
-              isHighlight: true,
-            ),
-            const Divider(height: 30),
-            _buildDetailRow("ธนาคาร", bankName, isDark),
-            _buildDetailRow("ชื่อบัญชี", accountName, isDark),
-            _buildDetailRow("เลขที่บัญชี", accountNumber, isDark),
-            const SizedBox(height: 30),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Get.back();
-                      _rejectWithdrawal(docId, uid, amount);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "ตรวจสอบการถอนเงิน",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: bankColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: bankColor.withValues(alpha: 0.4),
                       ),
                     ),
-                    child: const Text(
-                      "ปฏิเสธ/คืนเงิน",
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isPromptPay
+                              ? CupertinoIcons.qrcode
+                              : CupertinoIcons.building_2_fill,
+                          size: 14,
+                          color: bankColor,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          bankName,
+                          style: TextStyle(
+                            color: bankColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+
+              // PromptPay Dynamic QR Code
+              if (isPromptPay && cleanNumber.isNotEmpty) ...[
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            'https://promptpay.io/$cleanNumber/$amount.png',
+                            width: 160,
+                            height: 160,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (ctx, child, progress) {
+                              if (progress == null) return child;
+                              return const SizedBox(
+                                width: 160,
+                                height: 160,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (ctx, error, stack) => const SizedBox(
+                              width: 160,
+                              height: 160,
+                              child: Center(
+                                child: Text(
+                                  "QR ไม่พร้อมใช้งาน",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "📱 สแกนด้วยแอปธนาคารเพื่อโอนทันที",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Get.back();
-                      _showUploadSlipDialog(docId, amount);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      "โอนเงินเรียบร้อย",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 15),
               ],
-            ),
-            const SizedBox(height: 20),
-          ],
+
+              _buildDetailRow("ผู้ขอถอนเงิน", userName, isDark),
+              _buildDetailRow(
+                "จำนวนเงิน",
+                "${amount.toStringAsFixed(2)} ฿",
+                isDark,
+                isHighlight: true,
+                onCopy: () {
+                  Clipboard.setData(
+                    ClipboardData(text: amount.toStringAsFixed(2)),
+                  );
+                  Get.snackbar(
+                    "คัดลอกแล้ว",
+                    "คัดลอกยอดเงิน ${amount.toStringAsFixed(2)} แล้ว",
+                    backgroundColor: Colors.black87,
+                    colorText: Colors.white,
+                    duration: const Duration(seconds: 2),
+                  );
+                },
+              ),
+              const Divider(height: 24),
+              _buildDetailRow("ธนาคาร", bankName, isDark),
+              _buildDetailRow("ชื่อบัญชี", accountName, isDark),
+              _buildDetailRow(
+                "เลขที่บัญชี",
+                accountNumber,
+                isDark,
+                onCopy: () {
+                  Clipboard.setData(ClipboardData(text: cleanNumber));
+                  Get.snackbar(
+                    "คัดลอกแล้ว",
+                    "คัดลอกเลขบัญชี $cleanNumber แล้ว",
+                    backgroundColor: Colors.black87,
+                    colorText: Colors.white,
+                    duration: const Duration(seconds: 2),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+
+              // 1-Tap Copy All Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    String fullDetails =
+                        "[$bankName]\nเลขบัญชี: $cleanNumber\nชื่อบัญชี: $accountName\nยอดโอน: ${amount.toStringAsFixed(2)} บาท";
+                    Clipboard.setData(ClipboardData(text: fullDetails));
+                    Get.snackbar(
+                      "คัดลอกทั้งหมดแล้ว",
+                      "คัดลอกข้อมูลการโอนเรียบร้อย นำไปวางในแอปธนาคารได้เลย",
+                      backgroundColor: Colors.black87,
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 3),
+                    );
+                  },
+                  icon: const Icon(
+                    CupertinoIcons.doc_on_clipboard,
+                    size: 16,
+                  ),
+                  label: const Text("คัดลอกข้อมูลการโอนทั้งหมด"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: bankColor,
+                    side: BorderSide(color: bankColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 25),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Get.back();
+                        _showRejectDialog(context, docId, uid, amount);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "ปฏิเสธ/คืนเงิน",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        _showUploadSlipDialog(docId, amount);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "โอนเงินเรียบร้อย",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
       isScrollControlled: true,
@@ -438,11 +657,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     String value,
     bool isDark, {
     bool isHighlight = false,
+    VoidCallback? onCopy,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: 100,
@@ -463,7 +683,138 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               ),
             ),
           ),
+          if (onCopy != null)
+            IconButton(
+              icon: const Icon(
+                CupertinoIcons.doc_on_clipboard,
+                size: 18,
+                color: AppTheme.primaryColor,
+              ),
+              onPressed: onCopy,
+              visualDensity: VisualDensity.compact,
+              tooltip: "คัดลอก",
+            ),
         ],
+      ),
+    );
+  }
+
+  void _showRejectDialog(
+    BuildContext context,
+    String docId,
+    String uid,
+    double amount,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    String selectedReason = "เลขที่บัญชีไม่ถูกต้อง";
+    final TextEditingController customReasonController =
+        TextEditingController();
+    final List<String> commonReasons = [
+      "เลขที่บัญชีไม่ถูกต้อง",
+      "ชื่อบัญชีไม่ตรงกับชื่อผู้ใช้ที่ลงทะเบียน",
+      "ธนาคารปลายทางไม่สามารถรับโอนได้",
+      "ผู้ใช้แจ้งขอยกเลิก",
+      "อื่นๆ (ระบุเอง)",
+    ];
+
+    Get.dialog(
+      StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: theme.scaffoldBackgroundColor,
+            title: const Text(
+              "ปฏิเสธคำขอถอนเงิน",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "ยอดเงิน ฿${amount.toStringAsFixed(2)} จะถูกโอนคืนเข้ากระเป๋าวอลเล็ทของผู้ใช้ทันที\nโปรดเลือกเหตุผลเพื่อให้ผู้ใช้ทราบ:",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.grey[400] : Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ...commonReasons.map((reason) {
+                    return RadioListTile<String>(
+                      title: Text(reason, style: const TextStyle(fontSize: 13)),
+                      value: reason,
+                      groupValue: selectedReason,
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: Colors.red,
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() => selectedReason = val);
+                        }
+                      },
+                    );
+                  }),
+                  if (selectedReason == "อื่นๆ (ระบุเอง)") ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: customReasonController,
+                      decoration: InputDecoration(
+                        hintText: "พิมพ์เหตุผลที่ปฏิเสธ...",
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text(
+                  "ยกเลิก",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  String finalReason = selectedReason == "อื่นๆ (ระบุเอง)"
+                      ? customReasonController.text.trim()
+                      : selectedReason;
+                  if (finalReason.isEmpty) {
+                    finalReason = "แอดมินปฏิเสธรายการถอนเงิน";
+                  }
+                  Get.back();
+                  _rejectWithdrawal(docId, uid, amount, finalReason);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "ยืนยันปฏิเสธและคืนเงิน",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -477,135 +828,209 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         builder: (context, setStateDialog) {
           final theme = Theme.of(context);
           final isDark = theme.brightness == Brightness.dark;
+          final screenH = MediaQuery.of(context).size.height;
 
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
             backgroundColor: theme.scaffoldBackgroundColor,
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "อัปโหลดสลิปยืนยันการโอน",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: isUploading
-                        ? null
-                        : () async {
-                            final picker = ImagePicker();
-                            final image = await picker.pickImage(
-                              source: ImageSource.gallery,
-                              imageQuality: 80,
-                            );
-                            if (image != null) {
-                              setStateDialog(
-                                () => slipImage = File(image.path),
-                              );
-                            }
-                          },
-                    child: Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[800] : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: slipImage != null
-                              ? Colors.green
-                              : Colors.grey.shade400,
-                          width: 2,
-                          style: BorderStyle.solid,
-                        ),
-                      ),
-                      child: slipImage != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(13),
-                              child: Image.file(slipImage!, fit: BoxFit.cover),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  CupertinoIcons.photo_on_rectangle,
-                                  size: 50,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "แตะเพื่อเลือกรูปสลิป",
-                                  style: TextStyle(color: Colors.grey[500]),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 24,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: screenH * 0.85),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: isUploading ? null : () => Get.back(),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text("ยกเลิก"),
+                      const Text(
+                        "อัปโหลดสลิปยืนยันการโอน",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: (slipImage == null || isUploading)
-                              ? null
-                              : () async {
-                                  setStateDialog(() => isUploading = true);
-                                  bool success = await _uploadSlipAndApprove(
-                                    docId,
-                                    slipImage!,
-                                    expectedAmount,
+                      const SizedBox(height: 6),
+                      Text(
+                        "แตะรูปเพื่อเลือกสลิปใหม่",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Slip image preview
+                      GestureDetector(
+                        onTap: isUploading
+                            ? null
+                            : () async {
+                                final picker = ImagePicker();
+                                final image = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 85,
+                                );
+                                if (image != null) {
+                                  setStateDialog(
+                                    () => slipImage = File(image.path),
                                   );
-                                  if (context.mounted) {
-                                    setStateDialog(() => isUploading = false);
-                                    if (success) {
-                                      Get.back();
-                                    }
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                                }
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          width: double.infinity,
+                          // Taller when slip selected so full image is visible
+                          constraints: BoxConstraints(
+                            minHeight: 180,
+                            maxHeight: slipImage != null
+                                ? screenH * 0.45
+                                : 180,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.grey[850]
+                                : Colors.grey[100],
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: slipImage != null
+                                  ? Colors.green
+                                  : (isDark
+                                      ? Colors.grey[700]!
+                                      : Colors.grey.shade400),
+                              width: 2,
                             ),
                           ),
-                          child: isUploading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
+                          child: slipImage != null
+                              ? Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(13),
+                                      child: Image.file(
+                                        slipImage!,
+                                        // contain = เห็นทั้งสลิปโดยไม่ตัด
+                                        fit: BoxFit.contain,
+                                        width: double.infinity,
+                                      ),
+                                    ),
+                                    // Overlay hint to retap
+                                    Positioned(
+                                      bottom: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: const Text(
+                                          "แตะเพื่อเปลี่ยนสลิป",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 )
-                              : const Text(
-                                  "ยืนยัน",
-                                  style: TextStyle(
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.photo_on_rectangle,
+                                      size: 50,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      "แตะเพื่อเลือกรูปสลิป",
+                                      style: TextStyle(color: Colors.grey[500]),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "รองรับ JPG, PNG",
+                                      style: TextStyle(
+                                        color: Colors.grey[400],
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: isUploading ? null : () => Get.back(),
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text("ยกเลิก"),
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: (slipImage == null || isUploading)
+                                  ? null
+                                  : () async {
+                                      setStateDialog(
+                                        () => isUploading = true,
+                                      );
+                                      final File capturedSlip = slipImage!;
+                                      // Close dialog first so UI is not stuck
+                                      Get.back();
+                                      await _uploadSlipAndApprove(
+                                        docId,
+                                        capturedSlip,
+                                        expectedAmount,
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: isUploading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      "ยืนยัน",
+                                      style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
           );
@@ -621,7 +1046,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     double expectedAmount,
   ) async {
     try {
-      final String slipokApiKey = dotenv.env['SLIPOK_API_KEY'] ?? '';
+      final String slipokApiKey =
+          dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
 
       var request = http.MultipartRequest(
         'POST',
@@ -639,6 +1065,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
       if (response.statusCode == 200 && jsonData['success'] == true) {
         var slipData = jsonData['data'];
         double transferredAmount = (slipData['amount'] ?? 0).toDouble();
+        String transRef = slipData['transRef'] ?? '';
 
         if (transferredAmount != expectedAmount) {
           Get.snackbar(
@@ -647,6 +1074,40 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             backgroundColor: Colors.red,
             colorText: Colors.white,
             duration: const Duration(seconds: 4),
+          );
+          return false;
+        }
+
+        if (transRef.isEmpty) {
+          Get.snackbar(
+            "สลิปไม่สมบูรณ์",
+            "ไม่สามารถอ่านรหัสอ้างอิงจากสลิปได้ กรุณาใช้สลิปที่มี QR Code คมชัด",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+          return false;
+        }
+
+        // ตรวจสอบว่าสลิปนี้ (transRef) เคยถูกใช้งานไปแล้วหรือไม่ เพื่อป้องกันการใช้สลิปซ้ำ
+        var existingTx = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.transactions)
+            .where('transRef', isEqualTo: transRef)
+            .where('status', isEqualTo: 'success')
+            .get();
+
+        bool isDuplicate = existingTx.docs.any((d) => d.id != docId);
+        if (isDuplicate) {
+          Get.snackbar(
+            "สลิปนี้ถูกใช้งานไปแล้ว",
+            "สลิปนี้ (รหัสอ้างอิง: $transRef) เคยถูกบันทึกสำเร็จในระบบไปแล้ว ไม่สามารถใช้ซ้ำได้",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+            icon: const Icon(
+              CupertinoIcons.clear_circled_solid,
+              color: Colors.white,
+            ),
           );
           return false;
         }
@@ -661,9 +1122,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         TaskSnapshot snapshot = await uploadTask;
         String downloadUrl = await snapshot.ref.getDownloadURL();
 
-        // Transaction to deduct wallet balance and update transaction status to success
         DocumentReference txRef = FirebaseFirestore.instance
-            .collection('transactions')
+            .collection(FirestoreCollections.transactions)
             .doc(docId);
         DocumentSnapshot txSnap = await txRef.get();
         if (!txSnap.exists) {
@@ -671,39 +1131,23 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         }
         Map<String, dynamic> txData = txSnap.data() as Map<String, dynamic>;
         String uid = txData['uid'] ?? '';
-        if (uid.isEmpty) {
-          throw Exception("ไม่พบรหัสผู้ใช้ในรายการถอนเงิน");
-        }
 
-        await FirebaseFirestore.instance.runTransaction((transaction) async {
-          DocumentReference userRef = FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid);
-          DocumentSnapshot userSnap = await transaction.get(userRef);
-          if (!userSnap.exists) {
-            throw Exception("ไม่พบข้อมูลผู้ใช้");
-          }
-
-          double currentBalance =
-              (userSnap.data() as Map<String, dynamic>)['walletBalance']
-                  ?.toDouble() ??
-              0.0;
-          if (currentBalance < expectedAmount) {
-            throw Exception(
-              "ยอดเงินคงเหลือของผู้ใช้ไม่เพียงพอสำหรับหักเงิน (คงเหลือ: ฿${currentBalance.toStringAsFixed(2)})",
-            );
-          }
-
-          transaction.update(userRef, {
-            'walletBalance': FieldValue.increment(-expectedAmount),
-          });
-
-          transaction.update(txRef, {
-            'status': 'success',
-            'slipUrl': downloadUrl,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+        await txRef.update({
+          'status': 'success',
+          'slipUrl': downloadUrl,
+          'transRef': transRef,
+          'updatedAt': FieldValue.serverTimestamp(),
         });
+
+        if (uid.isNotEmpty) {
+          await NotificationService.sendNotification(
+            userId: uid,
+            title: "ถอนเงินสำเร็จ ฿${expectedAmount.toStringAsFixed(2)}",
+            body:
+                "แอดมินได้โอนเงินเข้าบัญชีของคุณเรียบร้อยแล้ว แตะเพื่อดูสลิปหลักฐาน",
+            type: "wallet",
+          );
+        }
 
         Get.snackbar(
           "สำเร็จ",
@@ -737,26 +1181,49 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     String docId,
     String uid,
     double amount,
+    String reason,
   ) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('transactions')
-          .doc(docId)
-          .update({
-            'status': 'cancelled',
-            'updatedAt': FieldValue.serverTimestamp(),
-            'note': 'แอดมินปฏิเสธรายการถอนเงิน',
-          });
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        DocumentReference userRef = FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .doc(uid);
+        DocumentReference txRef = FirebaseFirestore.instance
+            .collection(FirestoreCollections.transactions)
+            .doc(docId);
+
+        // Refund walletBalance
+        transaction.update(userRef, {
+          'walletBalance': FieldValue.increment(amount),
+        });
+
+        transaction.update(txRef, {
+          'status': 'cancelled',
+          'updatedAt': FieldValue.serverTimestamp(),
+          'note': reason,
+        });
+      });
+
+      if (uid.isNotEmpty) {
+        await NotificationService.sendNotification(
+          userId: uid,
+          title: "คำขอถอนเงินถูกปฏิเสธ ฿${amount.toStringAsFixed(2)}",
+          body: "เหตุผล: $reason (ระบบได้โอนเงินคืนเข้าวอลเล็ทของคุณแล้ว)",
+          type: "wallet",
+        );
+      }
+
       Get.snackbar(
         "ปฏิเสธรายการ",
-        "ปฏิเสธรายการถอนเงินเรียบร้อยแล้ว",
+        "ปฏิเสธรายการและคืนเงิน ฿${amount.toStringAsFixed(2)} ให้ผู้ใช้แล้ว",
         backgroundColor: Colors.orange,
         colorText: Colors.white,
+        icon: const Icon(CupertinoIcons.info_circle_fill, color: Colors.white),
       );
     } catch (e) {
       Get.snackbar(
         "เกิดข้อผิดพลาด",
-        e.toString(),
+        e.toString().replaceAll('Exception: ', ''),
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -800,6 +1267,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         }
 
         bool isPendingWithdraw = type == 'withdraw' && status == 'pending';
+        int hoursWaited = DateTime.now().difference(date).inHours;
+        int nudgedCount = data['nudgedCount'] ?? 0;
+        bool isCritical = isPendingWithdraw && hoursWaited >= 18;
+        bool isUrgent =
+            isPendingWithdraw && (hoursWaited >= 6 || nudgedCount > 0);
 
         return InkWell(
           onTap: isPendingWithdraw
@@ -817,22 +1289,29 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isPendingWithdraw
-                  ? (isDark
-                        ? Colors.orange.withValues(alpha: 0.15)
-                        : Colors.orange.withValues(alpha: 0.05))
+                  ? (isCritical
+                        ? (isDark
+                              ? Colors.red.withValues(alpha: 0.2)
+                              : Colors.red.shade50)
+                        : (isDark
+                              ? Colors.orange.withValues(alpha: 0.15)
+                              : Colors.orange.withValues(alpha: 0.05)))
                   : theme.cardColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isPendingWithdraw
-                    ? Colors.orangeAccent
+                    ? (isCritical ? Colors.redAccent : Colors.orangeAccent)
                     : (isDark ? Colors.white10 : Colors.grey.shade100),
                 width: isPendingWithdraw ? 1.5 : 1.0,
               ),
               boxShadow: isPendingWithdraw
                   ? [
                       BoxShadow(
-                        color: Colors.orangeAccent.withValues(alpha: 0.2),
-                        blurRadius: 8,
+                        color: (isCritical
+                                ? Colors.redAccent
+                                : Colors.orangeAccent)
+                            .withValues(alpha: 0.25),
+                        blurRadius: 10,
                         spreadRadius: 1,
                       ),
                     ]
@@ -894,12 +1373,67 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        _getTransactionTypeName(type),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            _getTransactionTypeName(type),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          if (isPendingWithdraw && isCritical) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.red.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: const Text(
+                                "🔥 วิกฤต (>18 ชม.)",
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ] else if (isPendingWithdraw && isUrgent) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.orange.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: Text(
+                                nudgedCount > 0
+                                    ? "🔔 เตือน $nudgedCount ครั้ง"
+                                    : "⚠️ รอนาน (>6 ชม.)",
+                                style: const TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(

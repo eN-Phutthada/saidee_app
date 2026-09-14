@@ -30,7 +30,8 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
   final String promptPayNumber = "0647490079";
   final String accountName = "นายพุทธดา หาญนอก";
 
-  final String slipokAuthToken = dotenv.env['SLIPOK_API_KEY'] ?? '';
+  final String slipokAuthToken =
+      dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
 
   @override
   void initState() {

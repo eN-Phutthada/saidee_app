@@ -50,7 +50,8 @@ class _PromptPayCheckoutPaymentScreenState
   final String promptPayNumber = "0647490079";
   final String accountName = "นายพุทธดา หาญนอก";
 
-  final String slipokAuthToken = dotenv.env['SLIPOK_API_KEY'] ?? '';
+  final String slipokAuthToken =
+      dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
 
   void _copyPromptPay() {
     Clipboard.setData(ClipboardData(text: promptPayNumber));
