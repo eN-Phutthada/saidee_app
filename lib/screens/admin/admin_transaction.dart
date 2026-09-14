@@ -724,9 +724,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               borderRadius: BorderRadius.circular(20),
             ),
             backgroundColor: theme.scaffoldBackgroundColor,
-            title: const Text(
+            title: Text(
               "ปฏิเสธคำขอถอนเงิน",
-              style: TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.kanit(fontWeight: FontWeight.bold),
             ),
             content: SingleChildScrollView(
               child: Column(
@@ -735,33 +735,42 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                 children: [
                   Text(
                     "ยอดเงิน ฿${amount.toStringAsFixed(2)} จะถูกโอนคืนเข้ากระเป๋าวอลเล็ทของผู้ใช้ทันที\nโปรดเลือกเหตุผลเพื่อให้ผู้ใช้ทราบ:",
-                    style: TextStyle(
+                    style: GoogleFonts.kanit(
                       fontSize: 13,
                       color: isDark ? Colors.grey[400] : Colors.grey[700],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ...commonReasons.map((reason) {
-                    return RadioListTile<String>(
-                      title: Text(reason, style: const TextStyle(fontSize: 13)),
-                      value: reason,
-                      groupValue: selectedReason,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: Colors.red,
-                      onChanged: (val) {
-                        if (val != null) {
-                          setDialogState(() => selectedReason = val);
-                        }
-                      },
-                    );
-                  }),
+                  RadioGroup<String>(
+                    groupValue: selectedReason,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() => selectedReason = val);
+                      }
+                    },
+                    child: Column(
+                      children: commonReasons.map((reason) {
+                        return RadioListTile<String>(
+                          title: Text(
+                            reason,
+                            style: GoogleFonts.kanit(fontSize: 13),
+                          ),
+                          value: reason,
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: Colors.red,
+                        );
+                      }).toList(),
+                    ),
+                  ),
                   if (selectedReason == "อื่นๆ (ระบุเอง)") ...[
                     const SizedBox(height: 8),
                     TextField(
                       controller: customReasonController,
+                      style: GoogleFonts.kanit(fontSize: 13),
                       decoration: InputDecoration(
                         hintText: "พิมพ์เหตุผลที่ปฏิเสธ...",
+                        hintStyle: GoogleFonts.kanit(fontSize: 13),
                         filled: true,
                         fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
                         border: OutlineInputBorder(
