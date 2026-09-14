@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/cupertino.dart';
@@ -395,7 +396,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     final accountNumber = data['accountNumber'] ?? 'ไม่ระบุเลขบัญชี';
     final cleanNumber = accountNumber.replaceAll(RegExp(r'[^0-9]'), '');
     final bankColor = _getBankColor(bankName);
-    final bool isPromptPay = bankName.toLowerCase().contains('promptpay') ||
+    final bool isPromptPay =
+        bankName.toLowerCase().contains('promptpay') ||
         bankName.contains('พร้อมเพย์') ||
         cleanNumber.length == 10 ||
         cleanNumber.length == 13;
@@ -581,10 +583,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       duration: const Duration(seconds: 3),
                     );
                   },
-                  icon: const Icon(
-                    CupertinoIcons.doc_on_clipboard,
-                    size: 16,
-                  ),
+                  icon: const Icon(CupertinoIcons.doc_on_clipboard, size: 16),
                   label: const Text("คัดลอกข้อมูลการโอนทั้งหมด"),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: bankColor,
@@ -714,7 +713,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
       "เลขที่บัญชีไม่ถูกต้อง",
       "ชื่อบัญชีไม่ตรงกับชื่อผู้ใช้ที่ลงทะเบียน",
       "ธนาคารปลายทางไม่สามารถรับโอนได้",
-      "ผู้ใช้แจ้งขอยกเลิก",
       "อื่นๆ (ระบุเอง)",
     ];
 
@@ -782,9 +780,13 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             actions: [
               TextButton(
                 onPressed: () => Get.back(),
-                child: const Text(
+                child: Text(
                   "ยกเลิก",
-                  style: TextStyle(color: Colors.grey),
+                  style: GoogleFonts.kanit(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               ElevatedButton(
@@ -800,14 +802,20 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
+                  elevation: 0,
                 ),
-                child: const Text(
+                child: Text(
                   "ยืนยันปฏิเสธและคืนเงิน",
-                  style: TextStyle(
-                    color: Colors.white,
+                  style: GoogleFonts.kanit(
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -853,7 +861,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         IconButton(
                           icon: const Icon(CupertinoIcons.clear_circled_solid),
                           color: Colors.grey,
-                          onPressed: () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+                          onPressed: () => Navigator.of(
+                            dialogContext,
+                            rootNavigator: true,
+                          ).pop(),
                         ),
                     ],
                   ),
@@ -882,7 +893,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         border: Border.all(
                           color: slipImage != null
                               ? Colors.green
-                              : (isDark ? Colors.grey[800]! : Colors.grey.shade300),
+                              : (isDark
+                                    ? Colors.grey[800]!
+                                    : Colors.grey.shade300),
                           width: 1.5,
                         ),
                       ),
@@ -908,14 +921,17 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.6),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.6,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
-                                            CupertinoIcons.arrow_right_arrow_left,
+                                            CupertinoIcons
+                                                .arrow_right_arrow_left,
                                             size: 12,
                                             color: Colors.white,
                                           ),
@@ -970,7 +986,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         child: OutlinedButton(
                           onPressed: isUploading
                               ? null
-                              : () => Navigator.of(dialogContext, rootNavigator: true).pop(),
+                              : () => Navigator.of(
+                                  dialogContext,
+                                  rootNavigator: true,
+                                ).pop(),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -995,14 +1014,18 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                   if (dialogContext.mounted) {
                                     setStateDialog(() => isUploading = false);
                                     if (success) {
-                                      Navigator.of(dialogContext, rootNavigator: true).pop();
+                                      Navigator.of(
+                                        dialogContext,
+                                        rootNavigator: true,
+                                      ).pop();
                                       Get.snackbar(
                                         "สำเร็จ",
                                         "อนุมัติรายการถอนเงินและอัปโหลดสลิปเรียบร้อย",
                                         backgroundColor: Colors.green,
                                         colorText: Colors.white,
                                         icon: const Icon(
-                                          CupertinoIcons.check_mark_circled_solid,
+                                          CupertinoIcons
+                                              .check_mark_circled_solid,
                                           color: Colors.white,
                                         ),
                                       );
@@ -1052,8 +1075,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     double expectedAmount,
   ) async {
     try {
-      final String slipokApiKey =
-          dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
+      final String slipokApiKey = dotenv.isInitialized
+          ? (dotenv.env['SLIPOK_API_KEY'] ?? '')
+          : '';
 
       var request = http.MultipartRequest(
         'POST',
@@ -1293,8 +1317,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               border: Border.all(
                 color: isPendingWithdraw
                     ? (isCritical
-                        ? Colors.redAccent.withValues(alpha: 0.6)
-                        : Colors.orange.withValues(alpha: 0.5))
+                          ? Colors.redAccent.withValues(alpha: 0.6)
+                          : Colors.orange.withValues(alpha: 0.5))
                     : (isDark ? Colors.white10 : Colors.grey.shade100),
                 width: isPendingWithdraw ? 1.2 : 1.0,
               ),

@@ -1,15 +1,22 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
-class WalletHistoryScreen extends StatelessWidget {
+class WalletHistoryScreen extends StatefulWidget {
   const WalletHistoryScreen({super.key});
 
+  @override
+  State<WalletHistoryScreen> createState() => _WalletHistoryScreenState();
+}
+
+class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
   String _getTransactionTypeName(String type) {
     switch (type.toLowerCase()) {
       case 'topup':
@@ -63,7 +70,7 @@ class WalletHistoryScreen extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
+        style: GoogleFonts.kanit(
           color: color,
           fontSize: 10,
           fontWeight: FontWeight.bold,
@@ -99,7 +106,12 @@ class WalletHistoryScreen extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 200,
                   color: Colors.white,
-                  child: const Center(child: Text("ไม่สามารถโหลดรูปภาพได้")),
+                  child: Center(
+                    child: Text(
+                      "ไม่สามารถโหลดรูปภาพได้",
+                      style: GoogleFonts.kanit(),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -129,16 +141,16 @@ class WalletHistoryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'ประวัติธุรกรรม',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: GoogleFonts.kanit(fontWeight: FontWeight.bold),
         ),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
       ),
       body: user == null
-          ? const Center(child: Text("กรุณาเข้าสู่ระบบ"))
+          ? Center(child: Text("กรุณาเข้าสู่ระบบ", style: GoogleFonts.kanit()))
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection(FirestoreCollections.transactions)
@@ -155,7 +167,10 @@ class WalletHistoryScreen extends StatelessWidget {
 
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+                    child: Text(
+                      "เกิดข้อผิดพลาด: ${snapshot.error}",
+                      style: GoogleFonts.kanit(),
+                    ),
                   );
                 }
 
@@ -172,7 +187,7 @@ class WalletHistoryScreen extends StatelessWidget {
                         const SizedBox(height: 15),
                         Text(
                           "ยังไม่มีประวัติธุรกรรม",
-                          style: TextStyle(
+                          style: GoogleFonts.kanit(
                             color: Colors.grey[600],
                             fontSize: 16,
                           ),
@@ -218,10 +233,8 @@ class WalletHistoryScreen extends StatelessWidget {
                     bool isAppIn = _isAppIncome(type);
                     bool isPendingWithdrawal =
                         type == 'withdraw' && status.toLowerCase() == 'pending';
-                    final durationWaited = DateTime.now().difference(date);
-                    final hoursWaited = durationWaited.inHours;
-                    final minutesWaited = durationWaited.inMinutes;
-                    final isSlaExpired = hoursWaited >= 24;
+                    bool isSlaExpired =
+                        DateTime.now().difference(date).inSeconds >= 86400;
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 15),
@@ -269,8 +282,9 @@ class WalletHistoryScreen extends StatelessWidget {
                                       isAppIn
                                           ? CupertinoIcons.arrow_down_left
                                           : CupertinoIcons.arrow_up_right,
-                                      color:
-                                          isAppIn ? Colors.green : Colors.red,
+                                      color: isAppIn
+                                          ? Colors.green
+                                          : Colors.red,
                                       size: 24,
                                     ),
                                   ),
@@ -284,7 +298,7 @@ class WalletHistoryScreen extends StatelessWidget {
                                           children: [
                                             Text(
                                               _getTransactionTypeName(type),
-                                              style: const TextStyle(
+                                              style: GoogleFonts.kanit(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 16,
                                               ),
@@ -302,16 +316,17 @@ class WalletHistoryScreen extends StatelessWidget {
                                         const SizedBox(height: 4),
                                         Text(
                                           formattedDate,
-                                          style: TextStyle(
+                                          style: GoogleFonts.kanit(
                                             color: Colors.grey[500],
                                             fontSize: 12,
                                           ),
                                         ),
-                                        if (note != null && note.isNotEmpty) ...[
+                                        if (note != null &&
+                                            note.isNotEmpty) ...[
                                           const SizedBox(height: 4),
                                           Text(
                                             "หมายเหตุ: $note",
-                                            style: TextStyle(
+                                            style: GoogleFonts.kanit(
                                               color: Colors.orange[700],
                                               fontSize: 12,
                                             ),
@@ -325,7 +340,7 @@ class WalletHistoryScreen extends StatelessWidget {
                                     children: [
                                       Text(
                                         "${isAppIn ? '+' : '-'}${amount.toStringAsFixed(2)} ฿",
-                                        style: TextStyle(
+                                        style: GoogleFonts.kanit(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 16,
                                           color: isAppIn
@@ -342,183 +357,39 @@ class WalletHistoryScreen extends StatelessWidget {
                             ),
                           ),
 
-                          // Interactive Action Box for Pending Withdrawals
+                          // Standalone Countdown & Action Box for Pending Withdrawals
+                          // Owns its timer so list doesn't flicker on ticks!
                           if (isPendingWithdrawal) ...[
-                            Divider(height: 1, color: isDark ? Colors.white10 : Colors.grey[200]),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                            Divider(
+                              height: 1,
+                              color: isDark ? Colors.white10 : Colors.grey[200],
+                            ),
+                            _PendingCountdownBox(
+                              docId: docId,
+                              uid: uid,
+                              amount: amount,
+                              lastNudgedAt: lastNudgedAt,
+                              createdAt: date,
+                              isDark: isDark,
+                              onCancel: () => _cancelWithdrawal(
+                                context,
+                                docId,
+                                amount,
+                                uid,
                               ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.grey[900]
-                                    : Colors.grey[50],
-                                borderRadius: const BorderRadius.vertical(
-                                  bottom: Radius.circular(16),
-                                ),
+                              onNudge: () => _nudgeAdmin(
+                                context,
+                                docId,
+                                lastNudgedAt,
+                                amount,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        isSlaExpired
-                                            ? CupertinoIcons
-                                                .exclamationmark_triangle_fill
-                                            : CupertinoIcons.clock,
-                                        size: 15,
-                                        color: isSlaExpired
-                                            ? Colors.red
-                                            : Colors.orange[800],
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          isSlaExpired
-                                              ? "เกินเวลา 24 ชม. แล้ว สามารถขอเงินคืนเข้ากระเป๋าได้ทันที"
-                                              : "รอมาแล้ว ${hoursWaited > 0 ? '$hoursWaited ชม.' : '$minutesWaited นาที'} (รับประกันโอนใน 24 ชม.)",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: isSlaExpired
-                                                ? Colors.red[700]
-                                                : Colors.orange[900],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      // Cancel withdrawal button (Available anytime while pending)
-                                      OutlinedButton.icon(
-                                        onPressed: () => _cancelWithdrawal(
-                                          context,
-                                          docId,
-                                          amount,
-                                          uid,
-                                        ),
-                                        icon: const Icon(
-                                          CupertinoIcons.clear_circled,
-                                          size: 14,
-                                        ),
-                                        label: const Text("ยกเลิกคำขอ"),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                          side: const BorderSide(
-                                            color: Colors.red,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                          textStyle: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Nudge admin button (Remind)
-                                      OutlinedButton.icon(
-                                        onPressed: () => _nudgeAdmin(
-                                          context,
-                                          docId,
-                                          lastNudgedAt,
-                                          amount,
-                                        ),
-                                        icon: const Icon(
-                                          CupertinoIcons.bell_fill,
-                                          size: 14,
-                                        ),
-                                        label: const Text("สะกิดแอดมิน"),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: Colors.orange[800],
-                                          side: BorderSide(
-                                            color: Colors.orange[800]!,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                          textStyle: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Contact support & phone
-                                      ElevatedButton.icon(
-                                        onPressed: () =>
-                                            _showContactAdminDialog(
-                                              context,
-                                              docId,
-                                              amount,
-                                            ),
-                                        icon: const Icon(
-                                          CupertinoIcons.phone_fill,
-                                          size: 14,
-                                        ),
-                                        label: const Text("ติดต่อแอดมิน"),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          visualDensity: VisualDensity.compact,
-                                          textStyle: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // Claim refund button if SLA expired
-                                      if (isSlaExpired)
-                                        ElevatedButton.icon(
-                                          onPressed: () => _claimRefundSla(
-                                            context,
-                                            docId,
-                                            amount,
-                                            uid,
-                                          ),
-                                          icon: const Icon(
-                                            CupertinoIcons.arrow_uturn_left,
-                                            size: 14,
-                                          ),
-                                          label: const Text(
-                                            "ขอเงินคืนทันที (SLA)",
-                                          ),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                AppTheme.primaryColor,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
-                                            ),
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                            textStyle: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
+                              onContact: () => _showContactAdminDialog(
+                                context,
+                                docId,
+                                amount,
                               ),
+                              onClaimSla: () =>
+                                  _claimRefundSla(context, docId, amount, uid),
                             ),
                           ],
                         ],
@@ -540,16 +411,28 @@ class WalletHistoryScreen extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text("ยืนยันยกเลิกการถอนเงิน"),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Text(
+          "ยืนยันยกเลิกการถอนเงิน",
+          style: GoogleFonts.kanit(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: Text(
           "คุณต้องการยกเลิกคำขอถอนเงินจำนวน ฿${amount.toStringAsFixed(2)} ใช่หรือไม่?\n\nยอดเงินจะถูกโอนกลับเข้าวอลเล็ทของคุณทันที",
+          style: GoogleFonts.kanit(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: Text(
               "ไม่ยกเลิก",
-              style: TextStyle(color: Colors.grey),
+              style: GoogleFonts.kanit(
+                color: Colors.grey[600],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           ElevatedButton(
@@ -564,8 +447,7 @@ class WalletHistoryScreen extends StatelessWidget {
                       .doc(docId);
                   DocumentSnapshot txSnap = await transaction.get(txRef);
                   if (!txSnap.exists) throw Exception("ไม่พบข้อมูลรายการ");
-                  if ((txSnap.data()
-                          as Map<String, dynamic>)['status'] !=
+                  if ((txSnap.data() as Map<String, dynamic>)['status'] !=
                       'pending') {
                     throw Exception("รายการนี้ได้รับการประมวลผลไปแล้ว");
                   }
@@ -581,7 +463,8 @@ class WalletHistoryScreen extends StatelessWidget {
                   transaction.update(txRef, {
                     'status': 'cancelled',
                     'updatedAt': FieldValue.serverTimestamp(),
-                    'note': 'ผู้ใช้กดยกเลิกคำขอถอนเงิน (คืนเงินเข้าวอลเล็ทแล้ว)',
+                    'note':
+                        'ผู้ใช้กดยกเลิกคำขอถอนเงิน (คืนเงินเข้าวอลเล็ทแล้ว)',
                   });
                 });
 
@@ -606,14 +489,17 @@ class WalletHistoryScreen extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
+              elevation: 0,
             ),
-            child: const Text(
+            child: Text(
               "ยืนยันยกเลิก",
-              style: TextStyle(
-                color: Colors.white,
+              style: GoogleFonts.kanit(
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -632,16 +518,28 @@ class WalletHistoryScreen extends StatelessWidget {
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text("ขอรับเงินคืนทันที (SLA เกิน 24 ชม.)"),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        title: Text(
+          "ขอรับเงินคืนทันที (SLA เกิน 24 ชม.)",
+          style: GoogleFonts.kanit(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: Text(
           "คำขอถอนเงินนี้เกินระยะเวลาดำเนินการ 24 ชั่วโมงแล้ว ตามนโยบายความเป็นธรรม คุณสามารถดึงเงิน ฿${amount.toStringAsFixed(2)} กลับเข้าวอลเล็ทได้ทันที",
+          style: GoogleFonts.kanit(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: Text(
               "รอต่ออีกสักนิด",
-              style: TextStyle(color: Colors.grey),
+              style: GoogleFonts.kanit(
+                color: Colors.grey[600],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           ElevatedButton(
@@ -656,8 +554,7 @@ class WalletHistoryScreen extends StatelessWidget {
                       .doc(docId);
                   DocumentSnapshot txSnap = await transaction.get(txRef);
                   if (!txSnap.exists) throw Exception("ไม่พบข้อมูลรายการ");
-                  if ((txSnap.data()
-                          as Map<String, dynamic>)['status'] !=
+                  if ((txSnap.data() as Map<String, dynamic>)['status'] !=
                       'pending') {
                     throw Exception("รายการนี้ได้รับการประมวลผลไปแล้ว");
                   }
@@ -699,14 +596,17 @@ class WalletHistoryScreen extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
+              elevation: 0,
             ),
-            child: const Text(
+            child: Text(
               "ดึงเงินคืนเข้าวอลเล็ท",
-              style: TextStyle(
-                color: Colors.white,
+              style: GoogleFonts.kanit(
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -806,16 +706,16 @@ class WalletHistoryScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         "ติดต่อฝ่ายบริการลูกค้า / แอดมิน",
-                        style: TextStyle(
+                        style: GoogleFonts.kanit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         "เวลาทำการ: 08:00 - 22:00 น. (ทุกวัน)",
-                        style: TextStyle(
+                        style: GoogleFonts.kanit(
                           color: Colors.grey[500],
                           fontSize: 12,
                         ),
@@ -840,27 +740,30 @@ class WalletHistoryScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "เบอร์โทรสายด่วนแอดมิน",
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 12,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "เบอร์โทรสายด่วนแอดมิน",
+                              style: GoogleFonts.kanit(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            adminPhone,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
+                            const SizedBox(height: 4),
+                            Text(
+                              adminPhone,
+                              style: GoogleFonts.kanit(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: () {
                           Clipboard.setData(
@@ -878,13 +781,24 @@ class WalletHistoryScreen extends StatelessWidget {
                           CupertinoIcons.doc_on_clipboard,
                           size: 16,
                         ),
-                        label: const Text("คัดลอกเบอร์"),
+                        label: Text(
+                          "คัดลอกเบอร์",
+                          style: GoogleFonts.kanit(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
+                          elevation: 0,
                         ),
                       ),
                     ],
@@ -899,7 +813,7 @@ class WalletHistoryScreen extends StatelessWidget {
                           children: [
                             Text(
                               "รหัสอ้างอิงธุรกรรม",
-                              style: TextStyle(
+                              style: GoogleFonts.kanit(
                                 color: Colors.grey[500],
                                 fontSize: 12,
                               ),
@@ -907,7 +821,7 @@ class WalletHistoryScreen extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               docId,
-                              style: const TextStyle(
+                              style: GoogleFonts.kanit(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -936,7 +850,7 @@ class WalletHistoryScreen extends StatelessWidget {
             const SizedBox(height: 15),
             Text(
               "💡 สามารถแจ้งรหัสอ้างอิงและยอดเงิน ฿${amount.toStringAsFixed(2)} ให้เจ้าหน้าที่เพื่อการตรวจสอบที่รวดเร็ว",
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              style: GoogleFonts.kanit(color: Colors.grey[600], fontSize: 12),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -949,13 +863,369 @@ class WalletHistoryScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text("ปิดหน้านี้"),
+                child: Text(
+                  "ปิดหน้านี้",
+                  style: GoogleFonts.kanit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
       isScrollControlled: true,
+    );
+  }
+}
+
+/// Standalone countdown and action box for pending withdrawals.
+/// Contains its own 1-second timer to avoid rebuilding the parent screen/list,
+/// eliminating list flicker while keeping the countdown real-time and fluid.
+class _PendingCountdownBox extends StatefulWidget {
+  final String docId;
+  final String uid;
+  final double amount;
+  final Timestamp? lastNudgedAt;
+  final DateTime createdAt;
+  final bool isDark;
+  final VoidCallback onCancel;
+  final VoidCallback onNudge;
+  final VoidCallback onContact;
+  final VoidCallback onClaimSla;
+
+  const _PendingCountdownBox({
+    required this.docId,
+    required this.uid,
+    required this.amount,
+    required this.lastNudgedAt,
+    required this.createdAt,
+    required this.isDark,
+    required this.onCancel,
+    required this.onNudge,
+    required this.onContact,
+    required this.onClaimSla,
+  });
+
+  @override
+  State<_PendingCountdownBox> createState() => _PendingCountdownBoxState();
+}
+
+class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ticks every second strictly within this isolated widget
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(int totalSeconds) {
+    if (totalSeconds <= 0) return "00:00:00";
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    return "${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const int slaTotalSeconds = 24 * 3600;
+    final int elapsedSeconds = DateTime.now()
+        .difference(widget.createdAt)
+        .inSeconds;
+    final int remainingSeconds = slaTotalSeconds - elapsedSeconds;
+    final bool isExpired = remainingSeconds <= 0;
+
+    // Check nudge cooldown
+    bool canNudge = true;
+    String nudgeLabel = "สะกิดเตือน";
+    if (widget.lastNudgedAt != null) {
+      final nudgeDiff = DateTime.now().difference(
+        widget.lastNudgedAt!.toDate(),
+      );
+      if (nudgeDiff.inHours < 2) {
+        canNudge = false;
+        final minsLeft = 120 - nudgeDiff.inMinutes;
+        nudgeLabel = "รออีก $minsLeftน.";
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isExpired
+            ? Colors.red.withValues(alpha: widget.isDark ? 0.12 : 0.05)
+            : Colors.orange.withValues(alpha: widget.isDark ? 0.12 : 0.05),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row: Status & SLA Countdown
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isExpired
+                        ? CupertinoIcons.exclamationmark_triangle_fill
+                        : CupertinoIcons.clock_fill,
+                    size: 16,
+                    color: isExpired ? Colors.redAccent : Colors.orange,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isExpired
+                        ? "เกินเวลารับประกัน 24 ชม."
+                        : "รอดำเนินการ (เป้าหมาย 24 ชม.)",
+                    style: GoogleFonts.kanit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isExpired ? Colors.redAccent : Colors.orange[800],
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: (isExpired ? Colors.red : Colors.orange).withValues(
+                    alpha: widget.isDark ? 0.25 : 0.15,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: (isExpired ? Colors.red : Colors.orange).withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isExpired
+                          ? CupertinoIcons.xmark_circle_fill
+                          : CupertinoIcons.stopwatch,
+                      size: 12,
+                      color: isExpired ? Colors.red : Colors.orange[800],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isExpired
+                          ? "เกินกำหนด"
+                          : _formatDuration(remainingSeconds),
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isExpired ? Colors.red : Colors.orange[900],
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // Progress Bar (when SLA is running)
+          if (!isExpired) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (elapsedSeconds / slaTotalSeconds).clamp(0.0, 1.0),
+                backgroundColor: Colors.orange.withValues(alpha: 0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  remainingSeconds < 3600 ? Colors.redAccent : Colors.orange,
+                ),
+                minHeight: 5,
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          // Policy & Guideline Text
+          Text(
+            isExpired
+                ? "คำขอนี้เกินเวลา 24 ชั่วโมงแล้ว ตามนโยบายความเป็นธรรม ท่านสามารถดึงเงินคืนเข้าวอลเล็ทได้ทันที หรือติดต่อแอดมินเพื่อสอบถามข้อมูล"
+                : "ท่านสามารถยกเลิกคำขอเพื่อรับเงินคืนเข้าวอลเล็ทได้ตลอดเวลา หรือสะกิดเตือนแอดมินหากต้องการเร่งด่วน",
+            style: GoogleFonts.kanit(
+              fontSize: 12,
+              color: isExpired ? Colors.red[700] : Colors.grey[600],
+              height: 1.35,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Action Buttons Row
+          if (isExpired)
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton.icon(
+                    onPressed: widget.onClaimSla,
+                    icon: const Icon(
+                      CupertinoIcons.arrow_uturn_left_circle_fill,
+                      size: 16,
+                    ),
+                    label: Text(
+                      "ดึงเงินคืนทันที",
+                      style: GoogleFonts.kanit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onContact,
+                    icon: const Icon(CupertinoIcons.phone_fill, size: 14),
+                    label: Text(
+                      "สายด่วน",
+                      style: GoogleFonts.kanit(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      side: const BorderSide(color: Colors.green, width: 1.2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onCancel,
+                    icon: const Icon(CupertinoIcons.clear_circled, size: 14),
+                    label: Text(
+                      "ยกเลิก",
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: BorderSide(
+                        color: Colors.red.withValues(alpha: 0.6),
+                        width: 1.2,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: canNudge ? widget.onNudge : null,
+                    icon: const Icon(CupertinoIcons.bell_fill, size: 14),
+                    label: Text(
+                      nudgeLabel,
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.withValues(
+                        alpha: 0.3,
+                      ),
+                      disabledForegroundColor: Colors.grey[500],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onContact,
+                    icon: const Icon(CupertinoIcons.phone_fill, size: 14),
+                    label: Text(
+                      "สายด่วน",
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.green,
+                      side: const BorderSide(color: Colors.green, width: 1.2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
