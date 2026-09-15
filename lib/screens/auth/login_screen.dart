@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -556,8 +557,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      body: Stack(
+    return AppExitScope(
+      child: Scaffold(
+        body: Stack(
         children: [
           _buildBgCircle(isDark, top: -100, right: -100, size: 300),
           _buildBgCircle(
@@ -822,7 +824,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildBgCircle(

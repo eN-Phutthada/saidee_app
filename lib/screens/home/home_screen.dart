@@ -19,6 +19,7 @@ import 'package:saidee_app/services/recommendation_service.dart';
 import 'search_screen.dart';
 import 'search_results_screen.dart';
 import 'package:saidee_app/services/guided_tour_service.dart';
+import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -279,7 +280,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
+    return AppExitScope(
+      onWillPopTab: () {
+        if (_selectedIndex != 0) {
+          setState(() => _selectedIndex = 0);
+          return true;
+        }
+        return false;
+      },
+      child: Scaffold(
       appBar: _selectedIndex == 0
           ? AppBar(
               toolbarHeight: 80,
@@ -593,7 +602,8 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-    );
+    ),
+  );
   }
 }
 

@@ -19,6 +19,7 @@ import 'manage_announcement.dart';
 import 'admin_transaction.dart';
 import 'admin_shop_search.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -167,7 +168,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
+    return AppExitScope(
+      onWillPopTab: () {
+        if (_selectedIndex != 0) {
+          setState(() => _selectedIndex = 0);
+          return true;
+        }
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: isDark
           ? theme.scaffoldBackgroundColor
           : const Color(0xFFF7F9FC),
@@ -215,7 +224,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
           );
         },
       ),
-    );
+    ),
+  );
   }
 }
 
