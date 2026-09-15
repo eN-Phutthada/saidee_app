@@ -1424,7 +1424,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                 "🔥 วิกฤต (>18 ชม.)",
                                 style: TextStyle(
                                   color: Colors.red,
-                                  fontSize: 9,
+                                  fontSize: 8,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

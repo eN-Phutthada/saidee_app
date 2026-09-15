@@ -58,6 +58,11 @@ class SellerOrderDetailScreen extends StatelessWidget {
       statusDesc = "คำสั่งซื้อถูกยกเลิกแล้ว";
       headerColor = Colors.red;
       headerIcon = CupertinoIcons.xmark_circle;
+    } else if (status == 'disputed') {
+      statusTitle = "มีข้อพิพาท";
+      statusDesc = "ระงับการโอนเงินชั่วคราว ทีมงานกำลังตรวจสอบปัญหา";
+      headerColor = Colors.purple;
+      headerIcon = CupertinoIcons.exclamationmark_shield_fill;
     }
 
     Timestamp? ts = orderData['createdAt'];
@@ -126,6 +131,7 @@ class SellerOrderDetailScreen extends StatelessWidget {
               padding: const EdgeInsets.all(15.0),
               child: Column(
                 children: [
+                  _buildEscrowSellerNotice(theme, isDark, status),
                   Container(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 15),
@@ -459,6 +465,57 @@ class SellerOrderDetailScreen extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: status == 'completed'
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : (status == 'disputed'
+                                    ? Colors.purple.withValues(alpha: 0.1)
+                                    : Colors.orange.withValues(alpha: 0.1)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                status == 'completed'
+                                    ? CupertinoIcons.checkmark_circle_fill
+                                    : (status == 'disputed'
+                                        ? CupertinoIcons.exclamationmark_triangle_fill
+                                        : CupertinoIcons.hourglass),
+                                size: 16,
+                                color: status == 'completed'
+                                    ? Colors.green
+                                    : (status == 'disputed'
+                                        ? Colors.purple
+                                        : Colors.orange),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  status == 'completed'
+                                      ? "ยอดเงินโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว"
+                                      : (status == 'disputed'
+                                          ? "ระงับการปล่อยเงินชั่วคราว (มีข้อพิพาท)"
+                                          : "ระบบพักเงินไว้แล้ว โอนเข้าวอลเล็ททันทีเมื่อส่งสำเร็จ"),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: status == 'completed'
+                                        ? Colors.green
+                                        : (status == 'disputed'
+                                            ? Colors.purple
+                                            : Colors.orange),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -530,6 +587,94 @@ class SellerOrderDetailScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
               fontSize: 14,
               color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEscrowSellerNotice(ThemeData theme, bool isDark, String status) {
+    String noticeText =
+        "ลูกค้าชำระเงินเรียบร้อยแล้ว (ระบบ Saidee พักเงินไว้ให้อย่างปลอดภัย 100%) ท่านจะได้รับเงินเข้า SAIDEE Wallet ทันทีเมื่อผู้ซื้อได้รับสินค้าหรือครบกำหนด 7 วัน";
+    Color noticeColor = Colors.teal;
+    IconData noticeIcon = CupertinoIcons.shield_lefthalf_fill;
+
+    if (status == 'completed') {
+      noticeText =
+          "คำสั่งซื้อนี้เสร็จสมบูรณ์แล้ว ยอดเงินถูกโอนเข้า SAIDEE Wallet ของท่านเรียบร้อยแล้ว สามารถกดถอนเงินเข้าบัญชีธนาคารได้ตลอดเวลา";
+      noticeColor = Colors.green;
+      noticeIcon = CupertinoIcons.checkmark_shield_fill;
+    } else if (status == 'disputed') {
+      noticeText =
+          "คำสั่งซื้อนี้มีรายงานข้อพิพาทจากผู้ซื้อ ระบบทำการระงับการปล่อยเงินชั่วคราว ทีมงานกำลังดำเนินการตรวจสอบและจะประสานงานต่อไป";
+      noticeColor = Colors.purple;
+      noticeIcon = CupertinoIcons.exclamationmark_shield_fill;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: noticeColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: noticeColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(noticeIcon, color: noticeColor, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      "ระบบตัวกลางคุ้มครองยอดเงิน",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: noticeColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: noticeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        status == 'completed'
+                            ? "ได้รับเงินแล้ว"
+                            : (status == 'disputed'
+                                ? "ระงับเงินชั่วคราว"
+                                : "พักเงินปลอดภัย"),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: noticeColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  noticeText,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[300] : Colors.grey[800],
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

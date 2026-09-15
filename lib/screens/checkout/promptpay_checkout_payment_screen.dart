@@ -47,8 +47,12 @@ class _PromptPayCheckoutPaymentScreenState
   File? _slipImage;
   bool _isVerifying = false;
 
-  final String promptPayNumber = "0647490079";
-  final String accountName = "นายพุทธดา หาญนอก";
+  String get promptPayNumber => dotenv.isInitialized
+      ? (dotenv.env['ESCROW_PROMPTPAY_NUMBER'] ?? "0647490079")
+      : "0647490079";
+  String get accountName => dotenv.isInitialized
+      ? (dotenv.env['ESCROW_ACCOUNT_NAME'] ?? "นายพุทธดา หาญนอก")
+      : "นายพุทธดา หาญนอก";
 
   final String slipokAuthToken =
       dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
@@ -212,6 +216,8 @@ class _PromptPayCheckoutPaymentScreenState
           'status': 'pending',
           'paymentMethod': 'promptpay_qr',
           'paymentStatus': 'escrow_held',
+          'escrowStatus': 'held',
+          'isDisputed': false,
           'slipUrl': slipUrl,
           'transRef': transRef,
           'trackingNumber': '',

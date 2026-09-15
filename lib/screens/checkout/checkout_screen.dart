@@ -793,6 +793,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'couponCode': _appliedCoupon?['code'] ?? '',
           'total': finalShopTotal,
           'status': 'pending',
+          'paymentMethod': 'wallet',
+          'paymentStatus': 'paid',
+          'escrowStatus': 'held',
+          'isDisputed': false,
           'trackingNumber': '',
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -826,7 +830,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         userId: user.uid,
         title: "ชำระเงินสำเร็จแล้ว 💳",
         body:
-            "คำสั่งซื้อยอด ${_grandTotal.toStringAsFixed(2)} ฿ ชำระผ่าน SAIDEE Wallet เรียบร้อยแล้ว",
+            "คำสั่งซื้อยอด ${_grandTotal.toStringAsFixed(2)} ฿ ชำระผ่าน SAIDEE Wallet เรียบร้อยแล้ว (ระบบคุ้มครองเงินพักไว้ที่ตัวกลางอย่างปลอดภัย)",
         type: 'order',
       );
 
@@ -835,7 +839,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           userId: group.sellerId,
           title: "มีคำสั่งซื้อใหม่เข้ามา! 📦",
           body:
-              "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว กรุณาจัดเตรียมและจัดส่งสินค้า",
+              "ร้าน ${group.sellerName} มีคำสั่งซื้อใหม่ชำระเงินเรียบร้อยแล้ว (ระบบพักเงินไว้ให้ที่ตัวกลาง) กรุณาจัดเตรียมและจัดส่งสินค้า",
           type: 'order',
         );
       }

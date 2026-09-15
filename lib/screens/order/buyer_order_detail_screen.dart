@@ -53,7 +53,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
     AppDialog.showCustomDialog(
       title: "ยืนยันการรับสินค้า",
       message:
-          "คุณได้ตรวจสอบสินค้าและต้องการยืนยันการรับสินค้าใช่หรือไม่?\n(การกระทำนี้ไม่สามารถย้อนกลับได้)",
+          "คุณได้รับสินค้าและตรวจสอบความถูกต้องเรียบร้อยแล้วใช่หรือไม่?\n\nเมื่อกดยืนยัน ระบบ Saidee Guarantee จะทำการปล่อยเงินที่พักไว้ให้กับผู้ขายทันที และไม่สามารถย้อนกลับได้",
       icon: CupertinoIcons.checkmark_seal_fill,
       iconColor: Colors.green,
       confirmText: "ฉันยอมรับสินค้า",
@@ -71,6 +71,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
               .doc(widget.orderId)
               .update({
                 'status': 'completed',
+                'escrowStatus': 'released',
+                'escrowReleasedAt': FieldValue.serverTimestamp(),
                 'updatedAt': FieldValue.serverTimestamp(),
               });
 
@@ -667,7 +669,12 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                               .doc(widget.orderId)
                               .update({
                                 'status': 'disputed',
+                                'isDisputed': true,
+                                'disputeReason': topicCtrl.text.trim(),
+                                'disputeDetail': detailCtrl.text.trim(),
+                                'disputeEvidenceUrl': imageUrl,
                                 'disputedAt': FieldValue.serverTimestamp(),
+                                'updatedAt': FieldValue.serverTimestamp(),
                               });
 
                           String sellerId = widget.orderData['sellerId'] ?? '';
@@ -676,7 +683,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
                           NotificationService.sendNotification(
                             userId: sellerId,
-                            title: "แจ้งเตือนข้อพาทคำสั่งซื้อ ⚠️",
+                            title: "แจ้งเตือนข้อพิพาทคำสั่งซื้อ ⚠️",
                             body:
                                 "ผู้ซื้อรายงานปัญหาในคำสั่งซื้อ ระบบระงับการโอนเงินชั่วคราว ทีมงานกำลังเข้าตรวจสอบ",
                             type: 'dispute',
@@ -685,7 +692,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
                           NotificationService.sendNotification(
                             userId: currentUid,
-                            title: "ส่งรายงานข้อพาทเรียบร้อย ⚠️",
+                            title: "ส่งรายงานข้อพิพาทเรียบร้อย ⚠️",
                             body:
                                 "ระบบได้รับเรื่องรายงานของคุณแล้ว และได้ทำการระงับการปล่อยเงินชั่วคราวเรียบร้อยแล้ว",
                             type: 'dispute',
@@ -781,7 +788,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
       headerColor = Colors.red;
       headerIcon = CupertinoIcons.xmark_circle;
     } else if (status == 'disputed') {
-      statusTitle = "อยู่ระหว่างพิจารณาข้อพาท";
+      statusTitle = "อยู่ระหว่างพิจารณาข้อพิพาท";
       statusDesc = "ระงับการโอนเงินชั่วคราว ทีมงานกำลังตรวจสอบปัญหา";
       headerColor = Colors.purple;
       headerIcon = CupertinoIcons.exclamationmark_shield_fill;
@@ -824,6 +831,8 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
               padding: const EdgeInsets.all(15.0),
               child: Column(
                 children: [
+                  _buildEscrowGuaranteeCard(theme, isDark, status),
+
                   if (status == 'shipping' || status == 'completed')
                     _buildTrackingCard(theme, isDark, widget.orderData),
 
@@ -1355,11 +1364,11 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
         ],
       ),
       child: SafeArea(
-        child: SizedBox(
-          width: double.infinity,
-          height: 55,
-          child: status == 'pending'
-              ? OutlinedButton(
+        child: status == 'pending'
+            ? SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: OutlinedButton(
                   onPressed: () => _cancelOrder(context, totalAmount),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
@@ -1372,25 +1381,150 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
                     "ยกเลิกคำสั่งซื้อ",
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
-                )
-              : ElevatedButton(
-                  onPressed: _confirmDelivery,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: _confirmDelivery,
+                      icon: const Icon(
+                        CupertinoIcons.checkmark_seal_fill,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      label: const Text(
+                        "ฉันได้ตรวจสอบและยอมรับสินค้า",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    "ฉันได้ตรวจสอบและยอมรับสินค้า",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white,
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 36,
+                    child: TextButton.icon(
+                      onPressed: () => _showReportSheet(context),
+                      icon: const Icon(
+                        CupertinoIcons.exclamationmark_shield,
+                        color: Colors.red,
+                        size: 16,
+                      ),
+                      label: const Text(
+                        "ยังไม่ได้รับพัสดุ / รายงานปัญหาข้อพิพาท",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  Widget _buildEscrowGuaranteeCard(ThemeData theme, bool isDark, String status) {
+    String message =
+        "เงินของคุณถูกดูแลไว้ที่ตัวกลาง SAIDEE อย่างปลอดภัย ผู้ขายจะได้รับเงินเมื่อคุณตรวจสอบและกดยืนยันรับสินค้าแล้วเท่านั้น";
+    Color badgeColor = Colors.teal;
+    IconData badgeIcon = CupertinoIcons.shield_lefthalf_fill;
+
+    if (status == 'completed') {
+      message =
+          "คำสั่งซื้อนี้เสร็จสมบูรณ์ ระบบได้ปล่อยยอดเงินให้ผู้ขายเรียบร้อยแล้ว";
+      badgeColor = Colors.green;
+      badgeIcon = CupertinoIcons.checkmark_shield_fill;
+    } else if (status == 'disputed') {
+      message =
+          "คำสั่งซื้อนี้อยู่ระหว่างการตรวจสอบข้อพิพาท ระบบระงับการปล่อยเงินให้ผู้ขายชั่วคราวเพื่อความปลอดภัย";
+      badgeColor = Colors.purple;
+      badgeIcon = CupertinoIcons.exclamationmark_shield_fill;
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(badgeIcon, color: badgeColor, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      "SAIDEE GUARANTEE",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        fontSize: 13,
+                        color: badgeColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        status == 'completed'
+                            ? "โอนเงินแล้ว"
+                            : (status == 'disputed'
+                                ? "ระงับเงิน"
+                                : "พักเงินปลอดภัย"),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.grey[300] : Colors.grey[800],
+                    height: 1.4,
                   ),
                 ),
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

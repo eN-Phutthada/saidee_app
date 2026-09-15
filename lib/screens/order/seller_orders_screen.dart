@@ -46,12 +46,15 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         if (ts != null) {
           DateTime shippedDate = ts.toDate();
 
-          if (now.difference(shippedDate).inDays >= 7) {
+          bool isDisputed = data['isDisputed'] == true || data['status'] == 'disputed';
+          if (now.difference(shippedDate).inDays >= 7 && !isDisputed) {
             double totalAmount = (data['total'] ?? 0).toDouble();
             WriteBatch batch = FirebaseFirestore.instance.batch();
 
             batch.update(doc.reference, {
               'status': 'completed',
+              'escrowStatus': 'released',
+              'escrowReleasedAt': FieldValue.serverTimestamp(),
               'updatedAt': FieldValue.serverTimestamp(),
               'autoCompleted': true,
             });
@@ -72,11 +75,21 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               'amount': totalAmount,
               'order_id': doc.id,
               'status': 'success',
-              'note': 'Auto-completed',
+              'note': 'Auto-completed (Escrow released)',
               'createdAt': FieldValue.serverTimestamp(),
             });
 
             await batch.commit();
+
+            NotificationService.sendNotification(
+              userId: user.uid,
+              title: "ได้รับโอนเงินคำสั่งซื้ออัตโนมัติ 💰",
+              body:
+                  "คำสั่งซื้อครบกำหนด 7 วันแล้ว ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ถูกโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
+              type: 'wallet',
+              orderId: doc.id,
+            );
+
             debugPrint("Auto-completed order: ${doc.id}");
           }
         }
@@ -922,6 +935,10 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               statusText = "ยกเลิกแล้ว";
               statusColor = Colors.red;
               bgColor = Colors.red.withValues(alpha: 0.1);
+            } else if (currentStatus == 'disputed') {
+              statusText = "มีข้อพิพาท";
+              statusColor = Colors.purple;
+              bgColor = Colors.purple.withValues(alpha: 0.1);
             }
 
             return GestureDetector(

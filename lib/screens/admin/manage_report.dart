@@ -373,7 +373,8 @@ class ManageReportScreen extends StatelessWidget {
               .doc(orderId);
           batch.update(orderRef, {
             'status': 'cancelled',
-            'note': 'แอดมินตัดสินข้อพาท: คืนเงินให้ผู้ซื้อ',
+            'escrowStatus': 'refunded',
+            'note': 'แอดมินตัดสินข้อพิพาท: คืนเงินให้ผู้ซื้อ',
             'resolvedAt': FieldValue.serverTimestamp(),
           });
 
@@ -406,18 +407,18 @@ class ManageReportScreen extends StatelessWidget {
 
           NotificationService.sendNotification(
             userId: buyerId,
-            title: "อนุมัติคืนเงินข้อพาท 💰",
+            title: "อนุมัติคืนเงินข้อพิพาท 💰",
             body:
-                "ข้อพาทคำสั่งซื้อได้รับการอนุมัติ คืนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+                "ข้อพิพาทคำสั่งซื้อได้รับการอนุมัติ คืนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
             type: 'wallet',
             orderId: orderId,
           );
 
           NotificationService.sendNotification(
             userId: report['reported_id'] ?? '',
-            title: "แจ้งผลการตัดสินข้อพาท ℹ️",
+            title: "แจ้งผลการตัดสินข้อพิพาท ℹ️",
             body:
-                "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติคืนเงินให้ผู้ซื้อ)",
+                "ข้อพิพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติคืนเงินให้ผู้ซื้อ)",
             type: 'dispute',
             orderId: orderId,
           );
@@ -474,7 +475,9 @@ class ManageReportScreen extends StatelessWidget {
               .doc(orderId);
           batch.update(orderRef, {
             'status': 'completed',
-            'note': 'แอดมินตัดสินข้อพาท: โอนเงินให้ผู้ขาย',
+            'escrowStatus': 'released',
+            'escrowReleasedAt': FieldValue.serverTimestamp(),
+            'note': 'แอดมินตัดสินข้อพิพาท: โอนเงินให้ผู้ขาย',
             'resolvedAt': FieldValue.serverTimestamp(),
           });
 
@@ -509,18 +512,18 @@ class ManageReportScreen extends StatelessWidget {
 
           NotificationService.sendNotification(
             userId: sellerId,
-            title: "อนุมัติโอนเงินข้อพาท 💰",
+            title: "อนุมัติโอนเงินข้อพิพาท 💰",
             body:
-                "ข้อพาทได้รับการอนุมัติ โอนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
+                "ข้อพิพาทได้รับการอนุมัติ โอนเงิน ${total.toStringAsFixed(2)} ฿ เข้า SAIDEE Wallet เรียบร้อยแล้ว",
             type: 'wallet',
             orderId: orderId,
           );
 
           NotificationService.sendNotification(
             userId: report['reporter_id'] ?? '',
-            title: "แจ้งผลการตัดสินข้อพาท ℹ️",
+            title: "แจ้งผลการตัดสินข้อพิพาท ℹ️",
             body:
-                "ข้อพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติปล่อยเงินให้ผู้ขาย)",
+                "ข้อพิพาทคำสั่งซื้อได้รับการตัดสินแล้ว (อนุมัติปล่อยเงินให้ผู้ขาย)",
             type: 'dispute',
             orderId: orderId,
           );

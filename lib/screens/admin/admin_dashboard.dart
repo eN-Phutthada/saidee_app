@@ -5,11 +5,9 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
-import 'package:saidee_app/main.dart';
 
 import 'manage_master_data.dart';
 import 'manage_shipping.dart';
@@ -76,27 +74,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _showNudgeNotification(Map<String, dynamic> data) async {
     double amount = (data['amount'] ?? 0).toDouble();
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
-          importance: Importance.max,
-          priority: Priority.max,
-          icon: '@mipmap/launcher_icon',
-        );
-
-    const NotificationDetails platformDetails = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      id: DateTime.now().millisecond,
-      title: '🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!',
-      body:
-          'คำขอถอนเงิน ฿${amount.toStringAsFixed(2)} กำลังรอดำเนินการ โปรดตรวจสอบ',
-      notificationDetails: platformDetails,
-    );
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
 
     Get.snackbar(
       '🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!',
@@ -113,26 +93,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Future<void> _showWithdrawalNotification(Map<String, dynamic> data) async {
     double amount = (data['amount'] ?? 0).toDouble();
 
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          channelDescription: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: '@mipmap/launcher_icon',
-        );
-
-    const NotificationDetails platformDetails = NotificationDetails(
-      android: androidDetails,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      id: DateTime.now().millisecond,
-      title: 'คำร้องขอถอนเงินใหม่!',
-      body: 'มีผู้ใช้ขอถอนเงินจำนวน ${amount.toStringAsFixed(2)} ฿',
-      notificationDetails: platformDetails,
-    );
+    if (Get.isSnackbarOpen) {
+      Get.closeCurrentSnackbar();
+    }
 
     Get.snackbar(
       'คำร้องขอถอนเงินใหม่!',
