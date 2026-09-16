@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/auth/register_screen.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,16 +40,28 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _showBannedPopup() {
+  void _showBannedPopup([Map<String, dynamic>? userData]) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    String reason =
+        userData?['banReason'] ?? 'ละเมิดนโยบายหรือข้อกำหนดการใช้งาน';
+    dynamic until = userData?['bannedUntil'];
+    String durationText;
+    if (until is Timestamp) {
+      final d = until.toDate();
+      durationText =
+          "การระงับมีผลชั่วคราวถึง: ${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}\n(เมื่อพ้นกำหนดระบบจะปลดระงับอัตโนมัติ)";
+    } else {
+      durationText = "การระงับมีผลถาวร";
+    }
 
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         backgroundColor: theme.cardColor,
         child: Padding(
-          padding: const EdgeInsets.all(25.0),
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -61,10 +74,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Icon(
                   CupertinoIcons.nosign,
                   color: Colors.red,
-                  size: 60,
+                  size: 50,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               const Text(
                 "บัญชีถูกระงับการใช้งาน",
                 style: TextStyle(
@@ -74,20 +87,51 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "สาเหตุ: $reason",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      durationText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey[300] : Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Text(
-                "บัญชีของคุณถูกระงับการใช้งานเนื่องจากละเมิดนโยบายของระบบ หรือถูกรายงานจากผู้ใช้อื่น\n\nหากมีข้อสงสัยกรุณาติดต่อผู้ดูแลระบบ",
+                "หากคุณเชื่อว่านี่เป็นข้อผิดพลาด หรือประสงค์จะยื่นอุทธรณ์ กรุณาติดต่อทีมงานผู้ดูแลระบบ",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  height: 1.5,
-                  fontSize: 14,
+                  height: 1.4,
+                  fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 46,
                 child: ElevatedButton(
                   onPressed: () => Get.back(),
                   style: ElevatedButton.styleFrom(
@@ -97,11 +141,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   child: const Text(
-                    "ตกลง",
+                    "รับทราบ",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 15,
                     ),
                   ),
                 ),
@@ -427,10 +471,16 @@ class _LoginScreenState extends State<LoginScreen> {
             String status = userData['status'] ?? 'active';
 
             if (status == 'suspended' || status == 'banned') {
-              await FirebaseAuth.instance.signOut();
-              setState(() => _isLoading = false);
-              _showBannedPopup();
-              return;
+              bool unbanned = await ModerationService.checkAndExpireBan(
+                userId: user.uid,
+                userData: userData,
+              );
+              if (!unbanned) {
+                await FirebaseAuth.instance.signOut();
+                setState(() => _isLoading = false);
+                _showBannedPopup(userData);
+                return;
+              }
             }
           }
         }

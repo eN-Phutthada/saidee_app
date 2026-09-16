@@ -15,6 +15,7 @@ import '../cart/cart_screen.dart';
 import '../auth/login_screen.dart';
 import '../home/search_results_screen.dart';
 import 'add_product_screen.dart';
+import 'package:saidee_app/widgets/report_bottom_sheet.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -912,6 +913,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               },
                             ),
                           ),
+                          if (!isOwner) ...[
+                            const SizedBox(width: 10),
+                            CircleAvatar(
+                              backgroundColor: isDark
+                                  ? Colors.black54
+                                  : Colors.white70,
+                              child: IconButton(
+                                icon: const Icon(
+                                  CupertinoIcons.flag,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                tooltip: "รายงานสินค้านี้",
+                                onPressed: () {
+                                  ReportBottomSheet.show(
+                                    context: context,
+                                    targetType: 'product',
+                                    targetId: displayProduct.id,
+                                    targetTitle: displayProduct.name,
+                                    reportedUserId: displayProduct.sellerId,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

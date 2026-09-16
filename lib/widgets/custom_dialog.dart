@@ -13,6 +13,7 @@ class AppDialog {
     bool showCancel = false,
     String cancelText = "ยกเลิก",
     bool isDestructive = false,
+    Widget? content,
   }) {
     final context = Get.context!;
     final theme = Theme.of(context);
@@ -52,6 +53,10 @@ class AppDialog {
                   height: 1.4,
                 ),
               ),
+              if (content != null) ...[
+                const SizedBox(height: 15),
+                content,
+              ],
               const SizedBox(height: 30),
               Row(
                 children: [

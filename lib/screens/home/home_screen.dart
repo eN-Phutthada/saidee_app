@@ -19,6 +19,7 @@ import 'package:saidee_app/services/recommendation_service.dart';
 import 'search_screen.dart';
 import 'search_results_screen.dart';
 import 'package:saidee_app/services/guided_tour_service.dart';
+import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -185,12 +186,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 if ((status == 'suspended' || status == 'banned') &&
                     !_isBannedAlertShown) {
+                  bool unbanned = await ModerationService.checkAndExpireBan(
+                    userId: user.uid,
+                    userData: userData,
+                  );
+                  if (unbanned) return;
+
                   _isBannedAlertShown = true;
                   _userStatusSubscription?.cancel();
 
                   await FirebaseAuth.instance.signOut();
 
-                  _showBannedPopup();
+                  _showBannedPopup(userData);
                 }
               }
             },
@@ -201,7 +208,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showBannedPopup() {
+  void _showBannedPopup([Map<String, dynamic>? userData]) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    String reason =
+        userData?['banReason'] ?? 'ละเมิดนโยบายหรือข้อกำหนดการใช้งาน';
+    dynamic until = userData?['bannedUntil'];
+    String durationText;
+    if (until is Timestamp) {
+      final d = until.toDate();
+      durationText =
+          "การระงับมีผลชั่วคราวถึง: ${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}\n(เมื่อพ้นกำหนดระบบจะปลดระงับอัตโนมัติ)";
+    } else {
+      durationText = "การระงับมีผลถาวร";
+    }
+
     Get.dialog(
       PopScope(
         canPop: false,
@@ -209,14 +231,14 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: Theme.of(context).cardColor,
+          backgroundColor: theme.cardColor,
           child: Padding(
-            padding: const EdgeInsets.all(30.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
                     color: Colors.red.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
@@ -224,29 +246,64 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: const Icon(
                     CupertinoIcons.nosign,
                     color: Colors.red,
-                    size: 60,
+                    size: 50,
                   ),
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 16),
                 const Text(
                   "บัญชีถูกระงับการใช้งาน",
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.red,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  "บัญชีของคุณถูกระงับเนื่องจากละเมิดนโยบายของแอปพลิเคชัน หรือถูกรายงานจากผู้ใช้ท่านอื่น\n\nระบบได้ทำการออกจากระบบอัตโนมัติ กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[600], height: 1.5),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "สาเหตุ: $reason",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        durationText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 12),
+                Text(
+                  "ระบบได้ทำการออกจากระบบอัตโนมัติ หากคุณมีข้อสงสัยหรือประสงค์จะยื่นอุทธรณ์ กรุณาติดต่อผู้ดูแลระบบ",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    height: 1.4,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: 46,
                   child: ElevatedButton(
                     onPressed: () {
                       Get.offAll(() => const LoginScreen());
@@ -262,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 15,
                       ),
                     ),
                   ),

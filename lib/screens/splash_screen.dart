@@ -7,6 +7,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/moderation_service.dart';
 
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:flutter/services.dart';
@@ -76,6 +77,19 @@ class _SplashScreenState extends State<SplashScreen> {
             duration: const Duration(milliseconds: 1000),
           );
           return;
+        }
+
+        // ตรวจสอบการพ้นกำหนดการระงับบัญชีชั่วคราว (Auto-Expiry)
+        final userDoc = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .doc(user.uid)
+            .get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          await ModerationService.checkAndExpireBan(
+            userId: user.uid,
+            userData: userData,
+          );
         }
       } catch (e) {
         debugPrint("Error checking admin status in Splash: $e");

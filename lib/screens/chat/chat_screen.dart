@@ -7,6 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/security_service.dart';
 import 'package:intl/intl.dart';
+import 'package:saidee_app/widgets/report_bottom_sheet.dart';
 
 class ChatScreen extends StatefulWidget {
   final String targetUserId;
@@ -260,6 +261,41 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: Icon(
+              CupertinoIcons.ellipsis_vertical,
+              color: theme.colorScheme.onSurface,
+            ),
+            onSelected: (val) {
+              if (val == 'report') {
+                ReportBottomSheet.show(
+                  context: context,
+                  targetType: 'chat',
+                  targetId: chatRoomId,
+                  targetTitle: "การสนทนากับ ${widget.targetUserName}",
+                  reportedUserId: widget.targetUserId,
+                  reportedUserName: widget.targetUserName,
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(CupertinoIcons.flag, color: Colors.red, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      "รายงานผู้ใช้นี้",
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [

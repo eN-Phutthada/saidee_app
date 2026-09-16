@@ -3,7 +3,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
@@ -23,39 +25,101 @@ class AdminUserDetailScreen extends StatefulWidget {
 class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
   late bool _isActive;
   bool _isLoading = false;
+  String? _banReason;
+  Timestamp? _bannedUntil;
+  int _strikeCount = 0;
 
   @override
   void initState() {
     super.initState();
     _isActive = (widget.userData['status'] ?? 'active') == 'active';
+    _banReason = widget.userData['banReason'];
+    if (widget.userData['bannedUntil'] is Timestamp) {
+      _bannedUntil = widget.userData['bannedUntil'];
+    }
+    _strikeCount = (widget.userData['strikeCount'] ?? 0) as int;
   }
 
-  Future<void> _toggleUserStatus() async {
+  String _formatDateTime(Timestamp? ts) {
+    if (ts == null) return "ถาวร";
+    final d = ts.toDate();
+    return "${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _unbanUser() async {
     setState(() => _isLoading = true);
     try {
-      String newStatus = _isActive ? 'suspended' : 'active';
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .update({'status': newStatus});
-
-      setState(() => _isActive = !_isActive);
-
-      _showCustomSnackbar(
-        "อัปเดตสำเร็จ",
-        _isActive
-            ? "ปลดระงับบัญชีนี้แล้ว ผู้ใช้สามารถใช้งานได้ปกติ"
-            : "ระงับการใช้งานบัญชีนี้เรียบร้อยแล้ว",
-        _isActive
-            ? CupertinoIcons.checkmark_shield_fill
-            : CupertinoIcons.nosign,
-        _isActive ? Colors.green[700]! : Colors.red[700]!,
+      String adminUid = FirebaseAuth.instance.currentUser?.uid ?? 'Admin';
+      bool success = await ModerationService.unbanUser(
+        userId: widget.userId,
+        adminUid: adminUid,
       );
+
+      if (success) {
+        setState(() {
+          _isActive = true;
+          _banReason = null;
+          _bannedUntil = null;
+        });
+
+        _showCustomSnackbar(
+          "อัปเดตสำเร็จ",
+          "ปลดระงับบัญชีนี้แล้ว ผู้ใช้สามารถใช้งานได้ปกติ",
+          CupertinoIcons.checkmark_shield_fill,
+          Colors.green[700]!,
+        );
+      } else {
+        throw Exception("ไม่สามารถปลดระงับได้");
+      }
     } catch (e) {
       _showCustomSnackbar(
         "เกิดข้อผิดพลาด",
-        "ไม่สามารถอัปเดตสถานะได้",
+        "ไม่สามารถอัปเดตสถานะได้: $e",
+        CupertinoIcons.xmark_circle_fill,
+        Colors.red[800]!,
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _banUser({
+    required String reason,
+    Duration? duration,
+  }) async {
+    setState(() => _isLoading = true);
+    try {
+      String adminUid = FirebaseAuth.instance.currentUser?.uid ?? 'Admin';
+      bool success = await ModerationService.banUser(
+        userId: widget.userId,
+        reason: reason,
+        duration: duration,
+        adminUid: adminUid,
+      );
+
+      if (success) {
+        setState(() {
+          _isActive = false;
+          _banReason = reason;
+          _bannedUntil = duration != null
+              ? Timestamp.fromDate(DateTime.now().add(duration))
+              : null;
+          _strikeCount += 1;
+        });
+
+        _showCustomSnackbar(
+          "อัปเดตสำเร็จ",
+          "ระงับการใช้งานบัญชีนี้เรียบร้อยแล้ว",
+          CupertinoIcons.nosign,
+          Colors.red[700]!,
+        );
+      } else {
+        throw Exception("ไม่สามารถระงับบัญชีได้");
+      }
+    } catch (e) {
+      _showCustomSnackbar(
+        "เกิดข้อผิดพลาด",
+        "ไม่สามารถอัปเดตสถานะได้: $e",
         CupertinoIcons.xmark_circle_fill,
         Colors.red[800]!,
       );
@@ -284,7 +348,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                               Text(
                                 _isActive
                                     ? "สถานะ: ใช้งานปกติ (Active)"
-                                    : "สถานะ: ถูกระงับ (Suspended)",
+                                    : "สถานะ: ถูกระงับ (${_bannedUntil != null ? 'ชั่วคราว' : 'ถาวร'})",
                                 style: TextStyle(
                                   color: _isActive
                                       ? Colors.green[700]
@@ -296,6 +360,27 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                             ],
                           ),
                         ),
+                        if (!_isActive && _banReason != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            "เหตุผล: $_banReason",
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (_bannedUntil != null)
+                            Text(
+                              "พ้นโทษ: ${_formatDateTime(_bannedUntil)}",
+                              style: TextStyle(
+                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                fontSize: 11,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                        ],
                       ],
                     ),
                   ),
@@ -381,6 +466,11 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                         _buildRowItem("เบอร์โทรศัพท์", phone, isDark),
                         _buildRowItem("วันที่สมัคร", joinDate, isDark),
                         _buildRowItem("Bio", bio, isDark),
+                        _buildRowItem(
+                          "ประวัติการตักเตือน (Strikes)",
+                          "$_strikeCount ครั้ง",
+                          isDark,
+                        ),
                         _buildRowItem(
                           "User ID",
                           widget.userId,
@@ -596,23 +686,127 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
   }
 
   void _confirmToggleStatus(BuildContext context) {
-    AppDialog.showCustomDialog(
-      title: _isActive ? "ยืนยันการระงับบัญชี" : "ยืนยันการปลดระงับ",
-      message: _isActive
-          ? "คุณแน่ใจหรือไม่ที่จะระงับผู้ใช้นี้?\nพวกเขาจะไม่สามารถเข้าสู่ระบบหรือทำธุรกรรมใดๆ ได้"
-          : "คุณแน่ใจหรือไม่ที่จะปลดระงับผู้ใช้นี้?\nระบบจะเปิดสิทธิ์ให้ใช้งานได้ตามปกติ",
-      icon: _isActive
-          ? CupertinoIcons.nosign
-          : CupertinoIcons.checkmark_shield_fill,
-      iconColor: _isActive ? Colors.red : Colors.green,
-      confirmText: _isActive ? "ระงับบัญชี" : "ปลดระงับ",
-      showCancel: true,
-      cancelText: "ยกเลิก",
-      isDestructive: _isActive,
-      onConfirm: () {
-        Get.back();
-        _toggleUserStatus();
-      },
-    );
+    if (_isActive) {
+      // เปิด Dialog เลือกระยะเวลาและระบุเหตุผลในการแบน
+      int selectedDays = 7;
+      bool isPermanent = false;
+      final reasonController = TextEditingController(
+        text: "ละเมิดกฎระเบียบและข้อกำหนดการใช้งานของแอปพลิเคชัน",
+      );
+
+      Get.dialog(
+        StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.block, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text(
+                    "ระงับการใช้งานบัญชี",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "เลือกระยะเวลาการระงับ:",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      children: [1, 3, 7, 14, 30].map((days) {
+                        final selected = !isPermanent && selectedDays == days;
+                        return ChoiceChip(
+                          label: Text("$days วัน"),
+                          selected: selected,
+                          onSelected: (val) {
+                            if (val) {
+                              setModalState(() {
+                                selectedDays = days;
+                                isPermanent = false;
+                              });
+                            }
+                          },
+                        );
+                      }).toList()
+                        ..add(
+                          ChoiceChip(
+                            label: const Text("ถาวร (Permanent)"),
+                            selected: isPermanent,
+                            selectedColor: Colors.red.withValues(alpha: 0.2),
+                            onSelected: (val) {
+                              if (val) {
+                                setModalState(() {
+                                  isPermanent = true;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: "เหตุผลในการระงับ",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: const Text("ยกเลิก"),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Get.back();
+                    Duration? duration =
+                        isPermanent ? null : Duration(days: selectedDays);
+                    _banUser(
+                      reason: reasonController.text.trim(),
+                      duration: duration,
+                    );
+                  },
+                  child: const Text("ยืนยันระงับบัญชี"),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    } else {
+      AppDialog.showCustomDialog(
+        title: "ยืนยันการปลดระงับ",
+        message:
+            "คุณแน่ใจหรือไม่ที่จะปลดระงับผู้ใช้นี้?\nระบบจะเปิดสิทธิ์ให้ใช้งานได้ตามปกติ และกู้คืนสินค้ากลับมาขาย",
+        icon: CupertinoIcons.checkmark_shield_fill,
+        iconColor: Colors.green,
+        confirmText: "ปลดระงับ",
+        showCancel: true,
+        cancelText: "ยกเลิก",
+        isDestructive: false,
+        onConfirm: () {
+          Get.back();
+          _unbanUser();
+        },
+      );
+    }
   }
 }

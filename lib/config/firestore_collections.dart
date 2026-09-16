@@ -12,4 +12,5 @@ class FirestoreCollections {
   static const String reviews = 'reviews';
   static const String loginHistory = 'login_history';
   static const String feedbacks = 'feedbacks';
+  static const String reports = 'reports';
 }

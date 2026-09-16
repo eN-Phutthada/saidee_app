@@ -13,6 +13,7 @@ import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import '../../models/product_model.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
+import 'package:saidee_app/widgets/report_bottom_sheet.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -29,6 +30,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
 
   bool _isSellerBanned = false;
   bool _isLoadingSeller = true;
+  String _sellerName = "ร้านค้า";
 
   String _filterStatus = 'active';
   String _sortBy = 'newest';
@@ -50,6 +52,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .get();
       if (sellerDoc.exists) {
         String status = sellerDoc.data()?['status'] ?? 'active';
+        _sellerName = sellerDoc.data()?['name'] ?? "ร้านค้า";
         if (status == 'banned' || status == 'suspended') {
           if (mounted) setState(() => _isSellerBanned = true);
         }
@@ -475,6 +478,24 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   color: theme.colorScheme.onSurface,
                 ),
                 onPressed: _shareStore,
+              ),
+            if (!isOwner && !_isSellerBanned)
+              IconButton(
+                icon: const Icon(
+                  CupertinoIcons.flag,
+                  color: Colors.redAccent,
+                  size: 20,
+                ),
+                tooltip: "รายงานร้านค้านี้",
+                onPressed: () {
+                  ReportBottomSheet.show(
+                    context: context,
+                    targetType: 'store',
+                    targetId: widget.sellerId,
+                    targetTitle: _sellerName,
+                    reportedUserId: widget.sellerId,
+                  );
+                },
               ),
             if (!_isSellerBanned)
               IconButton(
