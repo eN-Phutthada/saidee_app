@@ -421,57 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             },
                           ),
                           _buildPasswordStrengthIndicator(isDark),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.08,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: AppTheme.primaryColor.withValues(
-                                  alpha: 0.2,
-                                ),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: const [
-                                    Icon(
-                                      CupertinoIcons.shield_fill,
-                                      color: AppTheme.primaryColor,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text(
-                                      "ข้อกำหนดรหัสผ่านปลอดภัย:",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "• ความยาวอย่างน้อย 8 ตัวอักษรขึ้นไป\n"
-                                  "• ต้องมีทั้งตัวอักษรภาษาอังกฤษ (A-Z, a-z) และตัวเลข (0-9)\n"
-                                  "• หลีกเลี่ยงเบอร์โทรศัพท์ วันเกิด หรือรหัสผ่านเดาง่าย",
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark
-                                        ? Colors.grey[300]
-                                        : Colors.grey[700],
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _buildPasswordRequirements(isDark),
                           const SizedBox(height: 15),
                           _buildInputField(
                             controller: _confirmPasswordController,
@@ -792,6 +742,125 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (strength < 0.4) return Colors.red;
     if (strength < 0.75) return Colors.orange;
     return Colors.green;
+  }
+
+  bool _isPasswordValid(String password) {
+    if (password.length < 8) return false;
+    if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)').hasMatch(password)) return false;
+    return true;
+  }
+
+  Widget _buildPasswordRequirements(bool isDark) {
+    final password = _passwordController.text;
+    if (password.isEmpty || _isPasswordValid(password)) {
+      return const SizedBox.shrink();
+    }
+
+    final hasMinLength = password.length >= 8;
+    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(password);
+    final hasNumber = RegExp(r'\d').hasMatch(password);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(
+                CupertinoIcons.shield_fill,
+                color: AppTheme.primaryColor,
+                size: 16,
+              ),
+              SizedBox(width: 6),
+              Text(
+                "เงื่อนไขการตั้งรหัสผ่าน:",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          _buildRequirementItem(
+            "ความยาวอย่างน้อย 8 ตัวอักษรขึ้นไป",
+            hasMinLength,
+            isDark,
+          ),
+          const SizedBox(height: 4),
+          _buildRequirementItem(
+            "ต้องมีตัวอักษรภาษาอังกฤษ (A-Z, a-z)",
+            hasLetter,
+            isDark,
+          ),
+          const SizedBox(height: 4),
+          _buildRequirementItem(
+            "ต้องมีตัวเลข (0-9)",
+            hasNumber,
+            isDark,
+          ),
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2, right: 6),
+                child: Icon(
+                  CupertinoIcons.info_circle,
+                  size: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  "หลีกเลี่ยงเบอร์โทรศัพท์ วันเกิด หรือรหัสผ่านเดาง่าย",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementItem(String text, bool isMet, bool isDark) {
+    return Row(
+      children: [
+        Icon(
+          isMet
+              ? CupertinoIcons.checkmark_alt_circle_fill
+              : CupertinoIcons.circle,
+          size: 14,
+          color: isMet ? AppTheme.primaryColor : Colors.grey[400],
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            color: isMet
+                ? (isDark ? Colors.green[300] : Colors.green[800])
+                : (isDark ? Colors.grey[300] : Colors.grey[700]),
+          ),
+        ),
+      ],
+    );
   }
 }
 

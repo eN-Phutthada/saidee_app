@@ -6,9 +6,21 @@ import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'buyer_order_detail_screen.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/escrow_service.dart';
 
-class BuyerOrdersScreen extends StatelessWidget {
+class BuyerOrdersScreen extends StatefulWidget {
   const BuyerOrdersScreen({super.key});
+
+  @override
+  State<BuyerOrdersScreen> createState() => _BuyerOrdersScreenState();
+}
+
+class _BuyerOrdersScreenState extends State<BuyerOrdersScreen> {
+  @override
+  void initState() {
+    super.initState();
+    EscrowService.checkAndAutoCompleteOrders();
+  }
 
   @override
   Widget build(BuildContext context) {

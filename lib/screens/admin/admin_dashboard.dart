@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/auth_service.dart';
 
 import 'manage_master_data.dart';
 import 'manage_shipping.dart';
@@ -207,7 +207,7 @@ class AdminDashboardContent extends StatelessWidget {
       isDestructive: true,
       onConfirm: () async {
         Get.back();
-        await FirebaseAuth.instance.signOut();
+        await AuthService.signOut();
         Get.offAll(() => const LoginScreen());
       },
     );

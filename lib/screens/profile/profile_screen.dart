@@ -19,6 +19,7 @@ import 'package:saidee_app/screens/store/store_profile_screen.dart';
 import 'package:saidee_app/services/guided_tour_service.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+import 'package:saidee_app/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -797,7 +798,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: () async {
-                await FirebaseAuth.instance.signOut();
+                await AuthService.signOut();
                 Get.offAll(() => const HomeScreen());
               },
               icon: const Icon(CupertinoIcons.square_arrow_right),
@@ -909,7 +910,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           barrierDismissible: false,
         );
 
-        await FirebaseAuth.instance.signOut();
+        await AuthService.signOut();
 
         Future.delayed(const Duration(milliseconds: 1500), () {
           Get.offAll(() => const HomeScreen());

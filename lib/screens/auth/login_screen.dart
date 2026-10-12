@@ -10,6 +10,7 @@ import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/moderation_service.dart';
+import 'package:saidee_app/services/auth_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -476,7 +477,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 userData: userData,
               );
               if (!unbanned) {
-                await FirebaseAuth.instance.signOut();
+                await AuthService.signOut();
                 setState(() => _isLoading = false);
                 _showBannedPopup(userData);
                 return;

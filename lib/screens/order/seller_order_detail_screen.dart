@@ -6,7 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 
-class SellerOrderDetailScreen extends StatelessWidget {
+import 'package:saidee_app/services/escrow_service.dart';
+
+class SellerOrderDetailScreen extends StatefulWidget {
   final String orderId;
   final Map<String, dynamic> orderData;
 
@@ -15,6 +17,33 @@ class SellerOrderDetailScreen extends StatelessWidget {
     required this.orderId,
     required this.orderData,
   });
+
+  @override
+  State<SellerOrderDetailScreen> createState() =>
+      _SellerOrderDetailScreenState();
+}
+
+class _SellerOrderDetailScreenState extends State<SellerOrderDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkAutoRelease();
+  }
+
+  Future<void> _checkAutoRelease() async {
+    if (widget.orderData['status'] == 'shipping') {
+      bool released = await EscrowService.checkAndAutoCompleteSingleOrder(
+        orderId: widget.orderId,
+        orderData: widget.orderData,
+      );
+      if (released && mounted) {
+        setState(() {
+          widget.orderData['status'] = 'completed';
+          widget.orderData['escrowStatus'] = 'released';
+        });
+      }
+    }
+  }
 
   void _copyToClipboard(String text, String label) {
     if (text.isEmpty || text == '-') return;
@@ -34,6 +63,8 @@ class SellerOrderDetailScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final orderId = widget.orderId;
+    final orderData = widget.orderData;
     List items = orderData['items'] ?? [];
     var address = orderData['shippingAddress'] ?? {};
     String status = orderData['status'] ?? 'pending';

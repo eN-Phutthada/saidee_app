@@ -20,6 +20,8 @@ import 'search_screen.dart';
 import 'search_results_screen.dart';
 import 'package:saidee_app/services/guided_tour_service.dart';
 import 'package:saidee_app/services/moderation_service.dart';
+import 'package:saidee_app/services/escrow_service.dart';
+import 'package:saidee_app/services/auth_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,10 +31,12 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  Timer? _escrowTimer;
   StreamSubscription<DocumentSnapshot>? _userStatusSubscription;
   StreamSubscription<QuerySnapshot>? _notificationSubscription;
+  StreamSubscription<User?>? _authSubscription;
   bool _isBannedAlertShown = false;
   final Set<String> _seenNotificationIds = {};
   bool _isNotifInitialLoad = true;
@@ -53,9 +57,43 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _listenToUserStatus();
-    _listenToNotifications();
+    WidgetsBinding.instance.addObserver(this);
+    _listenToAuthChanges();
     _checkGuidedTour();
+  }
+
+  void _listenToAuthChanges() {
+    _authSubscription?.cancel();
+    _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user == null) {
+        _notificationSubscription?.cancel();
+        _notificationSubscription = null;
+        _userStatusSubscription?.cancel();
+        _userStatusSubscription = null;
+        _escrowTimer?.cancel();
+        _escrowTimer = null;
+        _seenNotificationIds.clear();
+      } else {
+        _listenToUserStatus();
+        _listenToNotifications();
+        _initEscrowAutoRelease();
+      }
+    });
+  }
+
+  void _initEscrowAutoRelease() {
+    EscrowService.checkAndAutoCompleteOrders();
+    _escrowTimer?.cancel();
+    _escrowTimer = Timer.periodic(const Duration(minutes: 15), (_) {
+      EscrowService.checkAndAutoCompleteOrders();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      EscrowService.checkAndAutoCompleteOrders();
+    }
   }
 
   void _checkGuidedTour() {
@@ -79,6 +117,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _authSubscription?.cancel();
+    _escrowTimer?.cancel();
     _userStatusSubscription?.cancel();
     _notificationSubscription?.cancel();
     super.dispose();
@@ -195,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _isBannedAlertShown = true;
                   _userStatusSubscription?.cancel();
 
-                  await FirebaseAuth.instance.signOut();
+                  await AuthService.signOut();
 
                   _showBannedPopup(userData);
                 }

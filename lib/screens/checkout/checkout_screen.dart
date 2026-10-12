@@ -1360,7 +1360,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Option 2: PromptPay Dynamic QR
+                  // Option 2: PromptPay QR
                   GestureDetector(
                     onTap: () {
                       setState(() => _selectedPaymentMethod = 'promptpay_qr');
@@ -1416,7 +1416,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           ),
                           title: const Text(
-                            "PromptPay Dynamic QR",
+                            "PromptPay QR",
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text(
@@ -1548,8 +1548,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: ElevatedButton(
                       onPressed:
                           (_isProcessing ||
-                              _walletBalance < _grandTotal ||
-                              _selectedAddress == null)
+                              (_selectedPaymentMethod == 'wallet' &&
+                                  _walletBalance < _grandTotal))
                           ? null
                           : _showConfirmationDialog,
                       style: ElevatedButton.styleFrom(
@@ -1561,9 +1561,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       child: _isProcessing
                           ? const CircularProgressIndicator(color: Colors.white)
                           : Text(
-                              _walletBalance < _grandTotal
-                                  ? "ยอดเงินไม่พอ"
-                                  : "ยืนยันสั่งซื้อ",
+                              _selectedPaymentMethod == 'wallet'
+                                  ? (_walletBalance < _grandTotal
+                                      ? "ยอดเงินไม่พอ"
+                                      : "ยืนยันสั่งซื้อ")
+                                  : "ดำเนินการชำระเงิน",
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

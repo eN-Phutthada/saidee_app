@@ -19,6 +19,7 @@ class OrderModel {
   final String? transRef;
   final String escrowStatus; // 'held', 'released', 'refunded'
   final Timestamp? escrowReleasedAt;
+  final Timestamp? shippedAt;
   final bool isDisputed;
   final String? disputeReason;
   final String? disputeEvidenceUrl;
@@ -45,6 +46,7 @@ class OrderModel {
     this.transRef,
     this.escrowStatus = 'held',
     this.escrowReleasedAt,
+    this.shippedAt,
     this.isDisputed = false,
     this.disputeReason,
     this.disputeEvidenceUrl,
@@ -78,6 +80,7 @@ class OrderModel {
       transRef: map['transRef'],
       escrowStatus: map['escrowStatus'] ?? (map['paymentStatus'] == 'escrow_held' ? 'held' : 'held'),
       escrowReleasedAt: map['escrowReleasedAt'] is Timestamp ? map['escrowReleasedAt'] : null,
+      shippedAt: map['shippedAt'] is Timestamp ? map['shippedAt'] : null,
       isDisputed: map['isDisputed'] == true,
       disputeReason: map['disputeReason'],
       disputeEvidenceUrl: map['disputeEvidenceUrl'],
@@ -107,6 +110,7 @@ class OrderModel {
       if (slipUrl != null) 'slipUrl': slipUrl,
       if (transRef != null) 'transRef': transRef,
       if (escrowReleasedAt != null) 'escrowReleasedAt': escrowReleasedAt,
+      if (shippedAt != null) 'shippedAt': shippedAt,
       if (disputeReason != null) 'disputeReason': disputeReason,
       if (disputeEvidenceUrl != null) 'disputeEvidenceUrl': disputeEvidenceUrl,
       if (disputedAt != null) 'disputedAt': disputedAt,

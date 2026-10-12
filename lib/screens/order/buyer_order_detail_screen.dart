@@ -8,6 +8,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/widgets/report_bottom_sheet.dart';
+import 'package:saidee_app/services/escrow_service.dart';
 
 class BuyerOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -30,6 +31,22 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
   void initState() {
     super.initState();
     _isReviewed = widget.orderData['isReviewed'] == true;
+    _checkAutoRelease();
+  }
+
+  Future<void> _checkAutoRelease() async {
+    if (widget.orderData['status'] == 'shipping') {
+      bool released = await EscrowService.checkAndAutoCompleteSingleOrder(
+        orderId: widget.orderId,
+        orderData: widget.orderData,
+      );
+      if (released && mounted) {
+        setState(() {
+          widget.orderData['status'] = 'completed';
+          widget.orderData['escrowStatus'] = 'released';
+        });
+      }
+    }
   }
 
   void _copyTrackingNumber(String trackingNumber) {
@@ -431,8 +448,9 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
       headerColor = Colors.blue;
       headerIcon = CupertinoIcons.cube_box;
 
-      Timestamp? ts =
-          widget.orderData['updatedAt'] ?? widget.orderData['createdAt'];
+      Timestamp? ts = widget.orderData['shippedAt'] ??
+          widget.orderData['updatedAt'] ??
+          widget.orderData['createdAt'];
       if (ts != null) {
         DateTime shippedDate = ts.toDate();
         DateTime autoConfirmDate = shippedDate.add(const Duration(days: 7));
@@ -1104,7 +1122,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
 
   Widget _buildEscrowGuaranteeCard(ThemeData theme, bool isDark, String status) {
     String message =
-        "เงินของคุณถูกดูแลไว้ที่ตัวกลาง SAIDEE อย่างปลอดภัย ผู้ขายจะได้รับเงินเมื่อคุณตรวจสอบและกดยืนยันรับสินค้าแล้วเท่านั้น";
+        "เงินของคุณถูกดูแลไว้ที่ตัวกลาง SAIDEE อย่างปลอดภัย ผู้ขายจะได้รับเงินเมื่อคุณตรวจสอบและกดยืนยันรับสินค้า หรือระบบจะโอนให้อัตโนมัติเมื่อครบ 7 วันหลังจัดส่งหากไม่มีข้อพิพาท";
     Color badgeColor = Colors.teal;
     IconData badgeIcon = CupertinoIcons.shield_lefthalf_fill;
 

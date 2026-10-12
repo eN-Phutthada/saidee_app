@@ -10,6 +10,7 @@ import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/escrow_service.dart';
 
 class SellerOrdersScreen extends StatefulWidget {
   const SellerOrdersScreen({super.key});
@@ -26,77 +27,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
   }
 
   Future<void> _checkAndAutoCompleteOrders() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      var shippingOrdersSnap = await FirebaseFirestore.instance
-          .collection(FirestoreCollections.orders)
-          .where('sellerId', isEqualTo: user.uid)
-          .where('status', isEqualTo: 'shipping')
-          .get();
-
-      final now = DateTime.now();
-
-      for (var doc in shippingOrdersSnap.docs) {
-        var data = doc.data();
-
-        Timestamp? ts = data['updatedAt'] ?? data['createdAt'];
-
-        if (ts != null) {
-          DateTime shippedDate = ts.toDate();
-
-          bool isDisputed = data['isDisputed'] == true || data['status'] == 'disputed';
-          if (now.difference(shippedDate).inDays >= 7 && !isDisputed) {
-            double totalAmount = (data['total'] ?? 0).toDouble();
-            WriteBatch batch = FirebaseFirestore.instance.batch();
-
-            batch.update(doc.reference, {
-              'status': 'completed',
-              'escrowStatus': 'released',
-              'escrowReleasedAt': FieldValue.serverTimestamp(),
-              'updatedAt': FieldValue.serverTimestamp(),
-              'autoCompleted': true,
-            });
-
-            DocumentReference sellerRef = FirebaseFirestore.instance
-                .collection(FirestoreCollections.users)
-                .doc(user.uid);
-            batch.update(sellerRef, {
-              'walletBalance': FieldValue.increment(totalAmount),
-            });
-
-            DocumentReference txRef = FirebaseFirestore.instance
-                .collection(FirestoreCollections.transactions)
-                .doc();
-            batch.set(txRef, {
-              'uid': user.uid,
-              'type': 'income',
-              'amount': totalAmount,
-              'order_id': doc.id,
-              'status': 'success',
-              'note': 'Auto-completed (Escrow released)',
-              'createdAt': FieldValue.serverTimestamp(),
-            });
-
-            await batch.commit();
-
-            NotificationService.sendNotification(
-              userId: user.uid,
-              title: "ได้รับโอนเงินคำสั่งซื้ออัตโนมัติ 💰",
-              body:
-                  "คำสั่งซื้อครบกำหนด 7 วันแล้ว ยอดเงิน ${totalAmount.toStringAsFixed(2)} ฿ ถูกโอนเข้า SAIDEE Wallet เรียบร้อยแล้ว",
-              type: 'wallet',
-              orderId: doc.id,
-            );
-
-            debugPrint("Auto-completed order: ${doc.id}");
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint("Error auto-completing orders: $e");
-    }
+    await EscrowService.checkAndAutoCompleteOrders();
   }
 
   void _confirmShipping(String orderId, String shippingMethod) {
@@ -387,18 +318,24 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                       try {
                                         var orderDoc = await FirebaseFirestore
                                             .instance
-                                            .collection('orders')
+                                            .collection(
+                                              FirestoreCollections.orders,
+                                            )
                                             .doc(orderId)
                                             .get();
                                         String buyerId =
                                             orderDoc.data()?['buyerId'] ?? '';
 
                                         await FirebaseFirestore.instance
-                                            .collection('orders')
+                                            .collection(
+                                              FirestoreCollections.orders,
+                                            )
                                             .doc(orderId)
                                             .update({
                                               'status': 'shipping',
                                               'trackingNumber': finalTracking,
+                                              'shippedAt':
+                                                  FieldValue.serverTimestamp(),
                                               'updatedAt':
                                                   FieldValue.serverTimestamp(),
                                             });

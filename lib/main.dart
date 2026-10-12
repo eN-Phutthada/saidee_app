@@ -43,6 +43,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint("Handling a background message: ${message.messageId} (data: ${message.data})");
 
+  // ตรวจสอบว่าผู้ใช้ล็อกอินอยู่หรือไม่ หากออกจากระบบแล้วให้ข้ามการแจ้งเตือน
+  if (FirebaseAuth.instance.currentUser == null) {
+    debugPrint("Background notification skipped: User is not logged in.");
+    return;
+  }
+
   // สร้าง Channel สำหรับ background isolate
   final androidImplementation = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
@@ -320,6 +326,12 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
     // 4. ดักจับข้อความแจ้งเตือนขณะเปิดแอป (Foreground)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('ได้รับข้อความขณะเปิดแอป! Type: ${message.data['type']}');
+
+      // หากผู้ใช้ออกจากระบบแล้ว (Guest Mode) ไม่ต้องแสดงการแจ้งเตือน
+      if (FirebaseAuth.instance.currentUser == null) {
+        debugPrint('Foreground notification skipped: User is not logged in.');
+        return;
+      }
 
       String title = message.notification?.title ??
           message.data['title'] ??

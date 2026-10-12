@@ -8,6 +8,7 @@ import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/moderation_service.dart';
+import 'package:saidee_app/services/escrow_service.dart';
 
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:flutter/services.dart';
@@ -91,8 +92,11 @@ class _SplashScreenState extends State<SplashScreen> {
             userData: userData,
           );
         }
+
+        // ตรวจสอบและโอนเงินคำสั่งซื้อที่ครบกำหนด 7 วันอัตโนมัติ (Escrow Auto-Release)
+        EscrowService.checkAndAutoCompleteOrders();
       } catch (e) {
-        debugPrint("Error checking admin status in Splash: $e");
+        debugPrint("Error checking admin status or escrow in Splash: $e");
       }
     }
 
