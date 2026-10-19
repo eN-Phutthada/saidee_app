@@ -14,10 +14,23 @@ service cloud.firestore {
     }
 
     // Users collection: public read profiles, users can edit their own, admins can manage all
+    // Authenticated users can update walletBalance (for Escrow release & order refunds) or report counter fields
     match /users/{userId} {
       allow read: if true;
       allow create: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow update, delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth != null && (
+        request.auth.uid == userId || 
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['walletBalance']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uniqueReportCount', 'isFlaggedForReview', 'lastReportedAt'])
+      );
+      
+      // Notifications subcollection: recipient or admin can read/update/delete, any authenticated user can create/send
+      match /notifications/{notificationId} {
+        allow read, update, delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow create: if request.auth != null;
+      }
       
       match /{subcollection=**} {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
@@ -25,7 +38,7 @@ service cloud.firestore {
     }
     
     // Products collection: public read, write restricted to product owner (seller) or admin
-    // Authenticated users can update interaction fields (likesCount, likedUsers, views) or mark status as 'sold' upon purchase
+    // Authenticated users can update interaction fields (likesCount, likedUsers, views) or mark status between 'sold' and 'active' (purchase/cancellation)
     match /products/{productId} {
       allow read: if true;
       allow create: if request.auth != null && (request.resource.data.sellerId == request.auth.uid || isAdmin());
@@ -33,7 +46,7 @@ service cloud.firestore {
         resource.data.sellerId == request.auth.uid || 
         isAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedUsers', 'views']) ||
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'sold')
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status in ['sold', 'active'])
       );
       allow delete: if request.auth != null && (
         resource.data.sellerId == request.auth.uid || isAdmin()
@@ -67,6 +80,9 @@ service cloud.firestore {
         );
         allow create: if request.auth != null && (
           request.resource.data.senderId == request.auth.uid || isAdmin()
+        );
+        allow update, delete: if request.auth != null && (
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.users || isAdmin()
         );
       }
     }

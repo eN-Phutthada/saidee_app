@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/services/contact_service.dart';
 
 class WalletHistoryScreen extends StatefulWidget {
   const WalletHistoryScreen({super.key});
@@ -233,7 +234,10 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                     String type = (data['type'] ?? 'unknown').toLowerCase();
                     double amount = (data['amount'] ?? 0).toDouble();
                     String status = data['status'] ?? 'pending';
-                    String? slipUrl = data['slipUrl'] ?? data['slip_image'] ?? data['slip_url'];
+                    String? slipUrl =
+                        data['slipUrl'] ??
+                        data['slip_image'] ??
+                        data['slip_url'];
                     String? note = data['note'];
                     Timestamp? ts = data['createdAt'];
                     Timestamp? lastNudgedAt = data['lastNudgedAt'];
@@ -680,8 +684,8 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
     String docId,
     double amount,
   ) {
-    const String adminPhone = "064-749-0079";
-    const String rawAdminPhone = "0647490079";
+    const String adminPhone = ContactService.adminHotlineFormatted;
+    const String rawAdminPhone = ContactService.adminHotlineRaw;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -750,48 +754,48 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "เบอร์โทรสายด่วนแอดมิน",
-                              style: GoogleFonts.kanit(
-                                color: Colors.grey[500],
-                                fontSize: 12,
+                        child: InkWell(
+                          onTap: () => ContactService.callHotline(),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "เบอร์โทรสายด่วนแอดมิน",
+                                style: GoogleFonts.kanit(
+                                  color: Colors.grey[500],
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              adminPhone,
-                              style: GoogleFonts.kanit(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    adminPhone,
+                                    style: GoogleFonts.kanit(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    CupertinoIcons.phone_fill,
+                                    color: Colors.green,
+                                    size: 16,
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          Clipboard.setData(
-                            const ClipboardData(text: rawAdminPhone),
-                          );
-                          Get.snackbar(
-                            "คัดลอกเบอร์โทรแล้ว",
-                            "คัดลอก $adminPhone ไปยังคลิปบอร์ดแล้ว สามารถนำไปวางในแอปโทรศัพท์ได้เลย",
-                            backgroundColor: Colors.black87,
-                            colorText: Colors.white,
-                            duration: const Duration(seconds: 3),
-                          );
-                        },
-                        icon: const Icon(
-                          CupertinoIcons.doc_on_clipboard,
-                          size: 16,
-                        ),
+                        onPressed: () => ContactService.callHotline(),
+                        icon: const Icon(CupertinoIcons.phone_fill, size: 15),
                         label: Text(
-                          "คัดลอกเบอร์",
+                          "โทรออก",
                           style: GoogleFonts.kanit(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -801,13 +805,38 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                           backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
+                            horizontal: 14,
+                            vertical: 10,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                           elevation: 0,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        onPressed: () => ContactService.copyPhoneNumber(
+                          rawAdminPhone,
+                          formattedNumber: adminPhone,
+                        ),
+                        icon: const Icon(
+                          CupertinoIcons.doc_on_clipboard,
+                          size: 18,
+                        ),
+                        tooltip: "คัดลอกเบอร์โทร",
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[200],
+                          foregroundColor: isDark
+                              ? Colors.grey[300]
+                              : Colors.grey[700],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ],

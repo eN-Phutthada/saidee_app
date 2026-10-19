@@ -1062,6 +1062,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: _isEditing
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                onPressed: () => Get.back(),
+              )
+            : null,
         title: Text(
           _isEditing ? "แก้ไขสินค้า" : "ลงขายสินค้า",
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 22),

@@ -141,6 +141,7 @@ class _CartScreenState extends State<CartScreen> {
             backgroundColor: theme.scaffoldBackgroundColor,
             elevation: 0,
             centerTitle: true,
+            automaticallyImplyLeading: false,
             leading: widget.showBackButton
                 ? IconButton(
                     icon: Icon(

@@ -72,7 +72,7 @@ class _SplashScreenState extends State<SplashScreen> {
             .get();
             
         if (adminDoc.exists) {
-          Get.off(
+          Get.offAll(
             () => const AdminDashboard(),
             transition: Transition.circularReveal,
             duration: const Duration(milliseconds: 1000),
@@ -98,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     }
 
-    Get.off(
+    Get.offAll(
       () => const HomeScreen(),
       transition: Transition.circularReveal,
       duration: const Duration(milliseconds: 1000),

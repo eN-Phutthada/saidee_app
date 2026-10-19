@@ -5,6 +5,9 @@ import 'package:saidee_app/config/firestore_collections.dart';
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  /// Holds cold-start notification payload to be processed cleanly after HomeScreen mounts
+  static Map<String, dynamic>? pendingNotificationData;
+
   static final Map<String, int> _recentNotifications = {};
   static const int _dedupTtlMs = 8000;
 

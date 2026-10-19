@@ -25,6 +25,7 @@ import 'package:saidee_app/services/auth_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/main.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -69,7 +70,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       }
       _listenToAuthChanges();
       _checkGuidedTour();
+      _checkPendingNotification();
     });
+  }
+
+  void _checkPendingNotification() {
+    if (NotificationService.pendingNotificationData != null) {
+      final data = NotificationService.pendingNotificationData!;
+      NotificationService.pendingNotificationData = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        handleNotificationClickFromData(data);
+      });
+    }
   }
 
   void _listenToAuthChanges() {

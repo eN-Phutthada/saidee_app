@@ -107,6 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 backgroundColor: AppTheme.primaryColor,
                 elevation: 0,
                 centerTitle: false,
+                automaticallyImplyLeading: false,
                 title: const Text(
                   'โปรไฟล์ของฉัน',
                   style: TextStyle(
@@ -798,7 +799,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildErrorState(ThemeData theme) {
     return Scaffold(
-      appBar: AppBar(title: const Text("โปรไฟล์")),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: const Text("โปรไฟล์"),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1127,7 +1131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "เวอร์ชัน 1.0.0",
+                "เวอร์ชัน 1.0.1",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,

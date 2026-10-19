@@ -18,6 +18,7 @@ import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/screens/notification/notification_screen.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/services/notification_service.dart';
 
@@ -182,7 +183,11 @@ void handleNotificationClickFromData(Map<String, dynamic> data) async {
       } catch (e) {
         debugPrint("เกิดข้อผิดพลาดในการเปิดออเดอร์จากแจ้งเตือน: $e");
       }
+    } else {
+      Get.to(() => const NotificationScreen());
     }
+  } else {
+    Get.to(() => const NotificationScreen());
   }
 }
 
@@ -397,9 +402,8 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      Future.delayed(const Duration(seconds: 1), () {
-        handleNotificationClickFromData(initialMessage.data);
-      });
+      debugPrint("App launched from terminated via FCM notification: ${initialMessage.data}");
+      NotificationService.pendingNotificationData = initialMessage.data;
     }
 
     final NotificationAppLaunchDetails? launchDetails =
@@ -411,9 +415,8 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       try {
         Map<String, dynamic> data =
             jsonDecode(launchDetails.notificationResponse!.payload!);
-        Future.delayed(const Duration(seconds: 1), () {
-          handleNotificationClickFromData(data);
-        });
+        debugPrint("App launched from terminated via local notification: $data");
+        NotificationService.pendingNotificationData = data;
       } catch (e) {
         debugPrint("Error parsing launch notification payload: $e");
       }

@@ -1,6 +1,6 @@
 {
-    "name": "saidee_app",
-    "short_name": "saidee_app",
+    "name": "SaiDee",
+    "short_name": "SaiDee",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

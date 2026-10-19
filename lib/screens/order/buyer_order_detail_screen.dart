@@ -82,20 +82,21 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
           barrierDismissible: false,
         );
         try {
-          await FirebaseFirestore.instance
-              .collection('orders')
-              .doc(widget.orderId)
-              .update({
-                'status': 'completed',
-                'escrowStatus': 'released',
-                'escrowReleasedAt': FieldValue.serverTimestamp(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-
           double totalAmount = (widget.orderData['total'] ?? 0).toDouble();
           String sellerId = widget.orderData['sellerId'];
 
           WriteBatch batch = FirebaseFirestore.instance.batch();
+
+          DocumentReference orderRef = FirebaseFirestore.instance
+              .collection('orders')
+              .doc(widget.orderId);
+          batch.update(orderRef, {
+            'status': 'completed',
+            'escrowStatus': 'released',
+            'escrowReleasedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
           DocumentReference sellerRef = FirebaseFirestore.instance
               .collection('users')
               .doc(sellerId);

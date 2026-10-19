@@ -9,6 +9,7 @@ import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/services/contact_service.dart';
 
 class WalletWithdrawScreen extends StatefulWidget {
   final double currentBalance;
@@ -181,10 +182,56 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       AppDialog.showCustomDialog(
         title: "ส่งคำขอถอนเงินสำเร็จ",
         message:
-            "ระบบได้รับคำขอถอนเงินของคุณแล้ว\n• แอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง\n• มีสิทธิ์ยกเลิกหรือขอเงินคืนได้ในหน้าประวัติ\n• สายด่วนแอดมิน: 064-749-0079",
+            "ระบบได้รับคำขอถอนเงินของคุณแล้ว\n• แอดมินจะดำเนินการโอนเงินให้ภายใน 24 ชั่วโมง\n• มีสิทธิ์ยกเลิกหรือขอเงินคืนได้ในหน้าประวัติ",
         icon: CupertinoIcons.check_mark_circled_solid,
         iconColor: Colors.green,
         confirmText: "ตกลง",
+        content: InkWell(
+          onTap: () => ContactService.callHotline(),
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppTheme.primaryColor.withValues(alpha: 0.25),
+              ),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    CupertinoIcons.phone_fill,
+                    size: 15,
+                    color: AppTheme.primaryColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "สายด่วน: ${ContactService.adminHotlineFormatted}",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    "(กดโทร)",
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         onConfirm: () {
           Get.back();
           Get.back();
@@ -264,6 +311,18 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           ),
           onPressed: () => Get.back(),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              CupertinoIcons.phone_circle_fill,
+              color: AppTheme.primaryColor,
+              size: 26,
+            ),
+            tooltip: "สายด่วน: ${ContactService.adminHotlineFormatted}",
+            onPressed: () => ContactService.callHotline(),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Stack(
         children: [
@@ -334,7 +393,11 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 14),
+
+                  _buildCompactPolicyBanner(context, isDark, theme),
+
+                  const SizedBox(height: 25),
 
                   Center(
                     child: Text(
@@ -584,9 +647,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 25),
-                  _buildPolicyCard(isDark, theme),
-
                   const SizedBox(height: 100),
                 ],
               ),
@@ -645,85 +705,239 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
     );
   }
 
-  Widget _buildPolicyCard(bool isDark, ThemeData theme) {
+  Widget _buildCompactPolicyBanner(
+    BuildContext context,
+    bool isDark,
+    ThemeData theme,
+  ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
+        color: AppTheme.primaryColor.withValues(alpha: isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white10 : Colors.grey.shade200,
+          color: AppTheme.primaryColor.withValues(alpha: 0.25),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showPolicyBottomSheet(context, isDark, theme),
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.shield_fill,
+                    size: 15,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
-                child: const Icon(
-                  CupertinoIcons.shield_lefthalf_fill,
-                  color: AppTheme.primaryColor,
-                  size: 20,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "ค่าธรรมเนียม 0 บาท • โอนใน 24 ชม. • สายด่วน",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.grey[200] : Colors.black87,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "นโยบายและความเป็นธรรมในการถอนเงิน",
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
+                const SizedBox(width: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "ดูนโยบาย",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 10,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          _buildPolicyItem(
-            icon: CupertinoIcons.money_dollar_circle_fill,
-            title: "ค่าธรรมเนียม 0 บาท",
-            subtitle: "ไม่มีการหักค่าบริการใดๆ คุณจะได้รับเงินเต็มจำนวนที่ขอถอน",
-            isDark: isDark,
-          ),
-          const SizedBox(height: 10),
-          _buildPolicyItem(
-            icon: CupertinoIcons.clock_fill,
-            title: "โอนเงินภายใน 24 ชั่วโมง (SLA)",
-            subtitle: "ดำเนินการตรวจสอบและโอนเงินเข้าบัญชีอย่างรวดเร็วและปลอดภัย",
-            isDark: isDark,
-          ),
-          const SizedBox(height: 10),
-          _buildPolicyItem(
-            icon: CupertinoIcons.arrow_uturn_left_circle_fill,
-            title: "คุ้มครองเงินทุนและสิทธิ์ยกเลิก",
-            subtitle:
-                "ยกเลิกคำขอรับเงินคืนทันทีในหน้าประวัติ หรือขอคืนเงินทันทีหากเกิน 24 ชม.",
-            isDark: isDark,
-          ),
-          const SizedBox(height: 10),
-          _buildPolicyItem(
-            icon: CupertinoIcons.phone_circle_fill,
-            title: "สายด่วนติดต่อแอดมิน: 064-749-0079",
-            subtitle:
-                "หากต้องการความช่วยเหลือเร่งด่วน โทรติดต่อได้ทุกวัน (08:00 - 22:00 น.)",
-            isDark: isDark,
-            highlight: true,
-          ),
-        ],
+        ),
       ),
+    );
+  }
+
+  void _showPolicyBottomSheet(
+    BuildContext context,
+    bool isDark,
+    ThemeData theme,
+  ) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.shield_lefthalf_fill,
+                        color: AppTheme.primaryColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "นโยบายและความเป็นธรรมในการถอนเงิน",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "SaiDee คุ้มครองความปลอดภัยและความเป็นธรรมทุกขั้นตอน",
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildPolicyItem(
+                  icon: CupertinoIcons.money_dollar_circle_fill,
+                  title: "ค่าธรรมเนียม 0 บาท",
+                  subtitle:
+                      "ไม่มีการหักค่าบริการใดๆ คุณจะได้รับเงินเต็มจำนวนที่ขอถอน",
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 12),
+                _buildPolicyItem(
+                  icon: CupertinoIcons.clock_fill,
+                  title: "โอนเงินภายใน 24 ชั่วโมง (SLA)",
+                  subtitle:
+                      "ดำเนินการตรวจสอบและโอนเงินเข้าบัญชีอย่างรวดเร็วและปลอดภัย",
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 12),
+                _buildPolicyItem(
+                  icon: CupertinoIcons.arrow_uturn_left_circle_fill,
+                  title: "คุ้มครองเงินทุนและสิทธิ์ยกเลิก",
+                  subtitle:
+                      "ยกเลิกคำขอรับเงินคืนทันทีในหน้าประวัติ หรือขอคืนเงินทันทีหากเกิน 24 ชม.",
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 12),
+                _buildPolicyItem(
+                  icon: CupertinoIcons.phone_circle_fill,
+                  title:
+                      "สายด่วนติดต่อแอดมิน: ${ContactService.adminHotlineFormatted}",
+                  subtitle:
+                      "หากต้องการความช่วยเหลือเร่งด่วน โทรติดต่อได้ทุกวัน (08:00 - 22:00 น.)",
+                  isDark: isDark,
+                  highlight: true,
+                  onTap: () => ContactService.callHotline(),
+                  actionWidget: ElevatedButton.icon(
+                    onPressed: () => ContactService.callHotline(),
+                    icon: const Icon(CupertinoIcons.phone_fill, size: 14),
+                    label: const Text(
+                      "โทรออก",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton(
+                    onPressed: () => Get.back(),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                      ),
+                    ),
+                    child: Text(
+                      "ปิดหน้านี้",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 
@@ -733,43 +947,75 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
     required String subtitle,
     required bool isDark,
     bool highlight = false,
+    VoidCallback? onTap,
+    Widget? actionWidget,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: highlight ? AppTheme.primaryColor : (isDark ? Colors.grey[400] : Colors.grey[700]),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: highlight
-                      ? AppTheme.primaryColor
-                      : (isDark ? Colors.grey[200] : Colors.black87),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  height: 1.3,
-                ),
-              ),
-            ],
+    final itemContent = Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: onTap != null ? 8 : 0,
+        horizontal: onTap != null ? 8 : 0,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 18,
+            color: highlight
+                ? AppTheme.primaryColor
+                : (isDark ? Colors.grey[400] : Colors.grey[700]),
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: highlight
+                        ? AppTheme.primaryColor
+                        : (isDark ? Colors.grey[200] : Colors.black87),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (actionWidget != null) ...[
+            const SizedBox(width: 8),
+            actionWidget,
+          ],
+        ],
+      ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: highlight
+            ? (isDark
+                ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                : AppTheme.primaryColor.withValues(alpha: 0.05))
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: itemContent,
+        ),
+      );
+    }
+
+    return itemContent;
   }
 }
