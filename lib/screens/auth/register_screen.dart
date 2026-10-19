@@ -447,7 +447,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Consent checkboxes
                     _buildConsentCheckbox(
                       value: _agreeToTerms,
                       onChanged: (val) =>

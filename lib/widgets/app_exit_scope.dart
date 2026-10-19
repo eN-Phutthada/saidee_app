@@ -4,28 +4,15 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// A wrapper widget to prevent users from accidentally exiting the application.
-///
-/// Features:
-/// 1. Tab back-navigation: If on a secondary tab (e.g. Cart, Profile), pressing back
-///    smoothly returns to the Home tab first instead of quitting.
-/// 2. Double-tap to exit: Pressing back at root shows a clean pill notification:
-///    "กดอีกครั้งเพื่อออกจากแอป". Exits only when pressed again within [exitInterval].
-/// 3. Optional dialog confirmation support.
 class AppExitScope extends StatefulWidget {
   final Widget child;
 
-  /// Optional callback to handle sub-navigation (e.g. bottom navigation tabs).
-  /// If this returns `true`, the back press is considered handled and won't trigger exit.
   final bool Function()? onWillPopTab;
 
-  /// Toast message shown when back is pressed once at root.
   final String exitMessage;
 
-  /// Duration window during which a second back press will exit.
   final Duration exitInterval;
 
-  /// If true, shows a confirmation dialog instead of double-tap toast.
   final bool useDialogConfirmation;
 
   const AppExitScope({
@@ -37,7 +24,6 @@ class AppExitScope extends StatefulWidget {
     this.useDialogConfirmation = false,
   });
 
-  /// Static helper for imperative double-back handling
   static DateTime? _lastBackPressTime;
 
   static bool handleDoubleBack({
@@ -72,7 +58,6 @@ class AppExitScope extends StatefulWidget {
     return true;
   }
 
-  /// Shows a confirmation dialog asking if the user really wants to exit.
   static Future<bool> showExitDialog(BuildContext context) async {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -168,18 +153,15 @@ class _AppExitScopeState extends State<AppExitScope> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        // 1. If child navigator can pop, pop it
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop();
           return;
         }
 
-        // 2. If tab navigation handled it (e.g. index != 0 -> return to home tab)
         if (widget.onWillPopTab != null && widget.onWillPopTab!()) {
           return;
         }
 
-        // 3. If dialog confirmation mode is requested
         if (widget.useDialogConfirmation) {
           final shouldExit = await AppExitScope.showExitDialog(context);
           if (shouldExit) {
@@ -188,7 +170,6 @@ class _AppExitScopeState extends State<AppExitScope> {
           return;
         }
 
-        // 4. Double-tap back check (Standard Android pattern)
         final now = DateTime.now();
         if (_lastBackPressTime == null ||
             now.difference(_lastBackPressTime!) > widget.exitInterval) {
@@ -215,7 +196,6 @@ class _AppExitScopeState extends State<AppExitScope> {
           return;
         }
 
-        // Second press within interval -> Exit app
         SystemNavigator.pop();
       },
       child: widget.child,

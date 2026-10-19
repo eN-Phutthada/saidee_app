@@ -4,16 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/notification_service.dart';
 
-/// บริการจัดการ Saidee Escrow Guarantee และการโอนเงินอัตโนมัติเมื่อครบ 7 วัน
 class EscrowService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
   static bool _isChecking = false;
 
-  /// จำนวนวันที่ระบบจะโอนเงินให้อัตโนมัติหลังจัดส่งหากผู้ซื้อไม่กดยืนยัน (7 วัน)
   static const int autoReleaseDays = 7;
 
-  /// ตรวจสอบและโอนเงินคำสั่งซื้อที่ครบกำหนด 7 วันอัตโนมัติ
-  /// ทำงานแบบ Background/Service ให้ทั้งระบบโดยที่ผู้ซื้อหรือผู้ขายไม่ต้องคอยเข้าไปเช็คหน้าคำสั่งซื้อ
   static Future<int> checkAndAutoCompleteOrders() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return 0;
@@ -23,7 +19,6 @@ class EscrowService {
     int completedCount = 0;
 
     try {
-      // ตรวจสอบว่าผู้ใช้ปัจจุบันเป็น Admin หรือไม่
       bool isAdmin = false;
       try {
         final adminDoc = await _db
@@ -38,14 +33,12 @@ class EscrowService {
       List<DocumentSnapshot> candidates = [];
 
       if (isAdmin) {
-        // แอดมินสามารถดึงคำสั่งซื้อสถานะจัดส่งทั้งหมดในระบบมาตรวจสอบ
         var snap = await _db
             .collection(FirestoreCollections.orders)
             .where('status', isEqualTo: 'shipping')
             .get();
         candidates.addAll(snap.docs);
       } else {
-        // ผู้ใช้ทั่วไป: ตรวจสอบทั้งคำสั่งซื้อที่ตนเองเป็นผู้ขาย และที่ตนเองเป็นผู้ซื้อ
         var sellerSnap = await _db
             .collection(FirestoreCollections.orders)
             .where('sellerId', isEqualTo: user.uid)
@@ -93,7 +86,6 @@ class EscrowService {
     return completedCount;
   }
 
-  /// ตรวจสอบและโอนเงินสำหรับออเดอร์เดี่ยวทันที (เช่น เมื่อผู้ใช้เปิดดูรายละเอียดออเดอร์)
   static Future<bool> checkAndAutoCompleteSingleOrder({
     required String orderId,
     required Map<String, dynamic> orderData,
@@ -112,22 +104,18 @@ class EscrowService {
     }
   }
 
-  /// ประมวลผลการตรวจสอบเงื่อนไขเวลา 7 วันและการโอนเงิน
   static Future<bool> _processOrderReleaseIfDue({
     required String orderId,
     required Map<String, dynamic> orderData,
     required DocumentReference orderRef,
     required DateTime now,
   }) async {
-    // 1. สถานะต้องเป็น 'shipping' เท่านั้น
     String status = orderData['status'] ?? '';
     if (status != 'shipping') return false;
 
-    // 2. หากมีข้อพิพาท ระงับการปล่อยเงินทันทีตามนโยบาย Saidee Guarantee
     bool isDisputed = orderData['isDisputed'] == true || status == 'disputed';
     if (isDisputed) return false;
 
-    // 3. ตรวจสอบเวลาจัดส่ง (shippedAt โดยมี fallback เป็น updatedAt หรือ createdAt)
     Timestamp? ts = orderData['shippedAt'] ??
         orderData['updatedAt'] ??
         orderData['createdAt'];
@@ -147,7 +135,6 @@ class EscrowService {
 
       WriteBatch batch = _db.batch();
 
-      // อัปเดตสถานะคำสั่งซื้อเป็นเสร็จสิ้น และปล่อยเงิน Escrow
       batch.update(orderRef, {
         'status': 'completed',
         'escrowStatus': 'released',
@@ -156,14 +143,12 @@ class EscrowService {
         'autoCompleted': true,
       });
 
-      // โอนเงินเข้ากระเป๋า SAIDEE Wallet ของผู้ขาย
       DocumentReference sellerRef =
           _db.collection(FirestoreCollections.users).doc(sellerId);
       batch.update(sellerRef, {
         'walletBalance': FieldValue.increment(totalAmount),
       });
 
-      // บันทึกประวัติธุรกรรมทางการเงิน
       DocumentReference txRef =
           _db.collection(FirestoreCollections.transactions).doc();
       batch.set(txRef, {
@@ -178,7 +163,6 @@ class EscrowService {
 
       await batch.commit();
 
-      // ส่งแจ้งเตือนผู้ขาย
       NotificationService.sendNotification(
         userId: sellerId,
         title: "ได้รับโอนเงินคำสั่งซื้ออัตโนมัติ 💰",
@@ -188,7 +172,6 @@ class EscrowService {
         orderId: orderId,
       );
 
-      // ส่งแจ้งเตือนผู้ซื้อ
       if (buyerId.isNotEmpty) {
         NotificationService.sendNotification(
           userId: buyerId,

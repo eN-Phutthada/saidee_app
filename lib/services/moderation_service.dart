@@ -3,11 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/notification_service.dart';
 
-/// บริการจัดการด้านการกำกับดูแลความปลอดภัย การลงโทษ และการระงับบัญชีผู้ใช้
 class ModerationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// ระงับการใช้งานบัญชีผู้ใช้ (รองรับทั้งชั่วคราวและถาวร) พร้อมซ่อนสินค้าอัตโนมัติ
   static Future<bool> banUser({
     required String userId,
     required String reason,
@@ -22,7 +20,6 @@ class ModerationService {
         bannedUntil = Timestamp.fromDate(DateTime.now().add(duration));
       }
 
-      // 1. อัปเดตสถานะผู้ใช้
       await _db.collection(FirestoreCollections.users).doc(userId).update({
         'status': 'banned',
         'banReason': reason,
@@ -34,7 +31,6 @@ class ModerationService {
         'strikeCount': FieldValue.increment(1),
       });
 
-      // 2. ซ่อนสินค้าทั้งหมดของผู้ขายชั่วคราว
       try {
         final productsQuery = await _db
             .collection(FirestoreCollections.products)
@@ -57,7 +53,6 @@ class ModerationService {
         debugPrint("Error hiding products for banned user $userId: $prodErr");
       }
 
-      // 3. ส่งข้อความแจ้งเตือนผู้ใช้
       String durationText = duration != null
           ? "เป็นเวลา ${_formatDuration(duration)}"
           : "อย่างถาวร";
@@ -75,7 +70,6 @@ class ModerationService {
     }
   }
 
-  /// ปลดการระงับบัญชีผู้ใช้ และคืนสถานะสินค้ากลับมาขายตามปกติ
   static Future<bool> unbanUser({
     required String userId,
     String? adminUid,
@@ -83,7 +77,6 @@ class ModerationService {
     if (userId.isEmpty) return false;
 
     try {
-      // 1. อัปเดตสถานะผู้ใช้กลับเป็น active
       await _db.collection(FirestoreCollections.users).doc(userId).update({
         'status': 'active',
         'banReason': FieldValue.delete(),
@@ -92,7 +85,6 @@ class ModerationService {
         'unbannedBy': adminUid ?? 'Admin',
       });
 
-      // 2. คืนสถานะสินค้าของผู้ขาย
       try {
         final productsQuery = await _db
             .collection(FirestoreCollections.products)
@@ -114,7 +106,6 @@ class ModerationService {
         debugPrint("Error restoring products for user $userId: $prodErr");
       }
 
-      // 3. ส่งแจ้งเตือนการคืนสถานะ
       await NotificationService.sendNotification(
         userId: userId,
         title: "บัญชีของคุณได้รับการปลดระงับแล้ว 🎉",
@@ -129,8 +120,6 @@ class ModerationService {
     }
   }
 
-  /// ตรวจสอบการหมดอายุของการแบนชั่วคราว (Auto-Expiry)
-  /// คืนค่า true หากได้รับการปลดแบนอัตโนมัติแล้ว
   static Future<bool> checkAndExpireBan({
     required String userId,
     required Map<String, dynamic> userData,
@@ -151,7 +140,6 @@ class ModerationService {
     return false;
   }
 
-  /// ซ่อนสินค้าที่ละเมิดกฎโดยไม่ต้องแบนทั้งบัญชี
   static Future<bool> hideProduct({
     required String productId,
     required String reason,
@@ -188,7 +176,6 @@ class ModerationService {
     }
   }
 
-  /// ส่งหนังสือเตือนอย่างเป็นทางการ (Official Warning)
   static Future<bool> sendWarning({
     required String userId,
     required String reason,

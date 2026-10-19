@@ -9,6 +9,7 @@ import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/widgets/report_bottom_sheet.dart';
 import 'package:saidee_app/services/escrow_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class BuyerOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -30,6 +31,7 @@ class _BuyerOrderDetailScreenState extends State<BuyerOrderDetailScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _isReviewed = widget.orderData['isReviewed'] == true;
     _checkAutoRelease();
   }

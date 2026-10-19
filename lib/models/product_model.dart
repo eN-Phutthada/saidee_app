@@ -15,6 +15,9 @@ class ProductModel {
   List<String> images;
   String video;
   String status;
+  int views;
+  int likesCount;
+  List<String> likedUsers;
   Timestamp createdAt;
 
   ProductModel({
@@ -32,6 +35,9 @@ class ProductModel {
     required this.images,
     required this.video,
     required this.status,
+    this.views = 0,
+    this.likesCount = 0,
+    this.likedUsers = const [],
     required this.createdAt,
   });
 
@@ -51,6 +57,13 @@ class ProductModel {
       images: List<String>.from(data['images'] ?? []),
       video: data['video'] ?? '',
       status: data['status'] ?? 'active',
+      views: (data['views'] ?? 0) is int
+          ? (data['views'] ?? 0)
+          : ((data['views'] ?? 0) as num).toInt(),
+      likesCount: (data['likesCount'] ?? data['likes'] ?? 0) is int
+          ? (data['likesCount'] ?? data['likes'] ?? 0)
+          : ((data['likesCount'] ?? data['likes'] ?? 0) as num).toInt(),
+      likedUsers: List<String>.from(data['likedUsers'] ?? []),
       createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
@@ -70,6 +83,9 @@ class ProductModel {
       'images': images,
       'video': video,
       'status': status,
+      'views': views,
+      'likesCount': likesCount,
+      'likedUsers': likedUsers,
       'createdAt': createdAt,
     };
   }

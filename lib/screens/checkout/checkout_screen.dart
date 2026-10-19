@@ -11,6 +11,7 @@ import 'package:saidee_app/screens/checkout/promptpay_checkout_payment_screen.da
 import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/services/recommendation_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class CheckoutShopGroup {
   final String sellerId;
@@ -63,6 +64,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RoleGuardService.redirectIfAdmin(context);
+    });
     _loadCheckoutData();
   }
 
@@ -268,7 +272,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       if (couponData['end_date'] != null) {
         DateTime endDate = (couponData['end_date'] as Timestamp).toDate();
-        // ให้คูปองหมดอายุในเวลา 23:59:59 ของวันที่กำหนด
         endDate = DateTime(
           endDate.year,
           endDate.month,
@@ -1290,7 +1293,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Option 1: SAIDEE Wallet
                   GestureDetector(
                     onTap: () {
                       setState(() => _selectedPaymentMethod = 'wallet');
@@ -1360,7 +1362,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Option 2: PromptPay QR
                   GestureDetector(
                     onTap: () {
                       setState(() => _selectedPaymentMethod = 'promptpay_qr');

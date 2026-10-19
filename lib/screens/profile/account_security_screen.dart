@@ -5,7 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
-import 'package:saidee_app/screens/profile/login_history_screen.dart';
 
 class AccountSecurityScreen extends StatefulWidget {
   final String email;
@@ -85,12 +84,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
               child: Column(
                 children: [
                   _buildMenuTile(
-                    icon: CupertinoIcons.clock,
-                    title: "ประวัติการเข้าสู่ระบบ",
-                    hasBorder: true,
-                    onTap: () => Get.to(() => const LoginHistoryScreen()),
-                  ),
-                  _buildMenuTile(
                     icon: CupertinoIcons.trash,
                     iconColor: Colors.red,
                     title: "ลบบัญชีผู้ใช้",
@@ -110,7 +103,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    await user.reload(); // Refresh current user state from Firebase
+    await user.reload();
     if (user.emailVerified) {
       setState(() {});
       _showCustomSnackbar(
@@ -209,7 +202,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                         if (value.length < 8) {
                           return 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร';
                         }
-                        if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d)').hasMatch(value)) {
+                        if (!RegExp(
+                          r'^(?=.*[A-Za-z])(?=.*\d)',
+                        ).hasMatch(value)) {
                           return 'รหัสผ่านต้องมีทั้งตัวอักษรภาษาอังกฤษและตัวเลข';
                         }
                         return null;
@@ -444,7 +439,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // 1. Re-authenticate
       final cred = EmailAuthProvider.credential(
         email: user.email!,
         password: password,
@@ -453,10 +447,8 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
 
       String uid = user.uid;
 
-      // 2. Cascading Delete
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
-      // a. Delete all products from this seller
       var productsSnapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('sellerId', isEqualTo: uid)
@@ -465,15 +457,12 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
         batch.delete(doc.reference);
       }
 
-      // b. Delete store document (if exists)
       batch.delete(FirebaseFirestore.instance.collection('stores').doc(uid));
 
-      // c. Delete user document
       batch.delete(FirebaseFirestore.instance.collection('users').doc(uid));
 
       await batch.commit();
 
-      // 3. Delete from Firebase Auth
       await user.delete();
 
       Get.offAll(() => const HomeScreen());

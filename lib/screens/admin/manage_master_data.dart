@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 
 class ManageMasterDataScreen extends StatefulWidget {
   final String collection;
@@ -256,11 +257,24 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
             .orderBy('name')
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
+          if (snapshot.hasError) {
+            if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+              return PermissionDeniedView(
+                title: "ไม่มีสิทธิ์เข้าถึง${widget.title}",
+                message:
+                    "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการดูและจัดการ${widget.title}\n[cloud_firestore/permission-denied]",
+                technicalDetails: snapshot.error.toString(),
+                onRetry: () => setState(() {}),
+              );
+            }
+            return Center(
+              child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
                 "ยังไม่มีข้อมูล${widget.title}",
@@ -268,6 +282,7 @@ class _ManageMasterDataScreenState extends State<ManageMasterDataScreen> {
               ),
             );
           }
+          final docs = snapshot.data!.docs;
 
           return ListView.builder(
             padding: const EdgeInsets.only(

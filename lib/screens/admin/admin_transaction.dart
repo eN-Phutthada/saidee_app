@@ -12,7 +12,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/services/security_service.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 
 class AdminTransactionScreen extends StatefulWidget {
   final bool isBottomNav;
@@ -96,12 +98,59 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           SafeArea(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('transactions')
-                  .orderBy('createdAt', descending: true)
+                  .collection(FirestoreCollections.transactions)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CupertinoActivityIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+                    return PermissionDeniedView(
+                      title: "ไม่มีสิทธิ์เข้าถึงธุรกรรมการเงิน",
+                      message:
+                          "หน้านี้สงวนสิทธิ์เฉพาะผู้ดูแลระบบ (Admin) เท่านั้น\nกรุณาเข้าสู่ระบบด้วยบัญชีผู้ดูแลระบบ หรือติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์การใช้งาน",
+                      technicalDetails: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            CupertinoIcons.exclamationmark_triangle_fill,
+                            size: 48,
+                            color: Colors.orange,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            "เกิดข้อผิดพลาดในการโหลดข้อมูล",
+                            style: GoogleFonts.kanit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "${snapshot.error}",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => setState(() {}),
+                            icon: const Icon(CupertinoIcons.arrow_clockwise, size: 16),
+                            label: const Text("ลองใหม่อีกครั้ง"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -140,7 +189,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         return type == _selectedFilter;
                       }).toList();
 
-                // DYNAMIC SORTING: Float pending withdrawals to the top, oldest/nudged first
                 filteredDocs.sort((a, b) {
                   var dataA = a.data() as Map<String, dynamic>;
                   var dataB = b.data() as Map<String, dynamic>;
@@ -155,12 +203,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   if (!isPendingA && isPendingB) return 1;
 
                   if (isPendingA && isPendingB) {
-                    // If nudged, prioritize nudged requests
                     int nudgeA = dataA['nudgedCount'] ?? 0;
                     int nudgeB = dataB['nudgedCount'] ?? 0;
                     if (nudgeA != nudgeB) return nudgeB.compareTo(nudgeA);
 
-                    // Oldest request first (FIFO) so older requests don't get ignored
                     Timestamp? tsA = dataA['createdAt'];
                     Timestamp? tsB = dataB['createdAt'];
                     if (tsA != null && tsB != null) return tsA.compareTo(tsB);
@@ -462,7 +508,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               ),
               const SizedBox(height: 15),
 
-              // PromptPay Dynamic QR Code
               if (isPromptPay && cleanNumber.isNotEmpty) ...[
                 Center(
                   child: Container(
@@ -567,7 +612,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               ),
               const SizedBox(height: 10),
 
-              // 1-Tap Copy All Button
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -1088,9 +1132,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           ? (dotenv.env['SLIPOK_API_KEY'] ?? '')
           : '';
 
+      final branchId = dotenv.isInitialized
+          ? (dotenv.env['SLIPOK_BRANCH_ID'] ?? '61849')
+          : '61849';
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
+        Uri.parse('https://api.slipok.com/api/line/apikey/$branchId'),
       );
       request.headers['x-authorization'] = slipokApiKey;
       request.files.add(
@@ -1128,7 +1175,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           return false;
         }
 
-        // ตรวจสอบว่าสลิปนี้ (transRef) เคยถูกใช้งานไปแล้วหรือไม่ เพื่อป้องกันการใช้สลิปซ้ำ
         var existingTx = await FirebaseFirestore.instance
             .collection(FirestoreCollections.transactions)
             .where('transRef', isEqualTo: transRef)
@@ -1151,16 +1197,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           return false;
         }
 
-        // Upload to Firebase Storage
-        String fileName = 'slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        Reference storageRef = FirebaseStorage.instance.ref().child(
-          'slips/withdrawals/$docId/$fileName',
-        );
-
-        UploadTask uploadTask = storageRef.putFile(imageFile);
-        TaskSnapshot snapshot = await uploadTask;
-        String downloadUrl = await snapshot.ref.getDownloadURL();
-
         DocumentReference txRef = FirebaseFirestore.instance
             .collection(FirestoreCollections.transactions)
             .doc(docId);
@@ -1169,6 +1205,43 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           throw Exception("ไม่พบข้อมูลรายการถอนเงิน");
         }
         Map<String, dynamic> txData = txSnap.data() as Map<String, dynamic>;
+        String expectedUserAccountName = (txData['accountName'] ?? '').toString();
+        String expectedUserAccountNumber = (txData['accountNumber'] ?? '').toString();
+
+        if (expectedUserAccountName.isNotEmpty || expectedUserAccountNumber.isNotEmpty) {
+          bool isReceiverValid = SecurityService.isSlipReceiverValid(
+            receiverData: slipData['receiver'],
+            expectedAccountName: expectedUserAccountName,
+            expectedPromptPay: expectedUserAccountNumber,
+          );
+
+          if (!isReceiverValid) {
+            String targetLabel = expectedUserAccountName.isNotEmpty
+                ? expectedUserAccountName
+                : expectedUserAccountNumber;
+            Get.snackbar(
+              "สลิปไม่ตรงกับบัญชีผู้รับ",
+              "สลิปนี้ไม่ได้โอนไปยังบัญชีของผู้ขอถอน ($targetLabel)\nกรุณาตรวจสอบสลิปการโอนอีกครั้งเพื่อป้องกันการโอนผิดคน",
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5),
+              icon: const Icon(
+                CupertinoIcons.exclamationmark_triangle_fill,
+                color: Colors.white,
+              ),
+            );
+            return false;
+          }
+        }
+
+        String fileName = 'slip_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        Reference storageRef = FirebaseStorage.instance.ref().child(
+          'slips/withdrawals/$docId/$fileName',
+        );
+
+        UploadTask uploadTask = storageRef.putFile(imageFile);
+        TaskSnapshot snapshot = await uploadTask;
+        String downloadUrl = await snapshot.ref.getDownloadURL();
         String uid = txData['uid'] ?? '';
 
         await txRef.update({
@@ -1225,7 +1298,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
             .collection(FirestoreCollections.transactions)
             .doc(docId);
 
-        // Refund walletBalance
         transaction.update(userRef, {
           'walletBalance': FieldValue.increment(amount),
         });

@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class WalletHistoryScreen extends StatefulWidget {
   const WalletHistoryScreen({super.key});
@@ -17,6 +18,12 @@ class WalletHistoryScreen extends StatefulWidget {
 }
 
 class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    RoleGuardService.redirectIfAdmin(context);
+  }
+
   String _getTransactionTypeName(String type) {
     switch (type.toLowerCase()) {
       case 'topup':
@@ -154,7 +161,12 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
           : StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection(FirestoreCollections.transactions)
-                  .where('uid', isEqualTo: user.uid)
+                  .where(
+                    Filter.or(
+                      Filter('uid', isEqualTo: user.uid),
+                      Filter('userId', isEqualTo: user.uid),
+                    ),
+                  )
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -199,7 +211,6 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
 
                 var docs = snapshot.data!.docs.toList();
 
-                // Sort locally to avoid needing a Firestore composite index
                 docs.sort((a, b) {
                   var dataA = a.data() as Map<String, dynamic>;
                   var dataB = b.data() as Map<String, dynamic>;
@@ -207,7 +218,7 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                   Timestamp? tsB = dataB['createdAt'];
                   if (tsA == null) return 1;
                   if (tsB == null) return -1;
-                  return tsB.compareTo(tsA); // descending
+                  return tsB.compareTo(tsA);
                 });
 
                 return ListView.builder(
@@ -218,11 +229,11 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                     var doc = docs[index];
                     var data = doc.data() as Map<String, dynamic>;
                     String docId = doc.id;
-                    String uid = data['uid'] ?? user.uid;
+                    String uid = data['uid'] ?? data['userId'] ?? user.uid;
                     String type = (data['type'] ?? 'unknown').toLowerCase();
                     double amount = (data['amount'] ?? 0).toDouble();
                     String status = data['status'] ?? 'pending';
-                    String? slipUrl = data['slipUrl'];
+                    String? slipUrl = data['slipUrl'] ?? data['slip_image'] ?? data['slip_url'];
                     String? note = data['note'];
                     Timestamp? ts = data['createdAt'];
                     Timestamp? lastNudgedAt = data['lastNudgedAt'];
@@ -357,8 +368,6 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                             ),
                           ),
 
-                          // Standalone Countdown & Action Box for Pending Withdrawals
-                          // Owns its timer so list doesn't flicker on ticks!
                           if (isPendingWithdrawal) ...[
                             Divider(
                               height: 1,
@@ -880,9 +889,6 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
   }
 }
 
-/// Standalone countdown and action box for pending withdrawals.
-/// Contains its own 1-second timer to avoid rebuilding the parent screen/list,
-/// eliminating list flicker while keeping the countdown real-time and fluid.
 class _PendingCountdownBox extends StatefulWidget {
   final String docId;
   final String uid;
@@ -918,7 +924,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
   @override
   void initState() {
     super.initState();
-    // Ticks every second strictly within this isolated widget
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {});
@@ -949,7 +954,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
     final int remainingSeconds = slaTotalSeconds - elapsedSeconds;
     final bool isExpired = remainingSeconds <= 0;
 
-    // Check nudge cooldown
     bool canNudge = true;
     String nudgeLabel = "สะกิดเตือน";
     if (widget.lastNudgedAt != null) {
@@ -974,7 +978,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row: Status & SLA Countdown
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1046,7 +1049,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
 
           const SizedBox(height: 10),
 
-          // Progress Bar (when SLA is running)
           if (!isExpired) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
@@ -1062,7 +1064,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
             const SizedBox(height: 10),
           ],
 
-          // Policy & Guideline Text
           Text(
             isExpired
                 ? "คำขอนี้เกินเวลา 24 ชั่วโมงแล้ว ตามนโยบายความเป็นธรรม ท่านสามารถดึงเงินคืนเข้าวอลเล็ทได้ทันที หรือติดต่อแอดมินเพื่อสอบถามข้อมูล"
@@ -1076,7 +1077,6 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
 
           const SizedBox(height: 12),
 
-          // Action Buttons Row
           if (isExpired)
             Row(
               children: [

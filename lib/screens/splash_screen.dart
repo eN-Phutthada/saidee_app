@@ -80,7 +80,6 @@ class _SplashScreenState extends State<SplashScreen> {
           return;
         }
 
-        // ตรวจสอบการพ้นกำหนดการระงับบัญชีชั่วคราว (Auto-Expiry)
         final userDoc = await FirebaseFirestore.instance
             .collection(FirestoreCollections.users)
             .doc(user.uid)
@@ -93,7 +92,6 @@ class _SplashScreenState extends State<SplashScreen> {
           );
         }
 
-        // ตรวจสอบและโอนเงินคำสั่งซื้อที่ครบกำหนด 7 วันอัตโนมัติ (Escrow Auto-Release)
         EscrowService.checkAndAutoCompleteOrders();
       } catch (e) {
         debugPrint("Error checking admin status or escrow in Splash: $e");

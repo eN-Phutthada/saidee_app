@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/security_service.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
 class ManageAnnouncementScreen extends StatefulWidget {
@@ -217,10 +218,24 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.hasError) {
+            if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+              return PermissionDeniedView(
+                title: "ไม่มีสิทธิ์เข้าถึงประกาศข่าวสาร",
+                message:
+                    "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการจัดการประกาศข่าวสาร\n[cloud_firestore/permission-denied]",
+                technicalDetails: snapshot.error.toString(),
+                onRetry: () => setState(() {}),
+              );
+            }
+            return Center(
+              child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
                 "ไม่มีประกาศข่าวสาร",

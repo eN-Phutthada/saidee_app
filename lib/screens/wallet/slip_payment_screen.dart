@@ -14,6 +14,8 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/services/security_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class SlipPaymentScreen extends StatefulWidget {
   final double amount;
@@ -27,8 +29,12 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
   File? _slipImage;
   bool _isVerifying = false;
 
-  final String promptPayNumber = "0647490079";
-  final String accountName = "นายพุทธดา หาญนอก";
+  final String promptPayNumber = dotenv.isInitialized
+      ? (dotenv.env['ESCROW_PROMPTPAY_NUMBER'] ?? "0647490079")
+      : "0647490079";
+  final String accountName = dotenv.isInitialized
+      ? (dotenv.env['ESCROW_ACCOUNT_NAME'] ?? "นายพุทธดา หาญนอก")
+      : "นายพุทธดา หาญนอก";
 
   final String slipokAuthToken =
       dotenv.isInitialized ? (dotenv.env['SLIPOK_API_KEY'] ?? '') : '';
@@ -36,6 +42,7 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _secureScreen();
   }
 
@@ -85,9 +92,12 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
     setState(() => _isVerifying = true);
 
     try {
+      final branchId = dotenv.isInitialized
+          ? (dotenv.env['SLIPOK_BRANCH_ID'] ?? '61849')
+          : '61849';
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
+        Uri.parse('https://api.slipok.com/api/line/apikey/$branchId'),
       );
       request.headers['x-authorization'] = slipokAuthToken;
       request.files.add(
@@ -107,6 +117,17 @@ class _SlipPaymentScreenState extends State<SlipPaymentScreen> {
         if (transferredAmount != widget.amount) {
           _showError(
             "จำนวนเงินในสลิป ($transferredAmount ฿) ไม่ตรงกับยอดที่ต้องชำระ (${widget.amount} ฿)",
+          );
+          return;
+        }
+
+        if (!SecurityService.isSlipReceiverValid(
+          receiverData: slipData['receiver'],
+          expectedAccountName: accountName,
+          expectedPromptPay: promptPayNumber,
+        )) {
+          _showError(
+            "สลิปนี้ไม่ได้โอนเข้าบัญชีของระบบ Saidee ($accountName)\nกรุณาใช้สลิปที่โอนเข้าบัญชีปลายทางที่ถูกต้อง",
           );
           return;
         }

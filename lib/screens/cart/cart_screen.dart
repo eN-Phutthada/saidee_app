@@ -12,6 +12,7 @@ import '../store/store_profile_screen.dart';
 import '../product/product_detail_screen.dart';
 import '../../models/product_model.dart';
 import '../../config/firestore_collections.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class CartScreen extends StatefulWidget {
   final bool showBackButton;
@@ -33,6 +34,9 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      RoleGuardService.redirectIfAdmin(context);
+    });
     _initCartStream();
   }
 
@@ -533,24 +537,20 @@ class _CartScreenState extends State<CartScreen> {
                 unavailableReason = "สินค้านี้ถูกลบออกจากระบบแล้ว";
               } else {
                 var pData = prodSnapshot.data!.data() as Map<String, dynamic>;
-                if (pData['status'] != 'active') {
+                String pStatus = (pData['status'] ?? 'active').toString().toLowerCase();
+                if (pStatus != 'active') {
                   isAvailable = false;
                   unavailableReason = "สินค้าถูกขายไปแล้ว หรือหมดสต็อก";
                 }
               }
             }
 
-            if (isAvailable && sellerSnap.hasData) {
-              if (!sellerSnap.data!.exists) {
+            if (isAvailable && sellerSnap.hasData && sellerSnap.data!.exists) {
+              var sData = sellerSnap.data!.data() as Map<String, dynamic>;
+              String sellerStatus = (sData['status'] ?? 'active').toString().toLowerCase();
+              if (sellerStatus == 'suspended' || sellerStatus == 'banned') {
                 isAvailable = false;
-                unavailableReason = "ไม่พบร้านค้านี้ในระบบ";
-              } else {
-                var sData = sellerSnap.data!.data() as Map<String, dynamic>;
-                String sellerStatus = sData['status'] ?? 'active';
-                if (sellerStatus == 'suspended' || sellerStatus == 'banned') {
-                  isAvailable = false;
-                  unavailableReason = "ร้านค้านี้ถูกระงับการใช้งาน";
-                }
+                unavailableReason = "ร้านค้านี้ถูกระงับการใช้งาน";
               }
             }
 

@@ -8,6 +8,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/services/auth_service.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'manage_master_data.dart';
 import 'manage_shipping.dart';
@@ -18,6 +19,7 @@ import 'admin_transaction.dart';
 import 'admin_shop_search.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -47,28 +49,33 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   void _listenForNewWithdrawals() {
     _pendingWithdrawalSubscription = FirebaseFirestore.instance
-        .collection('transactions')
+        .collection(FirestoreCollections.transactions)
         .where('type', isEqualTo: 'withdraw')
         .where('status', isEqualTo: 'pending')
         .snapshots()
-        .listen((snapshot) {
-          if (_isInitialLoad) {
-            _isInitialLoad = false;
-            return;
-          }
+        .listen(
+          (snapshot) {
+            if (_isInitialLoad) {
+              _isInitialLoad = false;
+              return;
+            }
 
-          for (var change in snapshot.docChanges) {
-            if (change.type == DocumentChangeType.added) {
-              var data = change.doc.data() as Map<String, dynamic>;
-              _showWithdrawalNotification(data);
-            } else if (change.type == DocumentChangeType.modified) {
-              var data = change.doc.data() as Map<String, dynamic>;
-              if (data['lastNudgedAt'] != null) {
-                _showNudgeNotification(data);
+            for (var change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added) {
+                var data = change.doc.data() as Map<String, dynamic>;
+                _showWithdrawalNotification(data);
+              } else if (change.type == DocumentChangeType.modified) {
+                var data = change.doc.data() as Map<String, dynamic>;
+                if (data['lastNudgedAt'] != null) {
+                  _showNudgeNotification(data);
+                }
               }
             }
-          }
-        });
+          },
+          onError: (error) {
+            debugPrint("Withdrawals listener error: $error");
+          },
+        );
   }
 
   Future<void> _showNudgeNotification(Map<String, dynamic> data) async {
@@ -146,13 +153,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
         body: _pages[_selectedIndex],
         bottomNavigationBar: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
-              .collection('transactions')
+              .collection(FirestoreCollections.transactions)
               .where('type', isEqualTo: 'withdraw')
               .where('status', isEqualTo: 'pending')
               .snapshots(),
           builder: (context, snapshot) {
             int pendingCount = 0;
-            if (snapshot.hasData) {
+            if (snapshot.hasData && !snapshot.hasError) {
               pendingCount = snapshot.data!.docs.length;
             }
 
@@ -405,29 +412,53 @@ class AdminDashboardContent extends StatelessWidget {
                   const SizedBox(height: 15),
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection('users')
-                        .limit(10)
+                        .collection(FirestoreCollections.users)
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        return const Text("โหลดข้อมูลผิดพลาด");
+                        if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+                          return PermissionDeniedView(
+                            title: "ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้",
+                            message:
+                                "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการดูข้อมูลผู้ใช้งานทั้งหมด\n[cloud_firestore/permission-denied]",
+                            technicalDetails: snapshot.error.toString(),
+                            showHomeButton: false,
+                          );
+                        }
+                        return Center(
+                          child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+                        );
                       }
                       if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      final users = snapshot.data!.docs;
+                      var users = snapshot.data!.docs.toList();
                       if (users.isEmpty) {
                         return const Center(child: Text("ยังไม่มีผู้ใช้งาน"));
                       }
 
+                      users.sort((a, b) {
+                        var dataA = a.data() as Map<String, dynamic>;
+                        var dataB = b.data() as Map<String, dynamic>;
+                        Timestamp? tsA =
+                            dataA['createdAt'] ?? dataA['updatedAt'];
+                        Timestamp? tsB =
+                            dataB['createdAt'] ?? dataB['updatedAt'];
+                        if (tsA == null) return 1;
+                        if (tsB == null) return -1;
+                        return tsB.compareTo(tsA);
+                      });
+
+                      final recentUsers = users.take(10).toList();
+
                       return ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: users.length,
+                        itemCount: recentUsers.length,
                         itemBuilder: (context, index) {
                           var data =
-                              users[index].data() as Map<String, dynamic>;
+                              recentUsers[index].data() as Map<String, dynamic>;
                           return _buildUserCard(context, data);
                         },
                       );

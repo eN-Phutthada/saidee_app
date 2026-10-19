@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:intl/intl.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 import 'chat_screen.dart';
 
 class ChatListScreen extends StatelessWidget {
@@ -23,8 +24,20 @@ class ChatListScreen extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+    return FutureBuilder<bool>(
+      future: RoleGuardService.isCurrentUserAdmin(),
+      builder: (context, adminSnap) {
+        if (adminSnap.data == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            RoleGuardService.redirectIfAdmin(context);
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           "ข้อความ",
@@ -249,7 +262,9 @@ class ChatListScreen extends StatelessWidget {
         },
       ),
     );
-  }
+  },
+);
+}
 
   String _formatTime(Timestamp? timestamp) {
     if (timestamp == null) return '';

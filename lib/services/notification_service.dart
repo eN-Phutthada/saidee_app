@@ -5,15 +5,12 @@ import 'package:saidee_app/config/firestore_collections.dart';
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // Cache for deduplicating notifications across listeners (FCM & Firestore)
   static final Map<String, int> _recentNotifications = {};
-  static const int _dedupTtlMs = 8000; // 8 seconds window
+  static const int _dedupTtlMs = 8000;
 
-  /// ตรวจสอบว่าเป็นการแจ้งเตือนซ้ำภายในระยะเวลา TTL หรือไม่
   static bool isDuplicateNotification(String title, String body, {String? customId}) {
     int now = DateTime.now().millisecondsSinceEpoch;
 
-    // Clean up expired entries
     _recentNotifications.removeWhere((_, time) => now - time > _dedupTtlMs);
 
     String key = customId != null && customId.isNotEmpty
@@ -23,7 +20,7 @@ class NotificationService {
     if (_recentNotifications.containsKey(key)) {
       int lastTime = _recentNotifications[key]!;
       if (now - lastTime < _dedupTtlMs) {
-        return true; // ข้ามการยิงซ้ำซ้อน
+        return true;
       }
     }
 
@@ -31,12 +28,11 @@ class NotificationService {
     return false;
   }
 
-  /// ส่งการแจ้งเตือนไปยังผู้ใช้รายบุคคล (ทั้งผู้ซื้อและผู้ขาย)
   static Future<DocumentReference?> sendNotification({
     required String userId,
     required String title,
     required String body,
-    required String type, // 'order', 'wallet', 'dispute', 'system', 'chat'
+    required String type,
     String? orderId,
     Map<String, dynamic>? extraData,
   }) async {
@@ -62,7 +58,6 @@ class NotificationService {
     }
   }
 
-  /// อ่านการแจ้งเตือนทั้งหมดของผู้ใช้
   static Stream<QuerySnapshot> getUserNotifications(String userId) {
     if (userId.isEmpty) {
       return const Stream.empty();
@@ -75,7 +70,6 @@ class NotificationService {
         .snapshots();
   }
 
-  /// อ่านจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน
   static Stream<int> getUnreadCount(String userId) {
     if (userId.isEmpty) {
       return Stream.value(0);
@@ -93,7 +87,6 @@ class NotificationService {
         });
   }
 
-  /// ทำเครื่องหมายว่าอ่านแล้วสำหรับ 1 รายการ
   static Future<void> markAsRead(String userId, String notificationId) async {
     if (userId.isEmpty || notificationId.isEmpty) return;
     try {
@@ -108,7 +101,6 @@ class NotificationService {
     }
   }
 
-  /// ทำเครื่องหมายว่าอ่านแล้วทั้งหมด
   static Future<void> markAllAsRead(String userId) async {
     if (userId.isEmpty) return;
     try {

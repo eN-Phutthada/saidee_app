@@ -22,6 +22,7 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _bioController;
+  late TextEditingController _phoneController;
 
   File? _newImageFile;
   bool _isLoading = false;
@@ -35,6 +36,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       text: widget.userData['name'] ?? '',
     );
     _bioController = TextEditingController(text: widget.userData['bio'] ?? '');
+    _phoneController = TextEditingController(
+      text: widget.userData['phone'] ?? '',
+    );
     _currentImageUrl = widget.userData['profileImage'];
   }
 
@@ -42,6 +46,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _bioController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -204,6 +209,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       String? imageUrl = _currentImageUrl;
 
+      final newPhone = _phoneController.text.trim();
+      if (newPhone.isNotEmpty) {
+        if (!RegExp(r'^0[0-9]{9}$').hasMatch(newPhone)) {
+          AppDialog.showCustomDialog(
+            title: "รูปแบบเบอร์โทรไม่ถูกต้อง",
+            message: "กรุณาระบุเบอร์โทรศัพท์ 10 หลักที่ถูกต้อง (เช่น 0812345678)",
+            icon: CupertinoIcons.exclamationmark_triangle_fill,
+            iconColor: Colors.orange,
+            confirmText: "ตกลง",
+            onConfirm: () => Get.back(),
+          );
+          return;
+        }
+
+        if (newPhone != (widget.userData['phone'] ?? '')) {
+          final phoneCheck = await FirebaseFirestore.instance
+              .collection('users')
+              .where('phone', isEqualTo: newPhone)
+              .get();
+
+          if (phoneCheck.docs.any((d) => d.id != currentUser!.uid)) {
+            AppDialog.showCustomDialog(
+              title: "เบอร์โทรศัพท์ซ้ำ",
+              message: "เบอร์โทรศัพท์นี้ถูกใช้งานในระบบแล้ว กรุณาระบุเบอร์อื่น",
+              icon: CupertinoIcons.exclamationmark_triangle_fill,
+              iconColor: Colors.red,
+              confirmText: "ตกลง",
+              onConfirm: () => Get.back(),
+            );
+            return;
+          }
+        }
+      }
+
       if (_newImageFile != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
@@ -221,6 +260,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .update({
             'name': SecurityService.sanitizeText(_nameController.text),
             'bio': SecurityService.sanitizeText(_bioController.text),
+            'phone': SecurityService.sanitizeText(newPhone),
             'profileImage': imageUrl,
           });
 
@@ -299,7 +339,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         physics: const ClampingScrollPhysics(),
         child: Column(
           children: [
-            // Top Header Hero Card with Avatar
             _buildProfileHeader(theme, isDark),
 
             Padding(
@@ -310,7 +349,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // General Info Section
                   _buildSectionHeader(
                     icon: CupertinoIcons.person_crop_circle_fill,
                     title: "ข้อมูลทั่วไป",
@@ -356,7 +394,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Contact Info Section (Read-only)
                   _buildSectionHeader(
                     icon: CupertinoIcons.lock_shield_fill,
                     title: "ข้อมูลส่วนตัว",
@@ -381,11 +418,61 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        _buildReadOnlyTile(
-                          context,
-                          icon: CupertinoIcons.phone_fill,
-                          label: "เบอร์โทรศัพท์",
-                          value: widget.userData['phone'] ?? '',
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                CupertinoIcons.phone_fill,
+                                size: 18,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "เบอร์โทรศัพท์ (ไม่สามารถซ้ำได้)",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextField(
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    maxLength: 10,
+                                    buildCounter: (
+                                      context, {
+                                      required currentLength,
+                                      required isFocused,
+                                      maxLength,
+                                    }) =>
+                                        null,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: "กรอกเบอร์โทรศัพท์ 10 หลัก",
+                                      isDense: true,
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                      border: InputBorder.none,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -406,7 +493,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Address Stream Section
                   StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('users')
@@ -595,7 +681,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                   const SizedBox(height: 32),
 
-                  // Bottom Save Action Button
                   SizedBox(
                     width: double.infinity,
                     height: 52,
@@ -669,7 +754,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Background subtle circles
           Positioned(
             right: -25,
             top: -20,

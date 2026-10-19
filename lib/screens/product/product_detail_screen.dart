@@ -16,6 +16,8 @@ import '../auth/login_screen.dart';
 import '../home/search_results_screen.dart';
 import 'add_product_screen.dart';
 import 'package:saidee_app/widgets/report_bottom_sheet.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/screens/admin/admin_store_view_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -28,6 +30,7 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _currentImageIndex = 0;
+  bool _isAdmin = false;
   VideoPlayerController? _videoController;
 
   bool _isVideoInitialized = false;
@@ -37,10 +40,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isCheckingSeller = true;
 
   String _currentVideoUrl = "";
+  late Future<Map<String, dynamic>> _sellerInfoFuture;
 
   @override
   void initState() {
     super.initState();
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin && mounted) {
+        setState(() => _isAdmin = true);
+        Get.off(() => AdminStoreViewScreen(sellerId: widget.product.sellerId));
+      }
+    });
+    _sellerInfoFuture = _fetchSellerAndReviews(widget.product.sellerId);
     _currentVideoUrl = widget.product.video;
     if (_currentVideoUrl.isNotEmpty) {
       _initVideo(_currentVideoUrl);
@@ -84,7 +95,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (user != null && user.uid == widget.product.sellerId) return;
 
       if (user != null) {
-        RecommendationService.trackProductView(user.uid, widget.product);
+        final isAdmin = await RoleGuardService.isCurrentUserAdmin();
+        if (!isAdmin) {
+          RecommendationService.trackProductView(user.uid, widget.product);
+        }
       }
 
       await FirebaseFirestore.instance
@@ -96,6 +110,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  Future<void> _toggleLikeProduct(ProductModel product) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Get.snackbar(
+        "กรุณาเข้าสู่ระบบ",
+        "เข้าสู่ระบบเพื่อบันทึกสินค้าที่ถูกใจ",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final isLiked = product.likedUsers.contains(user.uid);
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection('products')
+          .doc(product.id);
+
+      if (isLiked) {
+        await docRef.update({
+          'likesCount': FieldValue.increment(-1),
+          'likedUsers': FieldValue.arrayRemove([user.uid]),
+        });
+      } else {
+        await docRef.update({
+          'likesCount': FieldValue.increment(1),
+          'likedUsers': FieldValue.arrayUnion([user.uid]),
+        });
+      }
+    } catch (e) {
+      debugPrint("Error toggling like: $e");
+    }
+  }
+
   Future<void> _checkSellerStatus() async {
     try {
       var sellerDoc = await FirebaseFirestore.instance
@@ -104,7 +153,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .get();
       if (sellerDoc.exists) {
         var data = sellerDoc.data() as Map<String, dynamic>;
-        String status = data['status'] ?? 'active';
+        String status = (data['status'] ?? 'active').toString().toLowerCase();
         if (mounted) {
           setState(() {
             _isSellerValid = (status != 'banned' && status != 'suspended');
@@ -112,11 +161,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           });
         }
       } else {
-        if (mounted) {
-          setState(() {
-            _isSellerValid = false;
-            _isCheckingSeller = false;
-          });
+        var adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(widget.product.sellerId)
+            .get();
+        if (adminDoc.exists) {
+          var data = adminDoc.data() as Map<String, dynamic>;
+          String status = (data['status'] ?? 'active').toString().toLowerCase();
+          if (mounted) {
+            setState(() {
+              _isSellerValid = (status != 'banned' && status != 'suspended');
+              _isCheckingSeller = false;
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _isSellerValid = true;
+              _isCheckingSeller = false;
+            });
+          }
         }
       }
     } catch (e) {
@@ -128,16 +192,80 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  void _showNotImplementedPopup(String featureName) {
-    AppDialog.showCustomDialog(
-      title: "แจ้งเตือนระบบจำลอง",
-      message:
-          "ฟังก์ชัน '$featureName' เป็นเพียงการจำลองระบบ ยังไม่สามารถใช้งานได้จริงในขณะนี้",
-      icon: CupertinoIcons.info_circle_fill,
-      iconColor: Colors.orange,
-      confirmText: "เข้าใจแล้ว",
-      onConfirm: () => Get.back(),
-    );
+  Future<Map<String, dynamic>> _fetchSellerAndReviews(String sellerId) async {
+    Map<String, dynamic> result = {
+      'name': 'ร้านค้า',
+      'profileImage': '',
+      'bio': 'ส่งต่อเสื้อผ้าคุณภาพ',
+      'isBanned': false,
+      'avgRating': 0.0,
+      'reviewCount': 0,
+    };
+
+    if (sellerId.isEmpty) return result;
+
+    try {
+      var userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(sellerId)
+          .get();
+      if (userDoc.exists) {
+        var userData = userDoc.data() as Map<String, dynamic>;
+        result['name'] = userData['name'] ?? 'ผู้ขายไม่ระบุชื่อ';
+        result['profileImage'] = userData['profileImage'] ?? '';
+        String bio = (userData['bio'] ?? '').trim();
+        if (bio.isNotEmpty) result['bio'] = bio;
+
+        String sStatus = (userData['status'] ?? 'active')
+            .toString()
+            .toLowerCase();
+        if (sStatus == 'banned' || sStatus == 'suspended') {
+          result['isBanned'] = true;
+          result['name'] = 'ร้านค้านี้ถูกระงับการใช้งาน';
+        }
+      } else {
+        var adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(sellerId)
+            .get();
+        if (adminDoc.exists) {
+          var adminData = adminDoc.data() as Map<String, dynamic>;
+          result['name'] = adminData['name'] ?? 'ผู้ดูแลระบบ';
+          result['profileImage'] = adminData['profileImage'] ?? '';
+          String sStatus = (adminData['status'] ?? 'active')
+              .toString()
+              .toLowerCase();
+          if (sStatus == 'banned' || sStatus == 'suspended') {
+            result['isBanned'] = true;
+            result['name'] = 'ร้านค้านี้ถูกระงับการใช้งาน';
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching seller profile in product detail: $e");
+    }
+
+    try {
+      var reviewSnap = await FirebaseFirestore.instance
+          .collection('reviews')
+          .where('sellerId', isEqualTo: sellerId)
+          .get();
+      if (reviewSnap.docs.isNotEmpty) {
+        result['reviewCount'] = reviewSnap.docs.length;
+        double totalRating = 0.0;
+        for (var doc in reviewSnap.docs) {
+          var data = doc.data();
+          totalRating += (data['rating'] ?? 5.0) is num
+              ? (data['rating'] as num).toDouble()
+              : 5.0;
+        }
+        result['avgRating'] = totalRating / reviewSnap.docs.length;
+      }
+    } catch (e) {
+      debugPrint("Error fetching seller reviews in product detail: $e");
+    }
+
+    return result;
   }
 
   void _showConditionInfoSheet(String currentCondition) {
@@ -516,6 +644,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAdmin) {
+      return const Scaffold(
+        body: Center(child: CupertinoActivityIndicator()),
+      );
+    }
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
           .collection('products')
@@ -902,14 +1036,33 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             backgroundColor: isDark
                                 ? Colors.black54
                                 : Colors.white70,
-                            child: IconButton(
-                              icon: Icon(
-                                CupertinoIcons.share,
-                                color: theme.colorScheme.onSurface,
-                                size: 24,
-                              ),
-                              onPressed: () {
-                                _showNotImplementedPopup("แชร์สินค้า");
+                            child: Builder(
+                              builder: (context) {
+                                final currentUid =
+                                    FirebaseAuth.instance.currentUser?.uid;
+                                final isLiked =
+                                    currentUid != null &&
+                                    displayProduct.likedUsers.contains(
+                                      currentUid,
+                                    );
+                                return IconButton(
+                                  icon: Icon(
+                                    isLiked
+                                        ? CupertinoIcons.heart_fill
+                                        : CupertinoIcons.heart,
+                                    color: isLiked
+                                        ? Colors.red
+                                        : (isDark
+                                              ? Colors.white
+                                              : Colors.black87),
+                                    size: 20,
+                                  ),
+                                  tooltip: isLiked
+                                      ? "เลิกถูกใจ"
+                                      : "ถูกใจสินค้านี้",
+                                  onPressed: () =>
+                                      _toggleLikeProduct(displayProduct),
+                                );
                               },
                             ),
                           ),
@@ -1028,6 +1181,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               fontSize: 13,
                             ),
                           ),
+                          const SizedBox(width: 16),
+                          Builder(
+                            builder: (context) {
+                              final currentUid =
+                                  FirebaseAuth.instance.currentUser?.uid;
+                              final isLiked =
+                                  currentUid != null &&
+                                  displayProduct.likedUsers.contains(
+                                    currentUid,
+                                  );
+                              return Row(
+                                children: [
+                                  Icon(
+                                    isLiked
+                                        ? CupertinoIcons.heart_fill
+                                        : CupertinoIcons.heart,
+                                    size: 16,
+                                    color: isLiked ? Colors.red : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "${displayProduct.likesCount} ถูกใจ",
+                                    style: TextStyle(
+                                      color: isLiked ? Colors.red : Colors.grey,
+                                      fontSize: 13,
+                                      fontWeight: isLiked
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ],
                       ),
 
@@ -1039,64 +1226,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
 
-                      FutureBuilder<List<dynamic>>(
-                        future: Future.wait([
-                          FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(displayProduct.sellerId)
-                              .get(),
-                          FirebaseFirestore.instance
-                              .collection('reviews')
-                              .where(
-                                'sellerId',
-                                isEqualTo: displayProduct.sellerId,
-                              )
-                              .get(),
-                        ]),
-                        builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-                          String sellerName = "กำลังโหลด...";
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _sellerInfoFuture,
+                        builder: (context, snapshot) {
+                          String sellerName = "ร้านค้า";
                           String sellerImage = "";
                           String sellerBio = "ส่งต่อเสื้อผ้าคุณภาพ";
                           bool isBanned = false;
                           double avgRating = 0.0;
                           int reviewCount = 0;
 
+                          if (snapshot.connectionState ==
+                                  ConnectionState.waiting &&
+                              !snapshot.hasData) {
+                            sellerName = "กำลังโหลดข้อมูลร้านค้า...";
+                          }
+
                           if (snapshot.hasData) {
-                            DocumentSnapshot userDoc = snapshot.data![0];
-                            if (userDoc.exists) {
-                              var userData =
-                                  userDoc.data() as Map<String, dynamic>;
-                              sellerName =
-                                  userData['name'] ?? "ผู้ขายไม่ระบุชื่อ";
-                              sellerImage = userData['profileImage'] ?? "";
-                              String bioText = (userData['bio'] ?? "").trim();
-                              if (bioText.isNotEmpty) {
-                                sellerBio = bioText;
-                              }
-
-                              String sStatus = userData['status'] ?? 'active';
-                              if (sStatus == 'banned' ||
-                                  sStatus == 'suspended') {
-                                isBanned = true;
-                                sellerName = "ร้านค้านี้ถูกระงับการใช้งาน";
-                              }
-                            } else {
-                              sellerName = "ไม่พบข้อมูลร้านค้า";
-                              isBanned = true;
-                            }
-
-                            QuerySnapshot reviewSnap = snapshot.data![1];
-                            if (reviewSnap.docs.isNotEmpty) {
-                              reviewCount = reviewSnap.docs.length;
-                              double totalRating = 0;
-                              for (var doc in reviewSnap.docs) {
-                                totalRating +=
-                                    (doc.data()
-                                        as Map<String, dynamic>)['rating'] ??
-                                    5.0;
-                              }
-                              avgRating = totalRating / reviewCount;
-                            }
+                            final data = snapshot.data!;
+                            sellerName = data['name'] ?? 'ร้านค้า';
+                            sellerImage = data['profileImage'] ?? '';
+                            sellerBio = data['bio'] ?? 'ส่งต่อเสื้อผ้าคุณภาพ';
+                            isBanned = data['isBanned'] == true;
+                            avgRating =
+                                (data['avgRating'] as num?)?.toDouble() ?? 0.0;
+                            reviewCount =
+                                (data['reviewCount'] as num?)?.toInt() ?? 0;
                           }
 
                           return GestureDetector(
@@ -1396,6 +1551,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       if (sellerDoc.exists) {
                         sName = sellerDoc.data()?['name'] ?? "ร้านค้า";
                         sImg = sellerDoc.data()?['profileImage'] ?? "";
+                      } else {
+                        var adminDoc = await FirebaseFirestore.instance
+                            .collection('admins')
+                            .doc(product.sellerId)
+                            .get();
+                        if (adminDoc.exists) {
+                          sName = adminDoc.data()?['name'] ?? "ผู้ดูแลระบบ";
+                          sImg = adminDoc.data()?['profileImage'] ?? "";
+                        }
                       }
 
                       Get.to(

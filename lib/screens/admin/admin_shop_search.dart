@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 import 'package:saidee_app/screens/admin/admin_user_detail_screen.dart';
+import 'package:saidee_app/screens/admin/admin_store_view_screen.dart';
 
 class AdminShopSearchScreen extends StatefulWidget {
   const AdminShopSearchScreen({super.key});
@@ -110,11 +113,26 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
-                  .collection('users')
+                  .collection(FirestoreCollections.users)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+                    return PermissionDeniedView(
+                      title: "ไม่มีสิทธิ์ค้นหาร้านค้า/ผู้ใช้",
+                      message:
+                          "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการค้นหาและดูข้อมูลผู้ใช้ทั้งหมด\n[cloud_firestore/permission-denied]",
+                      technicalDetails: snapshot.error.toString(),
+                      onRetry: () => setState(() {}),
+                    );
+                  }
+                  return Center(
+                    child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+                  );
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -288,11 +306,32 @@ class _AdminShopSearchScreenState extends State<AdminShopSearchScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Icon(
-                  CupertinoIcons.chevron_right_circle_fill,
-                  color: Colors.grey[300],
-                  size: 20,
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: "ดูหน้าร้าน (Admin)",
+                      icon: const Icon(
+                        CupertinoIcons.building_2_fill,
+                        color: Colors.green,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        Get.to(
+                          () => AdminStoreViewScreen(
+                            sellerId: userId,
+                            sellerData: data,
+                          ),
+                        );
+                      },
+                    ),
+                    Icon(
+                      CupertinoIcons.chevron_right_circle_fill,
+                      color: Colors.grey[300],
+                      size: 18,
+                    ),
+                  ],
                 ),
               ],
             ),

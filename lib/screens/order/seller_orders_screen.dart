@@ -11,6 +11,7 @@ import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/escrow_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class SellerOrdersScreen extends StatefulWidget {
   const SellerOrdersScreen({super.key});
@@ -23,6 +24,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _checkAndAutoCompleteOrders();
   }
 

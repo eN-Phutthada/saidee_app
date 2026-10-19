@@ -7,43 +7,36 @@ class GuidedTourService {
   static const String _prefKey = 'has_seen_guided_tour_v1';
   static const String _prefKeyAddProduct = 'has_seen_add_product_tour_v1';
 
-  /// Check if the user has completed or skipped the guided tour
   static Future<bool> hasSeenTour() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_prefKey) ?? false;
   }
 
-  /// Mark the guided tour as seen
   static Future<void> markTourAsSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKey, true);
   }
 
-  /// Reset the guided tour flag so the user can re-watch it
   static Future<void> resetTour() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefKey);
   }
 
-  /// Check if the user has completed or skipped the Add Product guided tour
   static Future<bool> hasSeenAddProductTour() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_prefKeyAddProduct) ?? false;
   }
 
-  /// Mark the Add Product guided tour as seen
   static Future<void> markAddProductTourAsSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_prefKeyAddProduct, true);
   }
 
-  /// Reset the Add Product guided tour flag
   static Future<void> resetAddProductTour() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefKeyAddProduct);
   }
 
-  /// Show the interactive guided tour overlay
   static void showTour({
     required BuildContext context,
     required GlobalKey searchKey,
@@ -186,7 +179,6 @@ class GuidedTourService {
     tutorial.show(context: context);
   }
 
-  /// Show the interactive guided tour for Add Product screen
   static void showAddProductTour({
     required BuildContext context,
     required GlobalKey imageKey,

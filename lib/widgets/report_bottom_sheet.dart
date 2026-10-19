@@ -10,10 +10,11 @@ import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/models/report_model.dart';
 import 'package:saidee_app/screens/auth/login_screen.dart';
+import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/widgets/custom_dialog.dart';
 
-/// BottomSheet มาตรฐานสำหรับให้ผู้ใช้ส่งรายงานปัญหา (สินค้า, ร้านค้า, แชท, คำสั่งซื้อ)
 class ReportBottomSheet extends StatefulWidget {
-  final String targetType; // 'product', 'store', 'chat', 'order'
+  final String targetType;
   final String targetId;
   final String targetTitle;
   final String reportedUserId;
@@ -28,7 +29,6 @@ class ReportBottomSheet extends StatefulWidget {
     this.reportedUserName,
   });
 
-  /// แสดง ReportBottomSheet
   static void show({
     required BuildContext context,
     required String targetType,
@@ -188,6 +188,27 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
     setState(() => _isSubmitting = true);
 
     try {
+      final existingReport = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.reports)
+          .where('reporterId', isEqualTo: user.uid)
+          .where('targetId', isEqualTo: widget.targetId)
+          .limit(1)
+          .get();
+
+      if (existingReport.docs.isNotEmpty) {
+        setState(() => _isSubmitting = false);
+        AppDialog.showCustomDialog(
+          title: "รายงานซ้ำซ้อน",
+          message:
+              "คุณเคยรายงานรายการนี้ไปแล้ว\nระบบจะไม่นับรายงานซ้ำจากผู้ใช้คนเดิมเพื่อป้องกันการกลั่นแกล้ง",
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          iconColor: Colors.orange,
+          confirmText: "ตกลง",
+          onConfirm: () => Get.back(),
+        );
+        return;
+      }
+
       String uploadedImageUrl = "";
 
       if (_evidenceImage != null) {
@@ -232,7 +253,6 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
           .collection(FirestoreCollections.reports)
           .add(report.toMap());
 
-      // หากเป็นข้อพิพาทออเดอร์ ให้อัปเดตสถานะออเดอร์เป็น disputed ด้วย
       if (widget.targetType == 'order') {
         await FirebaseFirestore.instance
             .collection(FirestoreCollections.orders)
@@ -248,7 +268,74 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
             });
       }
 
-      Get.back(); // ปิด BottomSheet
+      int uniqueReportCount = 1;
+      bool isThresholdReached = false;
+      try {
+        final allUserReports = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.reports)
+            .where('reportedUserId', isEqualTo: widget.reportedUserId)
+            .get();
+
+        final Set<String> uniqueReporters = allUserReports.docs
+            .map((doc) =>
+                (doc.data()['reporterId'] ?? doc.data()['reporter_id'] ?? '')
+                    .toString())
+            .where((id) => id.isNotEmpty)
+            .toSet();
+
+        uniqueReportCount = uniqueReporters.length;
+        isThresholdReached = uniqueReportCount >= 3;
+
+        await FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .doc(widget.reportedUserId)
+            .update({
+          'uniqueReportCount': uniqueReportCount,
+          'isFlaggedForReview': isThresholdReached,
+          'lastReportedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (countErr) {
+        debugPrint("Error updating unique reports count: $countErr");
+      }
+
+      try {
+        final adminDocs = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.admins)
+            .get();
+
+        for (var admin in adminDocs.docs) {
+          await NotificationService.sendNotification(
+            userId: admin.id,
+            title: "มีการรายงานสมาชิกใหม่ ⚠️",
+            body:
+                "ผู้แจ้ง: $reporterName ได้รายงาน: ${widget.reportedUserName ?? widget.reportedUserId}\nสาเหตุ: $_selectedCategory",
+            type: 'system',
+            extraData: {
+              'reportedUserId': widget.reportedUserId,
+              'targetId': widget.targetId,
+              'targetType': widget.targetType,
+            },
+          );
+
+          if (isThresholdReached) {
+            await NotificationService.sendNotification(
+              userId: admin.id,
+              title: "🚨 แจ้งเตือนด่วน: สมาชิกถูกรายงานครบ 3 รายแล้ว!",
+              body:
+                  "ผู้ใช้ ${widget.reportedUserName ?? widget.reportedUserId} ถูกรายงานจากผู้ใช้ที่ไม่ซ้ำกันครบ $uniqueReportCount รายแล้ว กรุณาเข้าตรวจสอบเพื่อพิจารณาระงับบัญชี",
+              type: 'system',
+              extraData: {
+                'reportedUserId': widget.reportedUserId,
+                'urgent': true,
+              },
+            );
+          }
+        }
+      } catch (adminErr) {
+        debugPrint("Error sending admin report notifications: $adminErr");
+      }
+
+      Get.back();
 
       Get.snackbar(
         "ส่งรายงานปัญหาสำเร็จ",

@@ -8,6 +8,7 @@ import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class WalletWithdrawScreen extends StatefulWidget {
   final double currentBalance;
@@ -43,6 +44,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _secureScreen();
     _loadSavedAccount();
   }
@@ -150,7 +152,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           );
         }
 
-        // Deduct balance immediately
         transaction.update(userRef, {
           'walletBalance': FieldValue.increment(-amount),
           'withdrawBank': _selectedBank,
@@ -185,8 +186,8 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
         iconColor: Colors.green,
         confirmText: "ตกลง",
         onConfirm: () {
-          Get.back(); // close dialog
-          Get.back(); // close screen
+          Get.back();
+          Get.back();
         },
       );
     } catch (e) {
@@ -283,7 +284,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                 children: [
                   const SizedBox(height: 10),
 
-                  // Current Balance Banner
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(20),
@@ -336,7 +336,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Amount Input
                   Center(
                     child: Text(
                       "ระบุจำนวนเงินที่ต้องการถอน",
@@ -424,7 +423,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                                 _amountController
                                     .text = widget.currentBalance.toStringAsFixed(
                                   0,
-                                ); // Optional: you can do exact .toString() for decimal
+                                );
                               } else {
                                 _amountController.text = amtText;
                               }
@@ -588,7 +587,7 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
                   const SizedBox(height: 25),
                   _buildPolicyCard(isDark, theme),
 
-                  const SizedBox(height: 100), // spacing for bottom bar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),

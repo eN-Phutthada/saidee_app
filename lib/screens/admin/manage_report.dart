@@ -10,6 +10,7 @@ import 'package:saidee_app/screens/admin/admin_user_detail_screen.dart';
 import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/services/notification_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 
 class ManageReportScreen extends StatefulWidget {
   const ManageReportScreen({super.key});
@@ -87,6 +88,21 @@ class _ManageReportScreenState extends State<ManageReportScreen>
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+              return PermissionDeniedView(
+                title: "ไม่มีสิทธิ์เข้าถึงรายงานปัญหา",
+                message:
+                    "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการดูและจัดการรายงานปัญหา\n[cloud_firestore/permission-denied]",
+                technicalDetails: snapshot.error.toString(),
+                onRetry: () => setState(() {}),
+              );
+            }
+            return Center(
+              child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+            );
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -232,7 +248,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Target Type & Status
           Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -259,7 +274,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Category / Reason Badge
                 Row(
                   children: [
                     Container(
@@ -298,7 +312,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                 ),
                 const SizedBox(height: 10),
 
-                // Detail
                 Text(
                   report.detail.isNotEmpty ? report.detail : "ไม่มีรายละเอียดเพิ่มเติม",
                   style: TextStyle(
@@ -308,7 +321,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                   ),
                 ),
 
-                // Evidence images preview
                 if (report.evidenceUrls.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   SizedBox(
@@ -342,7 +354,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                 ],
 
                 const SizedBox(height: 14),
-                // Reporter Information
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -368,7 +379,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                 ),
 
                 const SizedBox(height: 12),
-                // Reported User Information & Moderation Actions
                 _buildReportedUserSection(context, report, theme, isDark),
               ],
             ),
@@ -396,6 +406,8 @@ class _ManageReportScreenState extends State<ManageReportScreen>
         String userStatus = "active";
         String profileImg = "";
         int strikeCount = 0;
+        int uniqueReportCount = 0;
+        bool isFlagged = false;
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -403,6 +415,8 @@ class _ManageReportScreenState extends State<ManageReportScreen>
           userStatus = data['status'] ?? 'active';
           profileImg = data['profileImage'] ?? '';
           strikeCount = (data['strikeCount'] ?? 0) as int;
+          uniqueReportCount = (data['uniqueReportCount'] ?? 0) as int;
+          isFlagged = data['isFlaggedForReview'] == true || uniqueReportCount >= 3;
         }
 
         bool isBanned = userStatus == 'banned' || userStatus == 'suspended';
@@ -433,7 +447,10 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                           fontSize: 13,
                         ),
                       ),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
                           Text(
                             isBanned ? "สถานะ: ถูกระงับ" : "สถานะ: ปกติ",
@@ -443,8 +460,30 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (strikeCount > 0) ...[
-                            const SizedBox(width: 8),
+                          if (uniqueReportCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isFlagged
+                                    ? Colors.red.withValues(alpha: 0.15)
+                                    : Colors.blue.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                isFlagged
+                                    ? "🚨 ถูกรายงาน $uniqueReportCount คน (เกินเกณฑ์ 3 คน)"
+                                    : "ถูกรายงาน $uniqueReportCount คน",
+                                style: TextStyle(
+                                  color: isFlagged ? Colors.red : Colors.blue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          if (strikeCount > 0)
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -463,7 +502,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                                 ),
                               ),
                             ),
-                          ],
                         ],
                       ),
                     ],
@@ -488,7 +526,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
             ),
             const SizedBox(height: 12),
 
-            // Moderation Action Buttons
             _buildActionButtonsRow(context, report, userStatus, isBanned),
           ],
         );
@@ -553,7 +590,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
           ],
         ),
 
-        // Order Dispute specific actions
         if (report.targetType == 'order' && !isResolved) ...[
           const SizedBox(height: 8),
           Row(
@@ -633,7 +669,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                 ),
                 const SizedBox(height: 16),
 
-                // 1. ส่งหนังสือเตือน
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -651,7 +686,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                   },
                 ),
 
-                // 2. ระงับบัญชี (ชั่วคราว / ถาวร)
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -680,7 +714,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                   },
                 ),
 
-                // 3. ซ่อนสินค้าที่ละเมิดกฎ (ถ้าเป็นสินค้า)
                 if (report.targetType == 'product')
                   ListTile(
                     leading: Container(
@@ -699,7 +732,6 @@ class _ManageReportScreenState extends State<ManageReportScreen>
                     },
                   ),
 
-                // 4. ปฏิเสธรายงาน / ไม่พบความผิด
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
@@ -774,7 +806,7 @@ class _ManageReportScreenState extends State<ManageReportScreen>
   }
 
   void _promptBanDialog(BuildContext context, ReportModel report) {
-    int selectedDays = 7; // ค่าเริ่มต้น 7 วัน
+    int selectedDays = 7;
     bool isPermanent = false;
     final reasonController = TextEditingController(
       text: "ละเมิดกฎระเบียบของแพลตฟอร์ม: ${report.category}",

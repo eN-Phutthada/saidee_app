@@ -1,21 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// โมเดลมาตรฐานสำหรับจัดการรายงานปัญหาในระบบ Saidee App
 class ReportModel {
   final String id;
   final String reporterId;
   final String reporterName;
   final String reporterEmail;
-  final String targetType; // 'product', 'store', 'chat', 'order'
-  final String targetId; // รหัสของสิ่งที่ถูกรายงาน (productId, sellerId, chatRoomId, orderId)
-  final String targetTitle; // ชื่อหรือหัวข้อเป้าหมาย
-  final String reportedUserId; // รหัสของผู้ใช้ที่ถูกรายงาน / เจ้าของสิ่งที่ถูกรายงาน
-  final String category; // หมวดหมู่เหตุผล
-  final String detail; // รายละเอียดเพิ่มเติม
-  final List<String> evidenceUrls; // รายการรูปภาพหลักฐาน
-  final String status; // 'pending', 'in_review', 'resolved', 'dismissed'
-  final String actionTaken; // 'none', 'warning', 'hide_product', 'temp_ban', 'perm_ban', 'refund', 'payout'
-  final String adminNote; // บันทึกข้อความการตัดสินของแอดมิน
+  final String targetType;
+  final String targetId;
+  final String targetTitle;
+  final String reportedUserId;
+  final String category;
+  final String detail;
+  final List<String> evidenceUrls;
+  final String status;
+  final String actionTaken;
+  final String adminNote;
   final String? resolvedBy;
   final Timestamp? resolvedAt;
   final Timestamp? createdAt;
@@ -85,10 +84,10 @@ class ReportModel {
       'reported_id': reportedUserId,
       'reportedUserId': reportedUserId,
       'category': category,
-      'topic': category, // รองรับโค้ดรุ่นเดิม
+      'topic': category,
       'detail': detail,
       'evidenceUrls': evidenceUrls,
-      'image_proof': evidenceUrls.isNotEmpty ? evidenceUrls.first : '', // รองรับโค้ดรุ่นเดิม
+      'image_proof': evidenceUrls.isNotEmpty ? evidenceUrls.first : '',
       'status': status,
       'actionTaken': actionTaken,
       'adminNote': adminNote,

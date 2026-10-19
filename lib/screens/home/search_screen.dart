@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/recommendation_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 import 'search_results_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -16,10 +17,21 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _minPriceController = TextEditingController();
+  final TextEditingController _maxPriceController = TextEditingController();
+  String _selectedPriceRangeKey = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    RoleGuardService.redirectIfAdmin(context);
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _minPriceController.dispose();
+    _maxPriceController.dispose();
     super.dispose();
   }
 
@@ -42,6 +54,15 @@ class _SearchScreenState extends State<SearchScreen> {
     'อื่นๆ',
   ];
 
+  final List<Map<String, dynamic>> _quickPriceRanges = [
+    {'key': 'all', 'label': 'ทุกราคา', 'min': null, 'max': null},
+    {'key': 'under_100', 'label': 'ต่ำกว่า 100฿', 'min': 0.0, 'max': 100.0},
+    {'key': '100_300', 'label': '100 - 300฿', 'min': 100.0, 'max': 300.0},
+    {'key': '300_500', 'label': '300 - 500฿', 'min': 300.0, 'max': 500.0},
+    {'key': '500_1000', 'label': '500 - 1,000฿', 'min': 500.0, 'max': 1000.0},
+    {'key': 'over_1000', 'label': 'มากกว่า 1,000฿', 'min': 1000.0, 'max': null},
+  ];
+
   void _onSearch() {
     final keyword = _searchController.text.trim();
     final user = FirebaseAuth.instance.currentUser;
@@ -55,12 +76,33 @@ class _SearchScreenState extends State<SearchScreen> {
       );
     }
 
+    double? finalMinPrice;
+    double? finalMaxPrice;
+
+    if (_minPriceController.text.trim().isNotEmpty) {
+      finalMinPrice = double.tryParse(_minPriceController.text.trim());
+    }
+    if (_maxPriceController.text.trim().isNotEmpty) {
+      finalMaxPrice = double.tryParse(_maxPriceController.text.trim());
+    }
+
+    if (finalMinPrice == null && finalMaxPrice == null && _selectedPriceRangeKey != 'all') {
+      final selectedBracket = _quickPriceRanges.firstWhere(
+        (b) => b['key'] == _selectedPriceRangeKey,
+        orElse: () => {'min': null, 'max': null},
+      );
+      finalMinPrice = selectedBracket['min'] as double?;
+      finalMaxPrice = selectedBracket['max'] as double?;
+    }
+
     Get.to(
       () => SearchResultsScreen(
         keyword: keyword,
         categories: _selectedCategories,
         types: _selectedTypes,
         sizes: _selectedSizes,
+        minPrice: finalMinPrice,
+        maxPrice: finalMaxPrice,
       ),
     );
   }
@@ -68,6 +110,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void _resetFilters() {
     setState(() {
       _searchController.clear();
+      _minPriceController.clear();
+      _maxPriceController.clear();
+      _selectedPriceRangeKey = 'all';
       _selectedCategories.clear();
       _selectedTypes.clear();
       _selectedSizes.clear();
@@ -190,6 +235,118 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ),
                               )
                               .toList(),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        _buildSectionHeader(
+                          "ช่วงราคา (บาท)",
+                          CupertinoIcons.money_dollar_circle,
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _quickPriceRanges.map((bracket) {
+                            final isSelected =
+                                _selectedPriceRangeKey == bracket['key'];
+                            return _buildFilterItem(
+                              label: bracket['label'] as String,
+                              isSelected: isSelected,
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected && bracket['key'] != 'all') {
+                                    _selectedPriceRangeKey = 'all';
+                                  } else {
+                                    _selectedPriceRangeKey =
+                                        bracket['key'] as String;
+                                  }
+                                  _minPriceController.clear();
+                                  _maxPriceController.clear();
+                                });
+                              },
+                              isDark: isDark,
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _minPriceController,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: "ต่ำสุด (฿)",
+                                  hintStyle: TextStyle(
+                                    color: isDark ? Colors.grey[500] : Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                  filled: true,
+                                  fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  if (val.isNotEmpty && _selectedPriceRangeKey != 'custom') {
+                                    setState(() => _selectedPriceRangeKey = 'custom');
+                                  }
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                "-",
+                                style: TextStyle(
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _maxPriceController,
+                                keyboardType: TextInputType.number,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: "สูงสุด (฿)",
+                                  hintStyle: TextStyle(
+                                    color: isDark ? Colors.grey[500] : Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                  filled: true,
+                                  fillColor: isDark ? Colors.grey[850] : Colors.grey[100],
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                onChanged: (val) {
+                                  if (val.isNotEmpty && _selectedPriceRangeKey != 'custom') {
+                                    setState(() => _selectedPriceRangeKey = 'custom');
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 120),
                       ],

@@ -17,7 +17,7 @@ class OrderModel {
   final String? sellerName;
   final String? slipUrl;
   final String? transRef;
-  final String escrowStatus; // 'held', 'released', 'refunded'
+  final String escrowStatus;
   final Timestamp? escrowReleasedAt;
   final Timestamp? shippedAt;
   final bool isDisputed;

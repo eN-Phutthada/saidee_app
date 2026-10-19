@@ -5,12 +5,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
 import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
+import '../../services/role_guard_service.dart';
 
 class SearchResultsScreen extends StatefulWidget {
   final String keyword;
   final List<String>? categories;
   final List<String>? types;
   final List<String>? sizes;
+  final double? minPrice;
+  final double? maxPrice;
 
   const SearchResultsScreen({
     super.key,
@@ -18,6 +21,8 @@ class SearchResultsScreen extends StatefulWidget {
     this.categories,
     this.types,
     this.sizes,
+    this.minPrice,
+    this.maxPrice,
   });
 
   @override
@@ -26,6 +31,13 @@ class SearchResultsScreen extends StatefulWidget {
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
   final Map<String, bool> _sellerStatusCache = {};
+  final Map<String, Map<String, String>> _sellerProfileCache = {};
+
+  @override
+  void initState() {
+    super.initState();
+    RoleGuardService.redirectIfAdmin(context);
+  }
 
   Future<List<QueryDocumentSnapshot>> _filterValidProducts(
     List<QueryDocumentSnapshot> rawProducts,
@@ -48,20 +60,47 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             .get();
         if (userDoc.exists) {
           var userData = userDoc.data() as Map<String, dynamic>;
-          String status = userData['status'] ?? 'active';
+          String status = (userData['status'] ?? 'active').toString().toLowerCase();
           _sellerStatusCache[sId] =
               (status != 'suspended' && status != 'banned');
+          _sellerProfileCache[sId] = {
+            'name': userData['name'] ?? 'ผู้ขาย',
+            'profileImage': userData['profileImage'] ?? '',
+          };
         } else {
-          _sellerStatusCache[sId] = false;
+          var adminDoc = await FirebaseFirestore.instance
+              .collection('admins')
+              .doc(sId)
+              .get();
+          if (adminDoc.exists) {
+            var adminData = adminDoc.data() as Map<String, dynamic>;
+            String status = (adminData['status'] ?? 'active').toString().toLowerCase();
+            _sellerStatusCache[sId] =
+                (status != 'suspended' && status != 'banned');
+            _sellerProfileCache[sId] = {
+              'name': adminData['name'] ?? 'ผู้ดูแลระบบ',
+              'profileImage': adminData['profileImage'] ?? '',
+            };
+          } else {
+            _sellerStatusCache[sId] = true;
+            _sellerProfileCache[sId] = {
+              'name': 'ร้านค้า',
+              'profileImage': '',
+            };
+          }
         }
       } catch (e) {
-        _sellerStatusCache[sId] = false;
+        _sellerStatusCache[sId] = true;
+        _sellerProfileCache[sId] = {
+          'name': 'ร้านค้า',
+          'profileImage': '',
+        };
       }
     }
 
     for (var p in rawProducts) {
       String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
-      if (_sellerStatusCache[sId] == true) {
+      if (sId.isEmpty || _sellerStatusCache[sId] != false) {
         validProducts.add(p);
       }
     }
@@ -77,11 +116,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     int catCount = widget.categories?.length ?? 0;
     int typeCount = widget.types?.length ?? 0;
     int sizeCount = widget.sizes?.length ?? 0;
+    bool hasPrice = widget.minPrice != null || widget.maxPrice != null;
 
     int activeFilterGroups =
         (catCount > 0 ? 1 : 0) +
         (typeCount > 0 ? 1 : 0) +
-        (sizeCount > 0 ? 1 : 0);
+        (sizeCount > 0 ? 1 : 0) +
+        (hasPrice ? 1 : 0);
 
     if (activeFilterGroups == 0) return "สินค้าทั้งหมด";
 
@@ -96,6 +137,14 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         return sizeCount == 1
             ? "ไซส์: ${widget.sizes!.first}"
             : "หลายไซส์ ($sizeCount)";
+      } else if (hasPrice) {
+        if (widget.minPrice != null && widget.maxPrice != null) {
+          return "ราคา: ${widget.minPrice!.toStringAsFixed(0)} - ${widget.maxPrice!.toStringAsFixed(0)} ฿";
+        } else if (widget.minPrice != null) {
+          return "ราคา: > ${widget.minPrice!.toStringAsFixed(0)} ฿";
+        } else {
+          return "ราคา: < ${widget.maxPrice!.toStringAsFixed(0)} ฿";
+        }
       }
     }
 
@@ -107,19 +156,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    Query query = FirebaseFirestore.instance
-        .collection('products')
-        .where('status', isEqualTo: 'active');
-
-    if (widget.categories != null && widget.categories!.isNotEmpty) {
-      query = query.where('category', whereIn: widget.categories);
-    }
-    if (widget.types != null && widget.types!.isNotEmpty) {
-      query = query.where('type', whereIn: widget.types);
-    }
-    if (widget.sizes != null && widget.sizes!.isNotEmpty) {
-      query = query.where('size', whereIn: widget.sizes);
-    }
+    Query query = FirebaseFirestore.instance.collection('products');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -141,6 +178,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: query.snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _buildEmptyResult(theme, isDark);
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -150,6 +190,36 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
           var products = snapshot.data!.docs;
 
+          products = products.where((doc) {
+            var data = doc.data() as Map<String, dynamic>;
+            String status = (data['status'] ?? 'active').toString().toLowerCase();
+            return status == 'active';
+          }).toList();
+
+          if (widget.categories != null && widget.categories!.isNotEmpty) {
+            products = products.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              String cat = data['category']?.toString() ?? '';
+              return widget.categories!.contains(cat);
+            }).toList();
+          }
+
+          if (widget.types != null && widget.types!.isNotEmpty) {
+            products = products.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              String t = data['type']?.toString() ?? '';
+              return widget.types!.contains(t);
+            }).toList();
+          }
+
+          if (widget.sizes != null && widget.sizes!.isNotEmpty) {
+            products = products.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              String s = data['size']?.toString() ?? '';
+              return widget.sizes!.contains(s);
+            }).toList();
+          }
+
           if (widget.keyword.isNotEmpty) {
             final searchTerm = widget.keyword.toLowerCase();
             products = products.where((doc) {
@@ -157,6 +227,16 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               String name = (data['name'] ?? '').toLowerCase();
               String brand = (data['brand'] ?? '').toLowerCase();
               return name.contains(searchTerm) || brand.contains(searchTerm);
+            }).toList();
+          }
+
+          if (widget.minPrice != null || widget.maxPrice != null) {
+            products = products.where((doc) {
+              var data = doc.data() as Map<String, dynamic>;
+              double price = (data['price'] ?? 0).toDouble();
+              if (widget.minPrice != null && price < widget.minPrice!) return false;
+              if (widget.maxPrice != null && price > widget.maxPrice!) return false;
+              return true;
             }).toList();
           }
 
@@ -372,20 +452,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(data['sellerId'])
-                        .get(),
-                    builder: (context, snapshot) {
-                      String sellerName = "ไม่ระบุ";
-                      String sellerImg = "";
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        var userData =
-                            snapshot.data!.data() as Map<String, dynamic>;
-                        sellerName = userData['name'] ?? sellerName;
-                        sellerImg = userData['profileImage'] ?? "";
-                      }
+                  Builder(
+                    builder: (context) {
+                      String sId = data['sellerId'] ?? '';
+                      String sellerName = _sellerProfileCache[sId]?['name'] ?? 'ร้านค้า';
+                      String sellerImg = _sellerProfileCache[sId]?['profileImage'] ?? '';
                       return Row(
                         children: [
                           CircleAvatar(

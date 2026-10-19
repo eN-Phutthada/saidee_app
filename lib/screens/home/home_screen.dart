@@ -23,6 +23,8 @@ import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/services/escrow_service.dart';
 import 'package:saidee_app/services/auth_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription<QuerySnapshot>? _notificationSubscription;
   StreamSubscription<User?>? _authSubscription;
   bool _isBannedAlertShown = false;
+  bool _isAdmin = false;
   final Set<String> _seenNotificationIds = {};
   bool _isNotifInitialLoad = true;
 
@@ -58,8 +61,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _listenToAuthChanges();
-    _checkGuidedTour();
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin) {
+        if (mounted) setState(() => _isAdmin = true);
+        Get.offAll(() => const AdminDashboard());
+        return;
+      }
+      _listenToAuthChanges();
+      _checkGuidedTour();
+    });
   }
 
   void _listenToAuthChanges() {
@@ -74,9 +84,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _escrowTimer = null;
         _seenNotificationIds.clear();
       } else {
-        _listenToUserStatus();
-        _listenToNotifications();
-        _initEscrowAutoRelease();
+        RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+          if (isAdmin) {
+            Get.offAll(() => const AdminDashboard());
+            return;
+          }
+          _listenToUserStatus();
+          _listenToNotifications();
+          _initEscrowAutoRelease();
+        });
       }
     });
   }
@@ -92,16 +108,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      EscrowService.checkAndAutoCompleteOrders();
+      RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+        if (isAdmin) {
+          if (mounted) setState(() => _isAdmin = true);
+          Get.offAll(() => const AdminDashboard());
+          return;
+        }
+        EscrowService.checkAndAutoCompleteOrders();
+      });
     }
   }
 
   void _checkGuidedTour() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final isAdmin = await RoleGuardService.isCurrentUserAdmin();
+      if (isAdmin || !mounted) return;
       bool hasSeen = await GuidedTourService.hasSeenTour();
       if (!hasSeen && mounted) {
         await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) {
+          final stillNotAdmin = !(await RoleGuardService.isCurrentUserAdmin());
+          if (!stillNotAdmin || !mounted) return;
           GuidedTourService.showTour(
             context: context,
             searchKey: _searchKey,
@@ -166,7 +193,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     String body = data['body'] ?? '';
     String type = data['type'] ?? 'system';
 
-    // ป้องกันการยิงแจ้งเตือนซ้ำซ้อน
     if (NotificationService.isDuplicateNotification(title, body, customId: docId)) return;
 
     IconData iconData = CupertinoIcons.bell_fill;
@@ -376,6 +402,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAdmin) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final user = FirebaseAuth.instance.currentUser;
 
     return AppExitScope(
@@ -487,7 +519,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Notification Bell Icon
                       StreamBuilder<int>(
                         stream: NotificationService.getUnreadCount(user.uid),
                         builder: (context, notifSnap) {
@@ -542,7 +573,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         },
                       ),
 
-                      // Chat Icon
                       StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('chats')
@@ -720,6 +750,7 @@ class _HomeContentState extends State<HomeContent> {
   List<String> _displayCategories = [];
 
   final Map<String, bool> _sellerStatusCache = {};
+  final Map<String, Map<String, String>> _sellerProfileCache = {};
 
   @override
   void initState() {
@@ -731,7 +762,6 @@ class _HomeContentState extends State<HomeContent> {
     try {
       var snapshot = await FirebaseFirestore.instance
           .collection('products')
-          .where('status', isEqualTo: 'active')
           .get();
 
       Set<String> typesSet = {};
@@ -739,6 +769,9 @@ class _HomeContentState extends State<HomeContent> {
 
       for (var doc in snapshot.docs) {
         var data = doc.data();
+        String status = (data['status'] ?? 'active').toString().toLowerCase();
+        if (status != 'active') continue;
+
         String? t = data['type']?.toString().trim();
         String? c = data['category']?.toString().trim();
 
@@ -796,20 +829,47 @@ class _HomeContentState extends State<HomeContent> {
             .get();
         if (userDoc.exists) {
           var userData = userDoc.data() as Map<String, dynamic>;
-          String status = userData['status'] ?? 'active';
+          String status = (userData['status'] ?? 'active').toString().toLowerCase();
           _sellerStatusCache[sId] =
               (status != 'suspended' && status != 'banned');
+          _sellerProfileCache[sId] = {
+            'name': userData['name'] ?? 'ผู้ขาย',
+            'profileImage': userData['profileImage'] ?? '',
+          };
         } else {
-          _sellerStatusCache[sId] = false;
+          var adminDoc = await FirebaseFirestore.instance
+              .collection('admins')
+              .doc(sId)
+              .get();
+          if (adminDoc.exists) {
+            var adminData = adminDoc.data() as Map<String, dynamic>;
+            String status = (adminData['status'] ?? 'active').toString().toLowerCase();
+            _sellerStatusCache[sId] =
+                (status != 'suspended' && status != 'banned');
+            _sellerProfileCache[sId] = {
+              'name': adminData['name'] ?? 'ผู้ดูแลระบบ',
+              'profileImage': adminData['profileImage'] ?? '',
+            };
+          } else {
+            _sellerStatusCache[sId] = true;
+            _sellerProfileCache[sId] = {
+              'name': 'ร้านค้า',
+              'profileImage': '',
+            };
+          }
         }
       } catch (e) {
-        _sellerStatusCache[sId] = false;
+        _sellerStatusCache[sId] = true;
+        _sellerProfileCache[sId] = {
+          'name': 'ร้านค้า',
+          'profileImage': '',
+        };
       }
     }
 
     for (var p in rawProducts) {
       String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
-      if (_sellerStatusCache[sId] == true) {
+      if (sId.isEmpty || _sellerStatusCache[sId] != false) {
         validProducts.add(p);
       }
     }
@@ -819,6 +879,7 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _onRefresh() async {
     _sellerStatusCache.clear();
+    _sellerProfileCache.clear();
     await _fetchDynamicFilters();
     if (mounted) {
       setState(() {});
@@ -867,6 +928,20 @@ class _HomeContentState extends State<HomeContent> {
                 height: 220,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 220,
+                    width: double.infinity,
+                    color: AppTheme.primaryColor.withValues(alpha: 0.85),
+                    child: const Center(
+                      child: Icon(
+                        CupertinoIcons.bag_fill,
+                        color: Colors.white24,
+                        size: 64,
+                      ),
+                    ),
+                  );
+                },
               ),
               Container(
                 height: 220,
@@ -984,7 +1059,6 @@ class _HomeContentState extends State<HomeContent> {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('products')
-                .where('status', isEqualTo: 'active')
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting &&
@@ -1004,7 +1078,21 @@ class _HomeContentState extends State<HomeContent> {
                 );
               }
 
-              var rawProducts = snapshot.data!.docs;
+              var rawProducts = snapshot.data!.docs.where((doc) {
+                var data = doc.data() as Map<String, dynamic>;
+                String status = (data['status'] ?? 'active').toString().toLowerCase();
+                return status == 'active';
+              }).toList();
+
+              if (rawProducts.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text(
+                    "ยังไม่มีสินค้าลงขาย",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                );
+              }
 
               return FutureBuilder<List<QueryDocumentSnapshot>>(
                 future: _filterValidProducts(rawProducts),
@@ -1238,20 +1326,11 @@ class _HomeContentState extends State<HomeContent> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(data['sellerId'])
-                        .get(),
-                    builder: (context, snapshot) {
-                      String sellerName = "ไม่ระบุ";
-                      String sellerImg = "";
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        var userData =
-                            snapshot.data!.data() as Map<String, dynamic>;
-                        sellerName = userData['name'] ?? sellerName;
-                        sellerImg = userData['profileImage'] ?? "";
-                      }
+                  Builder(
+                    builder: (context) {
+                      String sId = data['sellerId'] ?? '';
+                      String sellerName = _sellerProfileCache[sId]?['name'] ?? 'ร้านค้า';
+                      String sellerImg = _sellerProfileCache[sId]?['profileImage'] ?? '';
                       return Row(
                         children: [
                           CircleAvatar(
@@ -1326,16 +1405,23 @@ class _CategoryTypeCardState extends State<_CategoryTypeCard> {
 
   Future<String?> _getBackgroundImage() async {
     String field = widget.isCategory ? 'category' : 'type';
-    var snapshot = await FirebaseFirestore.instance
-        .collection('products')
-        .where(field, isEqualTo: widget.title)
-        .where('status', isEqualTo: 'active')
-        .limit(1)
-        .get();
+    try {
+      var snapshot = await FirebaseFirestore.instance
+          .collection('products')
+          .where(field, isEqualTo: widget.title)
+          .limit(5)
+          .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      List images = snapshot.docs.first.data()['images'] ?? [];
-      if (images.isNotEmpty) return images.first;
+      for (var doc in snapshot.docs) {
+        var data = doc.data();
+        String status = (data['status'] ?? 'active').toString().toLowerCase();
+        if (status == 'active') {
+          List images = data['images'] ?? [];
+          if (images.isNotEmpty) return images.first;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching background image: $e");
     }
     return null;
   }

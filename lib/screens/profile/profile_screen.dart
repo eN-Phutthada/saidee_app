@@ -20,6 +20,7 @@ import 'package:saidee_app/services/guided_tour_service.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import 'package:saidee_app/services/auth_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -29,10 +30,18 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isAdmin = false;
+
   @override
   void initState() {
     super.initState();
     _secureScreen();
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin) {
+        if (mounted) setState(() => _isAdmin = true);
+        RoleGuardService.redirectIfAdmin();
+      }
+    });
   }
 
   Future<void> _secureScreen() async {
@@ -55,6 +64,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (user == null) {
       return const GuestView();
+    }
+
+    if (_isAdmin) {
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     return StreamBuilder<DocumentSnapshot>(
@@ -196,7 +212,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                       ),
-                      // Profile Header Details
                       Positioned(
                         left: 20,
                         right: 20,
@@ -1060,7 +1075,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle bar
             Container(
               width: 50,
               height: 5,
@@ -1071,7 +1085,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 35),
 
-            // Logo with Glow
             Container(
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
@@ -1097,7 +1110,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 25),
 
-            // App Name & Version
             const Text(
               "SaiDee",
               style: TextStyle(
@@ -1115,7 +1127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "Version 1.0.0 (Beta)",
+                "เวอร์ชัน 1.0.0",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -1125,7 +1137,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 30),
 
-            // Description
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 30),
               child: Text(
@@ -1140,7 +1151,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 35),
 
-            // Social Links / Contact
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1162,7 +1172,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 40),
 
-            // Copyright
             Text(
               "© 2026 SaiDee Team. All rights reserved.",
               style: TextStyle(fontSize: 12, color: Colors.grey[500]),

@@ -11,6 +11,7 @@ import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
@@ -154,8 +155,20 @@ class NotificationScreen extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+    return FutureBuilder<bool>(
+      future: RoleGuardService.isCurrentUserAdmin(),
+      builder: (context, adminSnap) {
+        if (adminSnap.data == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            RoleGuardService.redirectIfAdmin(context);
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           "การแจ้งเตือน",
@@ -316,6 +329,8 @@ class NotificationScreen extends StatelessWidget {
           );
         },
       ),
+        );
+      },
     );
   }
 }

@@ -14,6 +14,8 @@ import 'package:saidee_app/screens/auth/login_screen.dart';
 import '../../models/product_model.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/widgets/report_bottom_sheet.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/screens/admin/admin_store_view_screen.dart';
 
 class StoreProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -31,17 +33,27 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
   bool _isSellerBanned = false;
   bool _isLoadingSeller = true;
   String _sellerName = "ร้านค้า";
+  bool _isCurrentUserAdmin = false;
 
   String _filterStatus = 'active';
   String _sortBy = 'newest';
 
+  late Future<Map<String, dynamic>> _storeInfoFuture;
+
   @override
   void initState() {
     super.initState();
+    _storeInfoFuture = _fetchStoreInfo(widget.sellerId);
     if (isOwner) {
       _filterStatus = 'all';
     }
     _checkSellerStatus();
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin && mounted) {
+        setState(() => _isCurrentUserAdmin = true);
+        Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
+      }
+    });
   }
 
   Future<void> _checkSellerStatus() async {
@@ -51,19 +63,69 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .doc(widget.sellerId)
           .get();
       if (sellerDoc.exists) {
-        String status = sellerDoc.data()?['status'] ?? 'active';
+        String status = (sellerDoc.data()?['status'] ?? 'active').toString().toLowerCase();
         _sellerName = sellerDoc.data()?['name'] ?? "ร้านค้า";
         if (status == 'banned' || status == 'suspended') {
           if (mounted) setState(() => _isSellerBanned = true);
         }
       } else {
-        if (mounted) setState(() => _isSellerBanned = true);
+        var adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(widget.sellerId)
+            .get();
+        if (adminDoc.exists) {
+          String status = (adminDoc.data()?['status'] ?? 'active').toString().toLowerCase();
+          _sellerName = adminDoc.data()?['name'] ?? "ผู้ดูแลระบบ";
+          if (status == 'banned' || status == 'suspended') {
+            if (mounted) setState(() => _isSellerBanned = true);
+          }
+        } else {
+          _sellerName = "ร้านค้า";
+        }
       }
     } catch (e) {
       debugPrint("Error checking seller status: $e");
     } finally {
       if (mounted) setState(() => _isLoadingSeller = false);
     }
+  }
+
+  Future<Map<String, dynamic>> _fetchStoreInfo(String sellerId) async {
+    Map<String, dynamic> result = {
+      'name': _sellerName,
+      'bio': 'ส่งต่อเสื้อผ้าคุณภาพ',
+      'profileImage': '',
+    };
+
+    if (sellerId.isEmpty) return result;
+
+    try {
+      var userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(sellerId)
+          .get();
+      if (userDoc.exists) {
+        var data = userDoc.data() as Map<String, dynamic>;
+        result['name'] = data['name'] ?? result['name'];
+        result['bio'] = data['bio'] ?? result['bio'];
+        result['profileImage'] = data['profileImage'] ?? '';
+      } else {
+        var adminDoc = await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(sellerId)
+            .get();
+        if (adminDoc.exists) {
+          var data = adminDoc.data() as Map<String, dynamic>;
+          result['name'] = data['name'] ?? 'ผู้ดูแลระบบ';
+          result['bio'] = data['bio'] ?? result['bio'];
+          result['profileImage'] = data['profileImage'] ?? '';
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching store info: $e");
+    }
+
+    return result;
   }
 
   Future<void> _shareStore() async {
@@ -81,7 +143,6 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       String shareText =
           "🛍️ แวะมาช้อปเสื้อผ้ามือสองสภาพดีที่ร้าน '$storeName' กันเถอะ!\n\n👉 เปิดแอป SAIDEE แล้วพิมพ์ชื่อร้านเพื่อเลือกซื้อสินค้าได้เลย!";
 
-      // ignore: deprecated_member_use
       await Share.share(shareText);
     } catch (e) {
       debugPrint("Error sharing store: $e");
@@ -442,10 +503,10 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    if (_isLoadingSeller) {
+    if (_isLoadingSeller || _isCurrentUserAdmin) {
       return Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(child: CupertinoActivityIndicator()),
       );
     }
 
@@ -497,6 +558,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                   );
                 },
               ),
+            if (_isCurrentUserAdmin)
+              IconButton(
+                icon: const Icon(CupertinoIcons.shield_lefthalf_fill, color: Colors.purpleAccent),
+                tooltip: "สลับไปโหมดผู้ดูแลระบบ (Admin)",
+                onPressed: () {
+                  Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
+                },
+              ),
             if (!_isSellerBanned)
               IconButton(
                 icon: Icon(
@@ -513,6 +582,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               SliverToBoxAdapter(
                 child: Column(
                   children: [
+                    if (_isCurrentUserAdmin) _buildAdminSwitchBanner(isDark),
                     _buildProfileCard(theme, isDark),
                     if (!_isSellerBanned) _buildActionButtons(theme, isDark),
                     const SizedBox(height: 10),
@@ -581,43 +651,88 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             "ไม่สามารถดูสินค้าหรือรีวิวของร้านค้านี้ได้",
             style: TextStyle(color: Colors.grey[500]),
           ),
+          if (_isCurrentUserAdmin) ...[
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
+              },
+              icon: const Icon(CupertinoIcons.shield_fill, size: 16),
+              label: const Text("เปิดหน้าร้านในโหมดผู้ดูแลระบบ (Admin) เพื่อตรวจสอบสินค้า"),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminSwitchBanner(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: isDark ? const Color(0xFF2D1B4E) : const Color(0xFFF3E8FF),
+      child: Row(
+        children: [
+          const Icon(CupertinoIcons.shield_fill, color: Colors.purple, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "คุณกำลังดูหน้าร้านนี้ในมุมมองผู้ซื้อทั่วไป",
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.purple[200] : Colors.purple[900],
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.purple,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                "เปิดโหมด Admin",
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildProfileCard(ThemeData theme, bool isDark) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.sellerId)
-          .get(),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _storeInfoFuture,
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Center(
-              child: Text(
-                "ไม่สามารถโหลดข้อมูลร้านค้าได้",
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          );
-        }
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Padding(
             padding: EdgeInsets.all(20.0),
             child: Center(child: CircularProgressIndicator()),
           );
         }
 
-        String name = "ไม่ระบุชื่อ";
+        String name = _sellerName;
         String bio = "ส่งต่อเสื้อผ้าคุณภาพ";
         String profileImage = "";
 
-        if (snapshot.hasData && snapshot.data!.exists) {
-          var data = snapshot.data!.data() as Map<String, dynamic>;
+        if (snapshot.hasData) {
+          var data = snapshot.data!;
           name = data['name'] ?? name;
           bio = data['bio'] ?? bio;
           profileImage = data['profileImage'] ?? "";
@@ -1064,6 +1179,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             String imgUrl = product.images.isNotEmpty ? product.images[0] : '';
 
             int views = data['views'] ?? 0;
+            int likes = (data['likesCount'] ?? data['likes'] ?? 0) is int
+                ? (data['likesCount'] ?? data['likes'] ?? 0)
+                : ((data['likesCount'] ?? data['likes'] ?? 0) as num).toInt();
             bool isSold = data['status'] == 'sold';
 
             return GestureDetector(
@@ -1222,9 +1340,23 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                                     size: 12,
                                     color: Colors.grey,
                                   ),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: 3),
                                   Text(
                                     views.toString(),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    CupertinoIcons.heart_fill,
+                                    size: 11,
+                                    color: Colors.redAccent,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    likes.toString(),
                                     style: const TextStyle(
                                       fontSize: 10,
                                       color: Colors.grey,

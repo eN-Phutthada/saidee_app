@@ -6,7 +6,7 @@ class CouponModel {
   final double discountValue;
   final double minOrderAmount;
   final bool isActive;
-  final String type; // 'fixed' or 'percent'
+  final String type;
   final Timestamp? startDate;
   final Timestamp? endDate;
   final Timestamp? createdAt;

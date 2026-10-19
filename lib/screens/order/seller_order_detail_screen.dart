@@ -7,6 +7,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 
 import 'package:saidee_app/services/escrow_service.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class SellerOrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -27,6 +28,7 @@ class _SellerOrderDetailScreenState extends State<SellerOrderDetailScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _checkAutoRelease();
   }
 

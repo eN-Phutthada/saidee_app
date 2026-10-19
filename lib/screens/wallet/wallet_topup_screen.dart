@@ -10,6 +10,7 @@ import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class WalletTopUpScreen extends StatefulWidget {
   const WalletTopUpScreen({super.key});
@@ -27,6 +28,7 @@ class _WalletTopUpScreenState extends State<WalletTopUpScreen> {
   @override
   void initState() {
     super.initState();
+    RoleGuardService.redirectIfAdmin(context);
     _secureScreen();
   }
 

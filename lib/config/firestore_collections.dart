@@ -1,4 +1,3 @@
-/// Centralized Firestore Collection Name Constants
 class FirestoreCollections {
   static const String users = 'users';
   static const String products = 'products';
@@ -13,4 +12,5 @@ class FirestoreCollections {
   static const String loginHistory = 'login_history';
   static const String feedbacks = 'feedbacks';
   static const String reports = 'reports';
+  static const String passwordResets = 'password_resets';
 }

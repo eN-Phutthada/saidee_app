@@ -8,6 +8,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/services/security_service.dart';
 import 'package:intl/intl.dart';
 import 'package:saidee_app/widgets/report_bottom_sheet.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String targetUserId;
@@ -28,7 +29,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
+  final String currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  bool _isAdmin = false;
 
   late String chatRoomId;
 
@@ -37,7 +39,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     chatRoomId = _getChatRoomId(currentUserId, widget.targetUserId);
-    _setUserActiveStatus(true);
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin) {
+        if (mounted) setState(() => _isAdmin = true);
+        RoleGuardService.redirectIfAdmin();
+        return;
+      }
+      _setUserActiveStatus(true);
+    });
   }
 
   @override
@@ -57,6 +66,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _setUserActiveStatus(bool isActive) async {
+    if (_isAdmin || currentUserId.isEmpty) return;
     try {
       await FirebaseFirestore.instance.collection('chats').doc(chatRoomId).set({
         'user_${currentUserId}_active': isActive,
@@ -171,6 +181,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAdmin) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

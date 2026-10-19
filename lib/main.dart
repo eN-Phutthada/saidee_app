@@ -17,13 +17,14 @@ import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
+import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/services/notification_service.dart';
 
 import 'config/theme.dart';
 import 'providers/theme_provider.dart';
 import 'firebase_options.dart';
 
-// ช่องทางการแจ้งเตือนสำคัญระดับระบบ Android
 const AndroidNotificationChannel highImportanceChannel = AndroidNotificationChannel(
   'high_importance_channel',
   'High Importance Notifications',
@@ -43,21 +44,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint("Handling a background message: ${message.messageId} (data: ${message.data})");
 
-  // ตรวจสอบว่าผู้ใช้ล็อกอินอยู่หรือไม่ หากออกจากระบบแล้วให้ข้ามการแจ้งเตือน
   if (FirebaseAuth.instance.currentUser == null) {
     debugPrint("Background notification skipped: User is not logged in.");
     return;
   }
 
-  // สร้าง Channel สำหรับ background isolate
   final androidImplementation = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
       >();
   await androidImplementation?.createNotificationChannel(highImportanceChannel);
 
-  // กรณีเป็น Data-only message (message.notification เป็น null)
-  // ระบบ Android จะไม่แจ้งเตือนอัตโนมัติเมื่อปิดแอป ต้องแสดงผ่าน LocalNotifications เอง
   if (message.notification == null && message.data.isNotEmpty) {
     String title = (message.data['title'] ??
             message.data['senderName'] ??
@@ -101,8 +98,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   }
 }
 
-/// นำทางผู้ใช้ไปยังหน้าที่เกี่ยวข้องเมื่อกดที่แจ้งเตือน
 void handleNotificationClickFromData(Map<String, dynamic> data) async {
+  final isAdmin = await RoleGuardService.isCurrentUserAdmin();
+  if (isAdmin) {
+    debugPrint("[FCM Route] Admin clicked notification - redirecting to AdminDashboard");
+    Get.offAll(() => const AdminDashboard());
+    return;
+  }
+
   String? type = data['type'];
 
   if (type == 'chat') {
@@ -197,14 +200,12 @@ void main() async {
     } catch (_) {}
   }
 
-  // สร้าง Channel ให้ระบบ Android ล่วงหน้าตั้งแต่ main() เพื่อให้พร้อมรับแจ้งเตือนเมื่อปิดแอป
   final androidImplementation = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
       >();
   await androidImplementation?.createNotificationChannel(highImportanceChannel);
 
-  // ตั้งค่า Local Notifications สำหรับดักจับการคลิกแจ้งเตือน
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/launcher_icon');
   const InitializationSettings initializationSettings =
@@ -279,7 +280,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
   }
 
   Future<void> _setupPushNotifications() async {
-    // 1. ขอสิทธิ์การแจ้งเตือน Android 13+
     var androidImplementation = flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -302,7 +302,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       debugPrint('User declined or has not accepted permission');
     }
 
-    // 2. ปิด alert ของระบบขณะเปิดแอปอยู่ เพื่อไม่ให้เด้งซ้อนกับ In-App Get.snackbar
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
           alert: false,
@@ -310,7 +309,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           sound: false,
         );
 
-    // 3. ซิงค์ FCM Token ให้ตรงกับบัญชีที่ล็อกอินอยู่เสมอ
     _syncFcmToken();
 
     FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
@@ -323,11 +321,9 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       }
     });
 
-    // 4. ดักจับข้อความแจ้งเตือนขณะเปิดแอป (Foreground)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('ได้รับข้อความขณะเปิดแอป! Type: ${message.data['type']}');
 
-      // หากผู้ใช้ออกจากระบบแล้ว (Guest Mode) ไม่ต้องแสดงการแจ้งเตือน
       if (FirebaseAuth.instance.currentUser == null) {
         debugPrint('Foreground notification skipped: User is not logged in.');
         return;
@@ -344,7 +340,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
 
       if (title.isEmpty && body.isEmpty) return;
 
-      // กรองแจ้งเตือนซ้ำ
       if (NotificationService.isDuplicateNotification(title, body)) return;
 
       IconData notifIcon = CupertinoIcons.bell_fill;
@@ -372,8 +367,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
         Get.closeCurrentSnackbar();
       }
 
-      // แสดงเฉพาะ In-App Get.snackbar เท่านั้น
-      // ไม่เรียก flutterLocalNotificationsPlugin.show() ใน foreground เพื่อแก้ปัญหาการแจ้งเตือนซ้อนกัน
       Get.snackbar(
         title,
         body,
@@ -396,13 +389,11 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       );
     });
 
-    // 5. ดักจับเมื่อผู้ใช้กดเปิดแอปจากการแจ้งเตือนใน Background
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('ผู้ใช้กดเปิดแอปจากการแจ้งเตือน!');
       handleNotificationClickFromData(message.data);
     });
 
-    // 6. ดักจับเมื่อเปิดแอปจาก Terminated state ผ่าน FCM Notification
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
@@ -411,7 +402,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       });
     }
 
-    // 7. ดักจับเมื่อเปิดแอปจาก Terminated state ผ่าน Local Notification
     final NotificationAppLaunchDetails? launchDetails =
         await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
     if (launchDetails != null &&
@@ -435,7 +425,7 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return GetMaterialApp(
-      title: 'SaiDee Beta',
+      title: 'SaiDee',
       debugShowCheckedModeBanner: false,
       navigatorKey: navigatorKey,
 

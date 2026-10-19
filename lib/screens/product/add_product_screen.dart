@@ -18,6 +18,7 @@ import '../../widgets/guest_view.dart';
 import '../store/seller_shipping_screen.dart';
 import '../../services/guided_tour_service.dart';
 import '../../services/security_service.dart';
+import '../../services/role_guard_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   final ProductModel? product;
@@ -95,25 +96,37 @@ class _AddProductScreenState extends State<AddProductScreen> {
   double _uploadProgress = 0.0;
   String _uploadStatusText = "เตรียมพร้อมอัปโหลด...";
   bool _isProgressDialogOpen = false;
+  bool _isAdmin = false;
 
   bool get _isEditing => widget.product != null;
 
   @override
   void initState() {
     super.initState();
-    if (_isEditing) {
-      _loadExistingData();
-    } else {
-      _checkGuidedTour();
-    }
+    RoleGuardService.isCurrentUserAdmin().then((isAdmin) {
+      if (isAdmin) {
+        if (mounted) setState(() => _isAdmin = true);
+        RoleGuardService.redirectIfAdmin();
+        return;
+      }
+      if (_isEditing) {
+        _loadExistingData();
+      } else {
+        _checkGuidedTour();
+      }
+    });
   }
 
   void _checkGuidedTour() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final isAdmin = await RoleGuardService.isCurrentUserAdmin();
+      if (isAdmin || !mounted) return;
       bool hasSeen = await GuidedTourService.hasSeenAddProductTour();
       if (!hasSeen && mounted) {
         await Future.delayed(const Duration(milliseconds: 600));
         if (mounted) {
+          final stillNotAdmin = !(await RoleGuardService.isCurrentUserAdmin());
+          if (!stillNotAdmin || !mounted) return;
           _startGuidedTour();
         }
       }
@@ -1034,6 +1047,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isAdmin) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final user = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;

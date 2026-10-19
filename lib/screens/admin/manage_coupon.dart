@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/widgets/permission_denied_view.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
 class ManageCouponScreen extends StatefulWidget {
@@ -474,10 +475,24 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
             .orderBy('status')
             .snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.hasError) {
+            if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+              return PermissionDeniedView(
+                title: "ไม่มีสิทธิ์เข้าถึงคูปองส่วนลด",
+                message:
+                    "ต้องใช้สิทธิ์ผู้ดูแลระบบ (Admin) ในการดูและจัดการคูปองส่วนลด\n[cloud_firestore/permission-denied]",
+                technicalDetails: snapshot.error.toString(),
+                onRetry: () => setState(() {}),
+              );
+            }
+            return Center(
+              child: Text("เกิดข้อผิดพลาด: ${snapshot.error}"),
+            );
+          }
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Text(
                 "ไม่มีข้อมูลคูปอง",

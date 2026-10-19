@@ -17,6 +17,8 @@ import 'package:saidee_app/services/recommendation_service.dart';
 import 'package:saidee_app/screens/home/home_screen.dart';
 import 'package:saidee_app/screens/order/buyer_orders_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
+import 'package:saidee_app/services/security_service.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 import 'checkout_screen.dart';
 
 class PromptPayCheckoutPaymentScreen extends StatefulWidget {
@@ -91,9 +93,12 @@ class _PromptPayCheckoutPaymentScreenState
     setState(() => _isVerifying = true);
 
     try {
+      final branchId = dotenv.isInitialized
+          ? (dotenv.env['SLIPOK_BRANCH_ID'] ?? '61849')
+          : '61849';
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://api.slipok.com/api/line/apikey/61849'),
+        Uri.parse('https://api.slipok.com/api/line/apikey/$branchId'),
       );
       request.headers['x-authorization'] = slipokAuthToken;
       request.files.add(
@@ -116,6 +121,17 @@ class _PromptPayCheckoutPaymentScreenState
           return;
         }
 
+        if (!SecurityService.isSlipReceiverValid(
+          receiverData: slipData['receiver'],
+          expectedAccountName: accountName,
+          expectedPromptPay: promptPayNumber,
+        )) {
+          _showError(
+            "สลิปนี้ไม่ได้โอนเข้าบัญชีของระบบ Saidee ($accountName)\nกรุณาใช้สลิปที่โอนเข้าบัญชีปลายทางที่ถูกต้อง",
+          );
+          return;
+        }
+
         if (transRef.isEmpty) {
           _showError(
             "ไม่สามารถอ่านรหัสอ้างอิงจากสลิปได้ กรุณาใช้รูปสลิปที่ชัดเจนกว่านี้",
@@ -124,7 +140,7 @@ class _PromptPayCheckoutPaymentScreenState
         }
 
         var existingTx = await FirebaseFirestore.instance
-            .collection('transactions')
+            .collection(FirestoreCollections.transactions)
             .where('transRef', isEqualTo: transRef)
             .where('status', isEqualTo: 'success')
             .get();
@@ -249,7 +265,6 @@ class _PromptPayCheckoutPaymentScreenState
       }
       RecommendationService.trackOrderPurchase(user.uid, allPurchasedItems);
 
-      // ส่งการแจ้งเตือนไปยังผู้ซื้อและผู้ขาย
       NotificationService.sendNotification(
         userId: user.uid,
         title: "ชำระเงินสำเร็จแล้ว 💳",
@@ -322,7 +337,6 @@ class _PromptPayCheckoutPaymentScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Escrow Security Banner
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

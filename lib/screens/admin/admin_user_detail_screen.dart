@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
+import 'package:saidee_app/screens/admin/admin_store_view_screen.dart';
 import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 
@@ -83,10 +85,7 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
     }
   }
 
-  Future<void> _banUser({
-    required String reason,
-    Duration? duration,
-  }) async {
+  Future<void> _banUser({required String reason, Duration? duration}) async {
     setState(() => _isLoading = true);
     try {
       String adminUid = FirebaseAuth.instance.currentUser?.uid ?? 'Admin';
@@ -200,27 +199,12 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
 
-    String name = widget.userData['name'] ?? 'ไม่มีชื่อ';
-    String email = widget.userData['email'] ?? 'ไม่พบอีเมล';
-    String phone = widget.userData['phone'] ?? 'ไม่พบเบอร์โทร';
-    String bio = widget.userData['bio'] ?? '-';
-    double walletBalance =
-        (widget.userData['walletBalance'] ??
-                widget.userData['wallet_balance'] ??
-                0)
-            .toDouble();
-    String profileImage = widget.userData['profileImage'] ?? '';
-    Timestamp? createdAt = widget.userData['createdAt'];
-    String joinDate = createdAt != null
-        ? "${createdAt.toDate().day.toString().padLeft(2, '0')}/${createdAt.toDate().month.toString().padLeft(2, '0')}/${createdAt.toDate().year}"
-        : "-";
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          "ข้อมูลผู้ใช้ (Admin View)",
+          "ข้อมูลผู้ใช้",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
@@ -239,342 +223,392 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
           onPressed: () => Get.back(),
         ),
       ),
-      body: Stack(
-        children: [
-          _buildBgCircle(isDark, top: -50, right: -50, size: 250),
-          _buildBgCircle(
-            isDark,
-            top: size.height * 0.4,
-            left: -100,
-            size: 300,
-            opacityFactor: 0.8,
-          ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .doc(widget.userId)
+            .snapshots(),
+        builder: (context, snapshot) {
+          Map<String, dynamic> userData = widget.userData;
+          if (snapshot.hasData && snapshot.data!.exists) {
+            userData = snapshot.data!.data() as Map<String, dynamic>;
+            _isActive = (userData['status'] ?? 'active') == 'active';
+            _banReason = userData['banReason'];
+            if (userData['bannedUntil'] is Timestamp) {
+              _bannedUntil = userData['bannedUntil'];
+            } else {
+              _bannedUntil = null;
+            }
+            _strikeCount = (userData['strikeCount'] ?? 0) as int;
+          }
 
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.2 : 0.05,
-                          ),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _isActive
-                                  ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                                  : Colors.red.withValues(alpha: 0.5),
-                              width: 3,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 45,
-                            backgroundColor: isDark
-                                ? Colors.grey[800]
-                                : Colors.grey[100],
-                            backgroundImage: profileImage.isNotEmpty
-                                ? NetworkImage(profileImage)
-                                : null,
-                            child: profileImage.isEmpty
-                                ? Icon(
-                                    CupertinoIcons.person_fill,
-                                    size: 40,
-                                    color: Colors.grey[400],
-                                  )
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          email,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDark ? Colors.grey[400] : Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _isActive
-                                ? Colors.green.withValues(alpha: 0.1)
-                                : Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _isActive
-                                    ? CupertinoIcons.checkmark_seal_fill
-                                    : CupertinoIcons.nosign,
-                                size: 14,
-                                color: _isActive
-                                    ? Colors.green[700]
-                                    : Colors.red[700],
+          String name = userData['name'] ?? 'ไม่มีชื่อ';
+          String email = userData['email'] ?? 'ไม่พบอีเมล';
+          String phone = userData['phone'] ?? 'ไม่พบเบอร์โทร';
+          String bio = userData['bio'] ?? '-';
+          double walletBalance =
+              (userData['walletBalance'] ?? userData['wallet_balance'] ?? 0)
+                  .toDouble();
+          String profileImage = userData['profileImage'] ?? '';
+          Timestamp? createdAt = userData['createdAt'];
+          String joinDate = createdAt != null
+              ? "${createdAt.toDate().day.toString().padLeft(2, '0')}/${createdAt.toDate().month.toString().padLeft(2, '0')}/${createdAt.toDate().year}"
+              : "-";
+
+          return Stack(
+            children: [
+              _buildBgCircle(isDark, top: -50, right: -50, size: 250),
+              _buildBgCircle(
+                isDark,
+                top: size.height * 0.4,
+                left: -100,
+                size: 300,
+                opacityFactor: 0.8,
+              ),
+
+              SafeArea(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.2 : 0.05,
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                _isActive
-                                    ? "สถานะ: ใช้งานปกติ (Active)"
-                                    : "สถานะ: ถูกระงับ (${_bannedUntil != null ? 'ชั่วคราว' : 'ถาวร'})",
-                                style: TextStyle(
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
                                   color: _isActive
-                                      ? Colors.green[700]
-                                      : Colors.red[700],
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                      ? AppTheme.primaryColor.withValues(
+                                          alpha: 0.5,
+                                        )
+                                      : Colors.red.withValues(alpha: 0.5),
+                                  width: 3,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        if (!_isActive && _banReason != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            "เหตุผล: $_banReason",
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                              child: CircleAvatar(
+                                radius: 45,
+                                backgroundColor: isDark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[100],
+                                backgroundImage: profileImage.isNotEmpty
+                                    ? NetworkImage(profileImage)
+                                    : null,
+                                child: profileImage.isEmpty
+                                    ? Icon(
+                                        CupertinoIcons.person_fill,
+                                        size: 40,
+                                        color: Colors.grey[400],
+                                      )
+                                    : null,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
-                          ),
-                          if (_bannedUntil != null)
+                            const SizedBox(height: 16),
                             Text(
-                              "พ้นโทษ: ${_formatDateTime(_bannedUntil)}",
+                              name,
                               style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                fontSize: 11,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
                               ),
                               textAlign: TextAlign.center,
                             ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: isDark
-                            ? [Colors.grey[800]!, Colors.grey[850]!]
-                            : [
-                                AppTheme.primaryColor.withValues(alpha: 0.1),
-                                Colors.white,
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(
-                                  alpha: 0.2,
-                                ),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                CupertinoIcons.creditcard_fill,
-                                color: AppTheme.primaryColor,
-                                size: 24,
+                            const SizedBox(height: 6),
+                            Text(
+                              email,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
-                            const SizedBox(width: 15),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isActive
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isActive
+                                        ? CupertinoIcons.checkmark_seal_fill
+                                        : CupertinoIcons.nosign,
+                                    size: 14,
+                                    color: _isActive
+                                        ? Colors.green[700]
+                                        : Colors.red[700],
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _isActive
+                                        ? "สถานะ: ใช้งานปกติ (Active)"
+                                        : "สถานะ: ถูกระงับ (${_bannedUntil != null ? 'ชั่วคราว' : 'ถาวร'})",
+                                    style: TextStyle(
+                                      color: _isActive
+                                          ? Colors.green[700]
+                                          : Colors.red[700],
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (!_isActive && _banReason != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                "เหตุผล: $_banReason",
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              if (_bannedUntil != null)
                                 Text(
-                                  "ยอดเงินในระบบ",
+                                  "พ้นโทษ: ${_formatDateTime(_bannedUntil)}",
                                   style: TextStyle(
-                                    fontSize: 13,
                                     color: isDark
                                         ? Colors.grey[400]
                                         : Colors.grey[600],
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? [Colors.grey[800]!, Colors.grey[850]!]
+                                : [
+                                    AppTheme.primaryColor.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    Colors.white,
+                                  ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    CupertinoIcons.creditcard_fill,
+                                    color: AppTheme.primaryColor,
+                                    size: 24,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "฿ ${walletBalance.toStringAsFixed(2)}",
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
+                                const SizedBox(width: 15),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "ยอดเงินในระบบ",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isDark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600],
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "฿ ${walletBalance.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  _buildInfoCard(
-                    theme,
-                    isDark,
-                    title: "ข้อมูลทั่วไป",
-                    icon: CupertinoIcons.doc_text_fill,
-                    iconColor: Colors.blueAccent,
-                    content: Column(
-                      children: [
-                        _buildRowItem("เบอร์โทรศัพท์", phone, isDark),
-                        _buildRowItem("วันที่สมัคร", joinDate, isDark),
-                        _buildRowItem("Bio", bio, isDark),
-                        _buildRowItem(
-                          "ประวัติการตักเตือน (Strikes)",
-                          "$_strikeCount ครั้ง",
-                          isDark,
-                        ),
-                        _buildRowItem(
-                          "User ID",
-                          widget.userId,
-                          isDark,
-                          isCopyable: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: _isActive
-                          ? Colors.red.withValues(alpha: 0.05)
-                          : Colors.green.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: _isActive
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.green.withValues(alpha: 0.3),
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          _isActive
-                              ? CupertinoIcons.exclamationmark_shield_fill
-                              : CupertinoIcons.shield_lefthalf_fill,
-                          size: 40,
-                          color: _isActive ? Colors.red : Colors.green,
+                      const SizedBox(height: 20),
+
+                      _buildInfoCard(
+                        theme,
+                        isDark,
+                        title: "ข้อมูลทั่วไป",
+                        icon: CupertinoIcons.doc_text_fill,
+                        iconColor: Colors.blueAccent,
+                        content: Column(
+                          children: [
+                            _buildRowItem("เบอร์โทรศัพท์", phone, isDark),
+                            _buildRowItem("วันที่สมัคร", joinDate, isDark),
+                            _buildRowItem("Bio", bio, isDark),
+                            _buildRowItem(
+                              "ประวัติการตักเตือน (Strikes)",
+                              "$_strikeCount ครั้ง",
+                              isDark,
+                            ),
+                            _buildRowItem(
+                              "User ID",
+                              widget.userId,
+                              isDark,
+                              isCopyable: true,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _isActive
-                              ? "Danger Zone (ระงับบัญชี)"
-                              : "Recovery Zone (ปลดระงับ)",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _isActive ? Colors.red : Colors.green,
+                      ),
+                      const SizedBox(height: 20),
+
+                      _buildStoreMetricsCard(theme, isDark),
+                      const SizedBox(height: 10),
+
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: _isActive
+                              ? Colors.red.withValues(alpha: 0.05)
+                              : Colors.green.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: _isActive
+                                ? Colors.red.withValues(alpha: 0.3)
+                                : Colors.green.withValues(alpha: 0.3),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _isActive
-                              ? "หากระงับ ผู้ใช้จะไม่สามารถล็อกอิน ซื้อ หรือขายสินค้าในระบบได้"
-                              : "หากปลดระงับ ผู้ใช้จะสามารถกลับมาใช้งานระบบได้ตามปกติทันที",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? Colors.grey[400] : Colors.grey[700],
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading
-                                ? null
-                                : () => _confirmToggleStatus(context),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _isActive
-                                  ? Colors.red
-                                  : Colors.green,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                        child: Column(
+                          children: [
+                            Icon(
+                              _isActive
+                                  ? CupertinoIcons.exclamationmark_shield_fill
+                                  : CupertinoIcons.shield_lefthalf_fill,
+                              size: 40,
+                              color: _isActive ? Colors.red : Colors.green,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _isActive
+                                  ? "Danger Zone (ระงับบัญชี)"
+                                  : "Recovery Zone (ปลดระงับ)",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: _isActive ? Colors.red : Colors.green,
                               ),
                             ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    _isActive
-                                        ? "ระงับบัญชีผู้ใช้นี้"
-                                        : "ปลดระงับบัญชีผู้ใช้นี้",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _isActive
+                                  ? "หากระงับ ผู้ใช้จะไม่สามารถล็อกอิน ซื้อ หรือขายสินค้าในระบบได้"
+                                  : "หากปลดระงับ ผู้ใช้จะสามารถกลับมาใช้งานระบบได้ตามปกติทันที",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[700],
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () => _confirmToggleStatus(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isActive
+                                      ? Colors.red
+                                      : Colors.green,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
                                   ),
-                          ),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        _isActive
+                                            ? "ระงับบัญชีผู้ใช้นี้"
+                                            : "ปลดระงับบัญชีผู้ใช้นี้",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -620,6 +654,146 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
           Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey[200]),
           const SizedBox(height: 15),
           content,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreMetricsCard(ThemeData theme, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.building_2_fill,
+                    color: Colors.green,
+                    size: 20,
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "ข้อมูลร้านค้า & ยอดขาย",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              TextButton.icon(
+                onPressed: () {
+                  Get.to(
+                    () => AdminStoreViewScreen(
+                      sellerId: widget.userId,
+                      sellerData: widget.userData,
+                    ),
+                  );
+                },
+                icon: const Icon(CupertinoIcons.shield_lefthalf_fill, size: 16),
+                label: const Text(
+                  "ดูหน้าร้าน",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey[200]),
+          const SizedBox(height: 16),
+          FutureBuilder<List<dynamic>>(
+            future: Future.wait([
+              FirebaseFirestore.instance
+                  .collection(FirestoreCollections.orders)
+                  .where('sellerId', isEqualTo: widget.userId)
+                  .where('status', isEqualTo: 'completed')
+                  .get(),
+              FirebaseFirestore.instance
+                  .collection(FirestoreCollections.reviews)
+                  .where('sellerId', isEqualTo: widget.userId)
+                  .get(),
+              FirebaseFirestore.instance
+                  .collection(FirestoreCollections.products)
+                  .where('sellerId', isEqualTo: widget.userId)
+                  .where('status', isEqualTo: 'active')
+                  .get(),
+            ]),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CupertinoActivityIndicator(),
+                  ),
+                );
+              }
+
+              double totalSales = 0.0;
+              int orderCount = 0;
+              double avgRating = 0.0;
+              int reviewCount = 0;
+              int activeProducts = 0;
+
+              if (snapshot.hasData && snapshot.data != null) {
+                final ordersSnap = snapshot.data![0] as QuerySnapshot;
+                final reviewsSnap = snapshot.data![1] as QuerySnapshot;
+                final productsSnap = snapshot.data![2] as QuerySnapshot;
+
+                orderCount = ordersSnap.docs.length;
+                for (var doc in ordersSnap.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  totalSales += (data['grandTotal'] ?? data['total'] ?? 0)
+                      .toDouble();
+                }
+
+                reviewCount = reviewsSnap.docs.length;
+                if (reviewCount > 0) {
+                  double totalRating = 0.0;
+                  for (var doc in reviewsSnap.docs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    totalRating += (data['rating'] ?? 5.0).toDouble();
+                  }
+                  avgRating = totalRating / reviewCount;
+                }
+
+                activeProducts = productsSnap.docs.length;
+              }
+
+              return Column(
+                children: [
+                  _buildRowItem(
+                    "ยอดขายรวม",
+                    "฿ ${totalSales.toStringAsFixed(2)} ($orderCount ออเดอร์สำเร็จ)",
+                    isDark,
+                  ),
+                  _buildRowItem(
+                    "คะแนนเฉลี่ยร้าน",
+                    reviewCount > 0
+                        ? "⭐ ${avgRating.toStringAsFixed(1)} / 5.0 ($reviewCount รีวิว)"
+                        : "ยังไม่มีคะแนนรีวิว",
+                    isDark,
+                  ),
+                  _buildRowItem(
+                    "สินค้าที่เปิดขาย",
+                    "$activeProducts รายการ",
+                    isDark,
+                  ),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -687,7 +861,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
 
   void _confirmToggleStatus(BuildContext context) {
     if (_isActive) {
-      // เปิด Dialog เลือกระยะเวลาและระบุเหตุผลในการแบน
       int selectedDays = 7;
       bool isPermanent = false;
       final reasonController = TextEditingController(
@@ -718,40 +891,44 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                   children: [
                     const Text(
                       "เลือกระยะเวลาการระงับ:",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 6,
-                      children: [1, 3, 7, 14, 30].map((days) {
-                        final selected = !isPermanent && selectedDays == days;
-                        return ChoiceChip(
-                          label: Text("$days วัน"),
-                          selected: selected,
-                          onSelected: (val) {
-                            if (val) {
-                              setModalState(() {
-                                selectedDays = days;
-                                isPermanent = false;
-                              });
-                            }
-                          },
-                        );
-                      }).toList()
-                        ..add(
-                          ChoiceChip(
-                            label: const Text("ถาวร (Permanent)"),
-                            selected: isPermanent,
-                            selectedColor: Colors.red.withValues(alpha: 0.2),
-                            onSelected: (val) {
-                              if (val) {
-                                setModalState(() {
-                                  isPermanent = true;
-                                });
-                              }
-                            },
+                      children:
+                          [1, 3, 7, 14, 30].map((days) {
+                            final selected =
+                                !isPermanent && selectedDays == days;
+                            return ChoiceChip(
+                              label: Text("$days วัน"),
+                              selected: selected,
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    selectedDays = days;
+                                    isPermanent = false;
+                                  });
+                                }
+                              },
+                            );
+                          }).toList()..add(
+                            ChoiceChip(
+                              label: const Text("ถาวร (Permanent)"),
+                              selected: isPermanent,
+                              selectedColor: Colors.red.withValues(alpha: 0.2),
+                              onSelected: (val) {
+                                if (val) {
+                                  setModalState(() {
+                                    isPermanent = true;
+                                  });
+                                }
+                              },
+                            ),
                           ),
-                        ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
@@ -777,8 +954,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
                   ),
                   onPressed: () {
                     Get.back();
-                    Duration? duration =
-                        isPermanent ? null : Duration(days: selectedDays);
+                    Duration? duration = isPermanent
+                        ? null
+                        : Duration(days: selectedDays);
                     _banUser(
                       reason: reasonController.text.trim(),
                       duration: duration,
