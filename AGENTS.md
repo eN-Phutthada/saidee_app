@@ -82,14 +82,11 @@ saidee_app/
 │   │   ├── opening_screen.dart   # หน้าแนะนำแอปเบื้องต้นสำหรับผู้ใช้ใหม่ (Onboarding)
 │   │   └── splash_screen.dart    # หน้าเริ่มต้นแอป ตรวจสอบ Root/Jailbreak และ Routing
 │   ├── services/                 # Services & Utilities
-│   │   ├── announcement_data_helper.dart # จัดการประกาศของระบบ
-│   │   ├── coupon_data_helper.dart       # จัดการคูปองส่วนลด
 │   │   ├── guided_tour_service.dart      # Interactive Coach Mark Tour
 │   │   ├── notification_service.dart     # FCM + Local Notification Handler
 │   │   ├── recommendation_service.dart   # ระบบแนะนำสินค้าตามความสนใจ
 │   │   ├── role_guard_service.dart       # การ์ดตรวจสอบสิทธิ์ผู้ดูแลระบบ (Admin Guard)
-│   │   ├── security_service.dart         # XSS Sanitization, Regex Validators
-│   │   └── shipping_data_helper.dart     # คำนวณค่าส่งและตัวเลือกการจัดส่ง
+│   │   └── security_service.dart         # XSS Sanitization, Regex Validators
 │   ├── widgets/                  # Reusable UI Components
 │   │   ├── app_exit_scope.dart   # ดักจับการกด Back สองครั้งเพื่อป้องกันการเผลอปิดแอป
 │   │   ├── common_widgets.dart   # Buttons, Shimmer Loaders, Empty States ทั่วไป

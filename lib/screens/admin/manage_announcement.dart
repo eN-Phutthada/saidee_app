@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/services/announcement_data_helper.dart';
 import 'package:saidee_app/services/security_service.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
@@ -196,13 +195,6 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
           "จัดการประกาศข่าวสาร",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => AnnouncementDataHelper.setupSampleAnnouncements(),
-            tooltip: "รีเซ็ตประกาศตัวอย่าง",
-          ),
-        ],
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -221,7 +213,7 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('announcements')
+            .collection(FirestoreCollections.announcements)
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -341,7 +333,7 @@ class _ManageAnnouncementScreenState extends State<ManageAnnouncementScreen> {
                       future: adminId == 'System'
                           ? null
                           : FirebaseFirestore.instance
-                                .collection('admins')
+                                .collection(FirestoreCollections.admins)
                                 .doc(adminId)
                                 .get(),
                       builder: (context, adminSnap) {

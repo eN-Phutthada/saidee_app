@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/services/shipping_data_helper.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
@@ -247,7 +246,7 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
     final String weightRange = "($weightMin - $weightMax g)";
 
     final orderCheck = await FirebaseFirestore.instance
-        .collection('orders')
+        .collection(FirestoreCollections.orders)
         .where('shippingId', isEqualTo: docId)
         .limit(1)
         .get();
@@ -276,7 +275,10 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
       showCancel: true,
       isDestructive: true,
       onConfirm: () {
-        FirebaseFirestore.instance.collection('shipping').doc(docId).delete();
+        FirebaseFirestore.instance
+            .collection(FirestoreCollections.shippings)
+            .doc(docId)
+            .delete();
         Get.back();
       },
     );
@@ -294,13 +296,6 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
           "จัดการบริษัทขนส่ง",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ShippingDataHelper.setupRealShippingData(),
-            tooltip: "รีเซ็ตเป็นข้อมูลจริง",
-          ),
-        ],
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -318,7 +313,9 @@ class _ManageShippingScreenState extends State<ManageShippingScreen> {
         onPressed: () => _showEditDialog(),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('shipping').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection(FirestoreCollections.shippings)
+            .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());

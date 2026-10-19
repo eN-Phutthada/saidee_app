@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:saidee_app/config/theme.dart';
-import 'package:saidee_app/services/coupon_data_helper.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 
@@ -404,7 +403,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
 
   Future<void> _deleteCoupon(String docId, String code) async {
     final usageCheck = await FirebaseFirestore.instance
-        .collection('orders')
+        .collection(FirestoreCollections.orders)
         .where('couponCode', isEqualTo: code)
         .limit(1)
         .get();
@@ -432,7 +431,10 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
       showCancel: true,
       isDestructive: true,
       onConfirm: () {
-        FirebaseFirestore.instance.collection('coupons').doc(docId).delete();
+        FirebaseFirestore.instance
+            .collection(FirestoreCollections.coupons)
+            .doc(docId)
+            .delete();
         Get.back();
       },
     );
@@ -450,13 +452,6 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
           "จัดการคูปองส่วนลด",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => CouponDataHelper.setupSampleCoupons(),
-            tooltip: "รีเซ็ตเป็นข้อมูลตัวอย่าง",
-          ),
-        ],
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
@@ -475,7 +470,7 @@ class _ManageCouponScreenState extends State<ManageCouponScreen> {
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('coupons')
+            .collection(FirestoreCollections.coupons)
             .orderBy('status')
             .snapshots(),
         builder: (context, snapshot) {
