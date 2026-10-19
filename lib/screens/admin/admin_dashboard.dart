@@ -17,6 +17,8 @@ import 'manage_report.dart';
 import 'manage_announcement.dart';
 import 'admin_transaction.dart';
 import 'admin_shop_search.dart';
+import 'admin_user_detail_screen.dart';
+import 'admin_store_view_screen.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 import 'package:saidee_app/widgets/permission_denied_view.dart';
@@ -457,9 +459,9 @@ class AdminDashboardContent extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: recentUsers.length,
                         itemBuilder: (context, index) {
-                          var data =
-                              recentUsers[index].data() as Map<String, dynamic>;
-                          return _buildUserCard(context, data);
+                          var doc = recentUsers[index];
+                          var data = doc.data() as Map<String, dynamic>;
+                          return _buildUserCard(context, data, doc.id);
                         },
                       );
                     },
@@ -474,109 +476,172 @@ class AdminDashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _buildUserCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildUserCard(
+    BuildContext context,
+    Map<String, dynamic> data,
+    String userId,
+  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     bool isActive = (data['status'] ?? 'active') == 'active';
 
-    double balance = 0.0;
-    if (data['walletBalance'] != null) {
-      balance = data['walletBalance'].toDouble();
-    } else if (data['wallet_balance'] != null) {
-      balance = data['wallet_balance'].toDouble();
-    }
+    double walletBalance =
+        (data['walletBalance'] ?? data['wallet_balance'] ?? 0).toDouble();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+    return GestureDetector(
+      onTap: () {
+        Get.to(() => AdminUserDetailScreen(userId: userId, userData: data));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+            width: 1,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[200],
-            backgroundImage:
-                (data['profileImage'] != null && data['profileImage'] != '')
-                ? NetworkImage(data['profileImage'])
-                : null,
-            child: (data['profileImage'] == null || data['profileImage'] == '')
-                ? Icon(
-                    CupertinoIcons.person_fill,
-                    color: isDark ? Colors.grey[400] : Colors.grey,
-                  )
-                : null,
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['name'] ?? 'Unknown User',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.03),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  width: 2,
                 ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    Text(
-                      data['email'] ?? '',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.grey[400] : Colors.grey,
+              ),
+              child: CircleAvatar(
+                radius: 28,
+                backgroundColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                backgroundImage:
+                    (data['profileImage'] != null && data['profileImage'] != '')
+                        ? NetworkImage(data['profileImage'])
+                        : null,
+                child:
+                    (data['profileImage'] == null || data['profileImage'] == '')
+                        ? Icon(
+                            CupertinoIcons.person_fill,
+                            color: Colors.grey[400],
+                            size: 24,
+                          )
+                        : null,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    data['name'] ?? 'Unknown User',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.mail_solid,
+                        size: 12,
+                        color: Colors.grey[500],
                       ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          data['email'] ?? 'ไม่มีอีเมล',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "฿ ${walletBalance.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isActive ? "ปกติ" : "ระงับ",
+                    style: TextStyle(
+                      color: isActive ? Colors.green[700] : Colors.red[700],
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: "ดูหน้าร้าน (Admin)",
+                      icon: const Icon(
+                        CupertinoIcons.building_2_fill,
+                        color: Colors.green,
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        Get.to(
+                          () => AdminStoreViewScreen(
+                            sellerId: userId,
+                            sellerData: data,
+                          ),
+                        );
+                      },
+                    ),
+                    Icon(
+                      CupertinoIcons.chevron_right_circle_fill,
+                      color: Colors.grey[300],
+                      size: 18,
                     ),
                   ],
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                isActive ? "ใช้งาน" : "ระงับ",
-                style: TextStyle(
-                  color: isActive ? Colors.blue : Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "ยอดเงินคงเหลือ",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
-              Text(
-                "${balance.toStringAsFixed(2)} ฿",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

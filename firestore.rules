@@ -25,10 +25,17 @@ service cloud.firestore {
     }
     
     // Products collection: public read, write restricted to product owner (seller) or admin
+    // Authenticated users can update interaction fields (likesCount, likedUsers, views) or mark status as 'sold' upon purchase
     match /products/{productId} {
       allow read: if true;
       allow create: if request.auth != null && (request.resource.data.sellerId == request.auth.uid || isAdmin());
-      allow update, delete: if request.auth != null && (
+      allow update: if request.auth != null && (
+        resource.data.sellerId == request.auth.uid || 
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'likedUsers', 'views']) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'sold')
+      );
+      allow delete: if request.auth != null && (
         resource.data.sellerId == request.auth.uid || isAdmin()
       );
     }
@@ -126,10 +133,10 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Reports & Feedbacks: authenticated users can create, admins can read and manage
+    // Reports & Feedbacks: authenticated users can create and read, admins can manage
     match /reports/{reportId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if isAdmin();
+      allow create, read: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     match /feedbacks/{feedbackId} {
       allow create: if request.auth != null;
@@ -138,6 +145,12 @@ service cloud.firestore {
     match /login_history/{historyId} {
       allow read: if isAdmin();
       allow create: if request.auth != null;
+    }
+
+    // Stores collection: public read, store owner or admin write/delete
+    match /stores/{storeId} {
+      allow read: if true;
+      allow write: if request.auth != null && (request.auth.uid == storeId || isAdmin());
     }
 
     // Default deny all unmatched documents

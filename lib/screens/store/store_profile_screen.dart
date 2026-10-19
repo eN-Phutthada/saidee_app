@@ -63,7 +63,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
           .doc(widget.sellerId)
           .get();
       if (sellerDoc.exists) {
-        String status = (sellerDoc.data()?['status'] ?? 'active').toString().toLowerCase();
+        String status = (sellerDoc.data()?['status'] ?? 'active')
+            .toString()
+            .toLowerCase();
         _sellerName = sellerDoc.data()?['name'] ?? "ร้านค้า";
         if (status == 'banned' || status == 'suspended') {
           if (mounted) setState(() => _isSellerBanned = true);
@@ -74,7 +76,9 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
             .doc(widget.sellerId)
             .get();
         if (adminDoc.exists) {
-          String status = (adminDoc.data()?['status'] ?? 'active').toString().toLowerCase();
+          String status = (adminDoc.data()?['status'] ?? 'active')
+              .toString()
+              .toLowerCase();
           _sellerName = adminDoc.data()?['name'] ?? "ผู้ดูแลระบบ";
           if (status == 'banned' || status == 'suspended') {
             if (mounted) setState(() => _isSellerBanned = true);
@@ -143,7 +147,7 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       String shareText =
           "🛍️ แวะมาช้อปเสื้อผ้ามือสองสภาพดีที่ร้าน '$storeName' กันเถอะ!\n\n👉 เปิดแอป SAIDEE แล้วพิมพ์ชื่อร้านเพื่อเลือกซื้อสินค้าได้เลย!";
 
-      await Share.share(shareText);
+      await SharePlus.instance.share(ShareParams(text: shareText));
     } catch (e) {
       debugPrint("Error sharing store: $e");
       Get.snackbar(
@@ -155,20 +159,26 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
     }
   }
 
+  void _showLoginRequiredDialog({String? message}) {
+    AppDialog.showCustomDialog(
+      title: "กรุณาเข้าสู่ระบบ",
+      message: message ?? "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถทำรายการได้",
+      icon: CupertinoIcons.person_crop_circle_badge_exclam,
+      iconColor: Colors.orange,
+      confirmText: "เข้าสู่ระบบ",
+      cancelText: "ยกเลิก",
+      showCancel: true,
+      onConfirm: () {
+        Get.back();
+        Get.to(() => const LoginScreen());
+      },
+    );
+  }
+
   Future<void> _startChat() async {
     if (FirebaseAuth.instance.currentUser == null) {
-      AppDialog.showCustomDialog(
-        title: "กรุณาเข้าสู่ระบบ",
+      _showLoginRequiredDialog(
         message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถแชทกับร้านค้าได้",
-        icon: CupertinoIcons.person_crop_circle_badge_exclam,
-        iconColor: Colors.orange,
-        confirmText: "เข้าสู่ระบบ",
-        cancelText: "ยกเลิก",
-        showCancel: true,
-        onConfirm: () {
-          Get.back();
-          Get.to(() => const LoginScreen());
-        },
       );
       return;
     }
@@ -549,6 +559,14 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
                 ),
                 tooltip: "รายงานร้านค้านี้",
                 onPressed: () {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) {
+                    _showLoginRequiredDialog(
+                      message:
+                          "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถรายงานร้านค้านี้ได้",
+                    );
+                    return;
+                  }
                   ReportBottomSheet.show(
                     context: context,
                     targetType: 'store',
@@ -560,10 +578,15 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               ),
             if (_isCurrentUserAdmin)
               IconButton(
-                icon: const Icon(CupertinoIcons.shield_lefthalf_fill, color: Colors.purpleAccent),
+                icon: const Icon(
+                  CupertinoIcons.shield_lefthalf_fill,
+                  color: Colors.purpleAccent,
+                ),
                 tooltip: "สลับไปโหมดผู้ดูแลระบบ (Admin)",
                 onPressed: () {
-                  Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
+                  Get.off(
+                    () => AdminStoreViewScreen(sellerId: widget.sellerId),
+                  );
                 },
               ),
             if (!_isSellerBanned)
@@ -657,13 +680,17 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.purple,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () {
                 Get.off(() => AdminStoreViewScreen(sellerId: widget.sellerId));
               },
               icon: const Icon(CupertinoIcons.shield_fill, size: 16),
-              label: const Text("เปิดหน้าร้านในโหมดผู้ดูแลระบบ (Admin) เพื่อตรวจสอบสินค้า"),
+              label: const Text(
+                "เปิดหน้าร้านในโหมดผู้ดูแลระบบ (Admin) เพื่อตรวจสอบสินค้า",
+              ),
             ),
           ],
         ],
@@ -678,7 +705,11 @@ class _StoreProfileScreenState extends State<StoreProfileScreen> {
       color: isDark ? const Color(0xFF2D1B4E) : const Color(0xFFF3E8FF),
       child: Row(
         children: [
-          const Icon(CupertinoIcons.shield_fill, color: Colors.purple, size: 16),
+          const Icon(
+            CupertinoIcons.shield_fill,
+            color: Colors.purple,
+            size: 16,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

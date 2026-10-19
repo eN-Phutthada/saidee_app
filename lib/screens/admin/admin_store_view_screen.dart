@@ -171,43 +171,47 @@ class _AdminStoreViewScreenState extends State<AdminStoreViewScreen>
                         label: const Text("3 วัน"),
                         selected: banDays == 3 && !isPermanent,
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setDialogState(() {
                               banDays = 3;
                               isPermanent = false;
                             });
+                          }
                         },
                       ),
                       ChoiceChip(
                         label: const Text("7 วัน"),
                         selected: banDays == 7 && !isPermanent,
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setDialogState(() {
                               banDays = 7;
                               isPermanent = false;
                             });
+                          }
                         },
                       ),
                       ChoiceChip(
                         label: const Text("30 วัน"),
                         selected: banDays == 30 && !isPermanent,
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setDialogState(() {
                               banDays = 30;
                               isPermanent = false;
                             });
+                          }
                         },
                       ),
                       ChoiceChip(
                         label: const Text("ถาวร"),
                         selected: isPermanent,
                         onSelected: (val) {
-                          if (val)
+                          if (val) {
                             setDialogState(() {
                               isPermanent = true;
                             });
+                          }
                         },
                       ),
                     ],

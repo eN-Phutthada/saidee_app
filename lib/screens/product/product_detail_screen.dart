@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/services/recommendation_service.dart';
 import '../../models/product_model.dart';
@@ -102,7 +103,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       }
 
       await FirebaseFirestore.instance
-          .collection('products')
+          .collection(FirestoreCollections.products)
           .doc(widget.product.id)
           .update({'views': FieldValue.increment(1)});
     } catch (e) {
@@ -110,36 +111,69 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  void _showLoginRequiredDialog({String? message}) {
+    AppDialog.showCustomDialog(
+      title: "กรุณาเข้าสู่ระบบ",
+      message: message ?? "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถทำรายการได้",
+      icon: CupertinoIcons.person_crop_circle_badge_exclam,
+      iconColor: Colors.orange,
+      confirmText: "เข้าสู่ระบบ",
+      onConfirm: () {
+        Get.back();
+        Get.to(() => const LoginScreen());
+      },
+      showCancel: true,
+    );
+  }
+
   Future<void> _toggleLikeProduct(ProductModel product) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      Get.snackbar(
-        "กรุณาเข้าสู่ระบบ",
-        "เข้าสู่ระบบเพื่อบันทึกสินค้าที่ถูกใจ",
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+      _showLoginRequiredDialog(
+        message:
+            "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถบันทึกสินค้าที่ถูกใจได้",
       );
       return;
     }
 
     final isLiked = product.likedUsers.contains(user.uid);
-    try {
-      final docRef = FirebaseFirestore.instance
-          .collection('products')
-          .doc(product.id);
+    final willLike = !isLiked;
 
-      if (isLiked) {
-        await docRef.update({
-          'likesCount': FieldValue.increment(-1),
-          'likedUsers': FieldValue.arrayRemove([user.uid]),
-        });
-      } else {
-        await docRef.update({
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      final productRef = FirebaseFirestore.instance
+          .collection(FirestoreCollections.products)
+          .doc(product.id);
+      final userRef = FirebaseFirestore.instance
+          .collection(FirestoreCollections.users)
+          .doc(user.uid);
+
+      if (willLike) {
+        batch.update(productRef, {
           'likesCount': FieldValue.increment(1),
           'likedUsers': FieldValue.arrayUnion([user.uid]),
         });
+        batch.set(userRef, {
+          'likedProductIds': FieldValue.arrayUnion([product.id]),
+        }, SetOptions(merge: true));
+      } else {
+        batch.update(productRef, {
+          'likesCount': FieldValue.increment(-1),
+          'likedUsers': FieldValue.arrayRemove([user.uid]),
+        });
+        batch.set(userRef, {
+          'likedProductIds': FieldValue.arrayRemove([product.id]),
+        }, SetOptions(merge: true));
       }
+
+      await batch.commit();
+
+      // บันทึกความชอบไปยัง RecommendationService
+      await RecommendationService.trackProductLike(
+        user.uid,
+        product,
+        isLiked: willLike,
+      );
     } catch (e) {
       debugPrint("Error toggling like: $e");
     }
@@ -499,7 +533,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         );
         try {
           await FirebaseFirestore.instance
-              .collection('products')
+              .collection(FirestoreCollections.products)
               .doc(productId)
               .delete();
 
@@ -536,17 +570,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      AppDialog.showCustomDialog(
-        title: "กรุณาเข้าสู่ระบบ",
+      _showLoginRequiredDialog(
         message: "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถสั่งซื้อสินค้าได้",
-        icon: CupertinoIcons.person_crop_circle_badge_exclam,
-        iconColor: Colors.orange,
-        confirmText: "เข้าสู่ระบบ",
-        onConfirm: () {
-          Get.back();
-          Get.to(() => const LoginScreen());
-        },
-        showCancel: true,
       );
       return;
     }
@@ -645,14 +670,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isAdmin) {
-      return const Scaffold(
-        body: Center(child: CupertinoActivityIndicator()),
-      );
+      return const Scaffold(body: Center(child: CupertinoActivityIndicator()));
     }
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('products')
+          .collection(FirestoreCollections.products)
           .doc(widget.product.id)
           .snapshots(),
       builder: (context, snapshot) {
@@ -998,11 +1021,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         color: theme.colorScheme.onSurface,
                                         size: 22,
                                       ),
-                                      onPressed: () => Get.to(
-                                        () => const CartScreen(
-                                          showBackButton: true,
-                                        ),
-                                      ),
+                                      onPressed: () {
+                                        final user =
+                                            FirebaseAuth.instance.currentUser;
+                                        if (user == null) {
+                                          _showLoginRequiredDialog(
+                                            message:
+                                                "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถดูตะกร้าสินค้าได้",
+                                          );
+                                          return;
+                                        }
+                                        Get.to(
+                                          () => const CartScreen(
+                                            showBackButton: true,
+                                          ),
+                                        );
+                                      },
                                     ),
                                     if (cartCount > 0)
                                       Positioned(
@@ -1080,6 +1114,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                                 tooltip: "รายงานสินค้านี้",
                                 onPressed: () {
+                                  final user =
+                                      FirebaseAuth.instance.currentUser;
+                                  if (user == null) {
+                                    _showLoginRequiredDialog(
+                                      message:
+                                          "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถรายงานสินค้านี้ได้",
+                                    );
+                                    return;
+                                  }
                                   ReportBottomSheet.show(
                                     context: context,
                                     targetType: 'product',
@@ -1538,7 +1581,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   : () async {
                       final user = FirebaseAuth.instance.currentUser;
                       if (user == null) {
-                        Get.to(() => const LoginScreen());
+                        _showLoginRequiredDialog(
+                          message:
+                              "คุณต้องเข้าสู่ระบบสมาชิกก่อน จึงจะสามารถแชทกับผู้ขายได้",
+                        );
                         return;
                       }
 
