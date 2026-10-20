@@ -22,18 +22,25 @@ import 'admin_store_view_screen.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/widgets/app_exit_scope.dart';
 import 'package:saidee_app/widgets/permission_denied_view.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:saidee_app/services/notification_service.dart';
+import 'package:saidee_app/screens/notification/notification_screen.dart';
+import 'package:saidee_app/main.dart' show handleNotificationClickFromData;
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  final int initialIndex;
+  const AdminDashboard({super.key, this.initialIndex = 0});
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
 }
 
-class _AdminDashboardState extends State<AdminDashboard> {
+class _AdminDashboardState extends State<AdminDashboard>
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
   StreamSubscription<QuerySnapshot>? _pendingWithdrawalSubscription;
   bool _isInitialLoad = true;
+  final Map<String, int> _lastNudgeTimestamps = {};
 
   final List<Widget> _pages = [
     const AdminDashboardContent(),
@@ -43,33 +50,115 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _selectedIndex = widget.initialIndex;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       RoleGuardService.checkAdminAccess(context);
+      _checkPendingNotification();
     });
     _listenForNewWithdrawals();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      if (Get.isSnackbarOpen) {
+        Get.closeCurrentSnackbar();
+      }
+    }
+  }
+
+  void _checkPendingNotification() {
+    if (NotificationService.pendingNotificationData != null) {
+      final data = NotificationService.pendingNotificationData!;
+      NotificationService.pendingNotificationData = null;
+      handleNotificationClickFromData(data);
+    }
   }
 
   void _listenForNewWithdrawals() {
     _pendingWithdrawalSubscription = FirebaseFirestore.instance
         .collection(FirestoreCollections.transactions)
         .where('type', isEqualTo: 'withdraw')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'processing'])
         .snapshots()
         .listen(
           (snapshot) {
             if (_isInitialLoad) {
               _isInitialLoad = false;
+              for (var doc in snapshot.docs) {
+                var data = doc.data();
+                var nudge = data['lastNudgedAt'];
+                if (nudge is Timestamp) {
+                  _lastNudgeTimestamps[doc.id] = nudge.millisecondsSinceEpoch;
+                }
+              }
+              return;
+            }
+
+            // Don't show in-app snackbars if the app is not in the foreground
+            if (WidgetsBinding.instance.lifecycleState != null &&
+                WidgetsBinding.instance.lifecycleState !=
+                    AppLifecycleState.resumed) {
               return;
             }
 
             for (var change in snapshot.docChanges) {
+              final docId = change.doc.id;
+              var data = change.doc.data() as Map<String, dynamic>;
+
+              // Skip if this transaction was just opened/handled from a push notification
+              if (NotificationService.wasNotificationRecentlyHandled(docId)) {
+                var nudge = data['lastNudgedAt'];
+                if (nudge is Timestamp) {
+                  _lastNudgeTimestamps[docId] = nudge.millisecondsSinceEpoch;
+                }
+                continue;
+              }
+
               if (change.type == DocumentChangeType.added) {
-                var data = change.doc.data() as Map<String, dynamic>;
-                _showWithdrawalNotification(data);
+                var nudge = data['lastNudgedAt'];
+                if (nudge is Timestamp) {
+                  _lastNudgeTimestamps[docId] = nudge.millisecondsSinceEpoch;
+                }
+
+                if (data['status'] == 'pending') {
+                  final createdAt = data['createdAt'];
+                  if (createdAt is Timestamp) {
+                    final ageSec = DateTime.now()
+                        .difference(createdAt.toDate())
+                        .inSeconds;
+                    // Only show snackbar if transaction was created in the last 45 seconds
+                    if (ageSec.abs() < 45) {
+                      _showWithdrawalNotification(data, docId: docId);
+                    }
+                  } else {
+                    _showWithdrawalNotification(data, docId: docId);
+                  }
+                }
               } else if (change.type == DocumentChangeType.modified) {
-                var data = change.doc.data() as Map<String, dynamic>;
-                if (data['lastNudgedAt'] != null) {
-                  _showNudgeNotification(data);
+                var nudge = data['lastNudgedAt'];
+                int? newNudgeMs = nudge is Timestamp
+                    ? nudge.millisecondsSinceEpoch
+                    : null;
+                int? oldNudgeMs = _lastNudgeTimestamps[docId];
+
+                if (newNudgeMs != null) {
+                  _lastNudgeTimestamps[docId] = newNudgeMs;
+                }
+
+                // Only alert if lastNudgedAt actually changed/increased and was within the last 30 seconds
+                if (newNudgeMs != null &&
+                    (oldNudgeMs == null || newNudgeMs > oldNudgeMs)) {
+                  final ageSec = DateTime.now()
+                      .difference(
+                        DateTime.fromMillisecondsSinceEpoch(newNudgeMs),
+                      )
+                      .inSeconds;
+                  if (ageSec.abs() < 30) {
+                    _showNudgeNotification(data, docId: docId);
+                  }
                 }
               }
             }
@@ -80,8 +169,25 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
   }
 
-  Future<void> _showNudgeNotification(Map<String, dynamic> data) async {
+  Future<void> _showNudgeNotification(
+    Map<String, dynamic> data, {
+    String? docId,
+  }) async {
+    final key = docId ?? (data['transactionId'] ?? '').toString();
+    if (key.isNotEmpty &&
+        NotificationService.wasNotificationRecentlyHandled(key)) {
+      return;
+    }
+
     double amount = (data['amount'] ?? 0).toDouble();
+
+    if (NotificationService.isDuplicateNotification(
+      '🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!',
+      'คำขอถอนเงิน ฿${amount.toStringAsFixed(2)} กำลังรอดำเนินการ โปรดตรวจสอบ',
+      customId: key.isNotEmpty ? "nudge_$key" : null,
+    )) {
+      return;
+    }
 
     if (Get.isSnackbarOpen) {
       Get.closeCurrentSnackbar();
@@ -94,13 +200,41 @@ class _AdminDashboardState extends State<AdminDashboard> {
       colorText: Colors.white,
       snackPosition: SnackPosition.TOP,
       margin: const EdgeInsets.all(15),
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 5),
       icon: const Icon(CupertinoIcons.bell_fill, color: Colors.white),
+      onTap: (_) => _onBottomNavTapped(1),
+      mainButton: TextButton(
+        onPressed: () {
+          if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
+          _onBottomNavTapped(1);
+        },
+        child: const Text(
+          'ดูรายการ',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
-  Future<void> _showWithdrawalNotification(Map<String, dynamic> data) async {
+  Future<void> _showWithdrawalNotification(
+    Map<String, dynamic> data, {
+    String? docId,
+  }) async {
+    final key = docId ?? (data['transactionId'] ?? '').toString();
+    if (key.isNotEmpty &&
+        NotificationService.wasNotificationRecentlyHandled(key)) {
+      return;
+    }
+
     double amount = (data['amount'] ?? 0).toDouble();
+
+    if (NotificationService.isDuplicateNotification(
+      'คำร้องขอถอนเงินใหม่!',
+      'มีผู้ใช้ขอถอนเงินจำนวน ${amount.toStringAsFixed(2)} ฿',
+      customId: key.isNotEmpty ? "withdraw_$key" : null,
+    )) {
+      return;
+    }
 
     if (Get.isSnackbarOpen) {
       Get.closeCurrentSnackbar();
@@ -113,7 +247,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       colorText: Colors.black87,
       snackPosition: SnackPosition.TOP,
       margin: const EdgeInsets.all(15),
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 5),
       boxShadows: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.1),
@@ -122,11 +256,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       ],
       icon: const Icon(CupertinoIcons.creditcard_fill, color: Colors.orange),
+      onTap: (_) => _onBottomNavTapped(1),
+      mainButton: TextButton(
+        onPressed: () {
+          if (Get.isSnackbarOpen) Get.closeCurrentSnackbar();
+          _onBottomNavTapped(1);
+        },
+        child: const Text(
+          'ดูรายการ',
+          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pendingWithdrawalSubscription?.cancel();
     super.dispose();
   }
@@ -157,7 +303,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           stream: FirebaseFirestore.instance
               .collection(FirestoreCollections.transactions)
               .where('type', isEqualTo: 'withdraw')
-              .where('status', isEqualTo: 'pending')
+              .where('status', whereIn: ['pending', 'processing'])
               .snapshots(),
           builder: (context, snapshot) {
             int pendingCount = 0;
@@ -290,7 +436,32 @@ class AdminDashboardContent extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const SizedBox(width: 48, height: 48),
+                    StreamBuilder<int>(
+                      stream: FirebaseAuth.instance.currentUser != null
+                          ? NotificationService.getUnreadCount(
+                              FirebaseAuth.instance.currentUser!.uid,
+                            )
+                          : Stream.value(0),
+                      builder: (context, notifSnap) {
+                        int unreadCount = notifSnap.data ?? 0;
+                        return IconButton(
+                          icon: Badge(
+                            isLabelVisible: unreadCount > 0,
+                            label: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                            child: Icon(
+                              CupertinoIcons.bell_fill,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          tooltip: 'การแจ้งเตือน',
+                          onPressed: () =>
+                              Get.to(() => const NotificationScreen()),
+                        );
+                      },
+                    ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -299,6 +470,7 @@ class AdminDashboardContent extends StatelessWidget {
                             isDark
                                 ? CupertinoIcons.sun_max
                                 : CupertinoIcons.moon,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                           onPressed: () {
                             Get.changeThemeMode(
@@ -309,7 +481,7 @@ class AdminDashboardContent extends StatelessWidget {
                         IconButton(
                           icon: const Icon(
                             CupertinoIcons.square_arrow_right,
-                            color: Colors.red,
+                            color: Colors.redAccent,
                           ),
                           tooltip: 'ออกจากระบบ',
                           onPressed: () => _handleLogout(context),
@@ -418,7 +590,9 @@ class AdminDashboardContent extends StatelessWidget {
                         .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        if (PermissionDeniedView.isPermissionDenied(snapshot.error)) {
+                        if (PermissionDeniedView.isPermissionDenied(
+                          snapshot.error,
+                        )) {
                           return PermissionDeniedView(
                             title: "ไม่มีสิทธิ์เข้าถึงข้อมูลผู้ใช้",
                             message:
@@ -527,16 +701,16 @@ class AdminDashboardContent extends StatelessWidget {
                 backgroundColor: isDark ? Colors.grey[800] : Colors.grey[100],
                 backgroundImage:
                     (data['profileImage'] != null && data['profileImage'] != '')
-                        ? NetworkImage(data['profileImage'])
-                        : null,
+                    ? NetworkImage(data['profileImage'])
+                    : null,
                 child:
                     (data['profileImage'] == null || data['profileImage'] == '')
-                        ? Icon(
-                            CupertinoIcons.person_fill,
-                            color: Colors.grey[400],
-                            size: 24,
-                          )
-                        : null,
+                    ? Icon(
+                        CupertinoIcons.person_fill,
+                        color: Colors.grey[400],
+                        size: 24,
+                      )
+                    : null,
               ),
             ),
             const SizedBox(width: 15),

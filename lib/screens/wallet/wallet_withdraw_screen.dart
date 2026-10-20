@@ -10,6 +10,7 @@ import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:flutter_windowmanager_plus/flutter_windowmanager_plus.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/services/contact_service.dart';
+import 'package:saidee_app/services/notification_service.dart';
 
 class WalletWithdrawScreen extends StatefulWidget {
   final double currentBalance;
@@ -136,6 +137,10 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception("ไม่พบผู้ใช้งาน");
 
+      DocumentReference newTxRef = FirebaseFirestore.instance
+          .collection(FirestoreCollections.transactions)
+          .doc();
+
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         DocumentReference userRef = FirebaseFirestore.instance
             .collection(FirestoreCollections.users)
@@ -160,9 +165,6 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           'withdrawAccountName': _accountNameController.text.trim(),
         });
 
-        DocumentReference newTxRef = FirebaseFirestore.instance
-            .collection(FirestoreCollections.transactions)
-            .doc();
         transaction.set(newTxRef, {
           'uid': user.uid,
           'type': 'withdraw',
@@ -176,6 +178,16 @@ class _WalletWithdrawScreenState extends State<WalletWithdrawScreen> {
           'nudgedCount': 0,
         });
       });
+
+      NotificationService.notifyAllAdmins(
+        title: "คำร้องขอถอนเงินใหม่ ฿${amount.toStringAsFixed(2)}",
+        body: "มีผู้ใช้ขอถอนเงินจำนวน ฿${amount.toStringAsFixed(2)} (${_accountNameController.text.trim()} - $_selectedBank)",
+        type: 'withdraw',
+        extraData: {
+          'transactionId': newTxRef.id,
+          'amount': amount,
+        },
+      );
 
       setState(() => _isLoading = false);
 

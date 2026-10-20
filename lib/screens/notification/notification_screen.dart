@@ -12,6 +12,8 @@ import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/screens/chat/chat_screen.dart';
 import 'package:saidee_app/widgets/custom_dialog.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
+import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/screens/admin/manage_report.dart';
 
 class NotificationScreen extends StatelessWidget {
   const NotificationScreen({super.key});
@@ -44,7 +46,20 @@ class NotificationScreen extends StatelessWidget {
   void _onNotificationTap(BuildContext context, String currentUserId, String notifId, Map<String, dynamic> data) async {
     NotificationService.markAsRead(currentUserId, notifId);
 
+    final isAdmin = await RoleGuardService.isCurrentUserAdmin();
     String type = data['type'] ?? '';
+
+    if (isAdmin) {
+      if (type == 'withdraw' || type == 'wallet') {
+        Get.offAll(() => const AdminDashboard(initialIndex: 1));
+        return;
+      }
+      if (type == 'report') {
+        Get.to(() => const ManageReportScreen());
+        return;
+      }
+    }
+
     String orderId = (data['orderId'] ?? '').toString();
     if (orderId.isEmpty && data['extraData'] is Map) {
       orderId = (data['extraData']['orderId'] ?? '').toString();
@@ -117,11 +132,14 @@ class NotificationScreen extends StatelessWidget {
       case 'order':
         return CupertinoIcons.cube_box_fill;
       case 'wallet':
+      case 'withdraw':
         return CupertinoIcons.money_dollar_circle_fill;
       case 'dispute':
         return CupertinoIcons.exclamationmark_shield_fill;
       case 'chat':
         return CupertinoIcons.chat_bubble_text_fill;
+      case 'report':
+        return CupertinoIcons.exclamationmark_triangle_fill;
       default:
         return CupertinoIcons.bell_fill;
     }
@@ -132,11 +150,14 @@ class NotificationScreen extends StatelessWidget {
       case 'order':
         return Colors.blue;
       case 'wallet':
+      case 'withdraw':
         return Colors.green;
       case 'dispute':
         return Colors.red;
       case 'chat':
         return Colors.purple;
+      case 'report':
+        return Colors.orange;
       default:
         return AppTheme.primaryColor;
     }
@@ -155,20 +176,8 @@ class NotificationScreen extends StatelessWidget {
       );
     }
 
-    return FutureBuilder<bool>(
-      future: RoleGuardService.isCurrentUserAdmin(),
-      builder: (context, adminSnap) {
-        if (adminSnap.data == true) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            RoleGuardService.redirectIfAdmin(context);
-          });
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        return Scaffold(
-          backgroundColor: theme.scaffoldBackgroundColor,
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text(
           "การแจ้งเตือน",
@@ -329,8 +338,6 @@ class NotificationScreen extends StatelessWidget {
           );
         },
       ),
-        );
-      },
     );
   }
 }

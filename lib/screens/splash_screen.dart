@@ -9,6 +9,7 @@ import 'package:saidee_app/screens/admin/admin_dashboard.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/moderation_service.dart';
 import 'package:saidee_app/services/escrow_service.dart';
+import 'package:saidee_app/services/notification_service.dart';
 
 import 'package:flutter_jailbreak_detection/flutter_jailbreak_detection.dart';
 import 'package:flutter/services.dart';
@@ -72,10 +73,17 @@ class _SplashScreenState extends State<SplashScreen> {
             .get();
             
         if (adminDoc.exists) {
+          int initialIndex = 0;
+          if (NotificationService.pendingNotificationData != null) {
+            final type = NotificationService.pendingNotificationData!['type'];
+            if (type == 'withdraw' || type == 'wallet') {
+              initialIndex = 1;
+            }
+          }
           Get.offAll(
-            () => const AdminDashboard(),
+            () => AdminDashboard(initialIndex: initialIndex),
             transition: Transition.circularReveal,
-            duration: const Duration(milliseconds: 1000),
+            duration: const Duration(milliseconds: 600),
           );
           return;
         }

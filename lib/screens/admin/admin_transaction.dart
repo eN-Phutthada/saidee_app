@@ -139,12 +139,18 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           Text(
                             "${snapshot.error}",
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             onPressed: () => setState(() {}),
-                            icon: const Icon(CupertinoIcons.arrow_clockwise, size: 16),
+                            icon: const Icon(
+                              CupertinoIcons.arrow_clockwise,
+                              size: 16,
+                            ),
                             label: const Text("ลองใหม่อีกครั้ง"),
                           ),
                         ],
@@ -181,7 +187,8 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         var status = (data['status'] ?? '').toLowerCase();
 
                         if (_selectedFilter == 'pending_withdraw') {
-                          return type == 'withdraw' && status == 'pending';
+                          return type == 'withdraw' &&
+                              (status == 'pending' || status == 'processing');
                         }
                         if (_selectedFilter == 'purchase' && type == 'buy') {
                           return true;
@@ -194,10 +201,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   var dataB = b.data() as Map<String, dynamic>;
                   bool isPendingA =
                       dataA['type'] == 'withdraw' &&
-                      dataA['status'] == 'pending';
+                      (dataA['status'] == 'pending' ||
+                          dataA['status'] == 'processing');
                   bool isPendingB =
                       dataB['type'] == 'withdraw' &&
-                      dataB['status'] == 'pending';
+                      (dataB['status'] == 'pending' ||
+                          dataB['status'] == 'processing');
 
                   if (isPendingA && !isPendingB) return -1;
                   if (!isPendingA && isPendingB) return 1;
@@ -427,6 +436,192 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     return AppTheme.primaryColor;
   }
 
+  bool _isCommercialBank(String bankName) {
+    final b = bankName.toLowerCase().trim();
+    if (b.isEmpty || b == 'ไม่ระบุธนาคาร') return false;
+    if (b.contains('พร้อมเพย์') || b.contains('promptpay')) return false;
+
+    const bankKeywords = [
+      'ธนาคาร',
+      'bank',
+      'กสิกร',
+      'kbank',
+      'kasikorn',
+      'ไทยพาณิชย์',
+      'scb',
+      'กรุงเทพ',
+      'bbl',
+      'กรุงไทย',
+      'ktb',
+      'krungthai',
+      'กรุงศรี',
+      'bay',
+      'krungsri',
+      'อยุธยา',
+      'ทหารไทย',
+      'ธนชาต',
+      'ttb',
+      'tmb',
+      'ออมสิน',
+      'gsb',
+      'ธ.ก.ส',
+      'ธกส',
+      'baac',
+      'ซีไอเอ็มบี',
+      'cimb',
+      'ยูโอบี',
+      'uob',
+      'เกียรตินาคิน',
+      'kkp',
+      'ทิสโก้',
+      'tisco',
+      'แลนด์ แอนด์ เฮ้าส์',
+      'lh',
+      'อาคารสงเคราะห์',
+      'ghb',
+      'อิสลาม',
+      'ibank',
+    ];
+    return bankKeywords.any((kw) => b.contains(kw));
+  }
+
+  bool _isPhoneNumber(String rawNumber, [String bankName = '']) {
+    String clean = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('66') && clean.length == 11) {
+      clean = '0${clean.substring(2)}';
+    } else if (clean.length == 9 &&
+        (clean.startsWith('6') ||
+            clean.startsWith('8') ||
+            clean.startsWith('9'))) {
+      clean = '0$clean';
+    }
+
+    // 1. เบอร์มือถือไทย 10 หลัก ขึ้นต้นด้วย 06, 08, 09 (เป็นเบอร์โทรศัพท์แน่นอน)
+    if (clean.length == 10 &&
+        (clean.startsWith('06') ||
+            clean.startsWith('08') ||
+            clean.startsWith('09'))) {
+      return true;
+    }
+
+    // 2. ถ้าชื่อธนาคารระบุเป็นพร้อมเพย์ และเป็นเลข 10 หลัก (เบอร์) หรือ 13 หลัก (เลข ปชช.)
+    final b = bankName.toLowerCase().trim();
+    final bool isPromptPayBank =
+        b.contains('พร้อมเพย์') || b.contains('promptpay');
+    if (isPromptPayBank) {
+      if ((clean.length == 10 && clean.startsWith('0')) ||
+          clean.length == 13) {
+        return true;
+      }
+    }
+
+    // 3. กรณีเลข 10 หลัก ขึ้นต้นด้วย 0 และไม่ใช่ธนาคารพาณิชย์
+    if (clean.length == 10 &&
+        clean.startsWith('0') &&
+        !_isCommercialBank(bankName)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  String _normalizePromptPayTarget(String rawNumber) {
+    String clean = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.startsWith('66') && clean.length == 11) {
+      clean = '0${clean.substring(2)}';
+    } else if (clean.length == 9 &&
+        (clean.startsWith('6') ||
+            clean.startsWith('8') ||
+            clean.startsWith('9'))) {
+      clean = '0$clean';
+    }
+    return clean;
+  }
+
+  Future<bool> _markAsProcessing(
+    String docId,
+    String uid,
+    double amount, {
+    bool silent = false,
+  }) async {
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection(FirestoreCollections.transactions)
+          .doc(docId);
+      final docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        if (!silent) {
+          Get.snackbar(
+            "ผิดพลาด",
+            "ไม่พบข้อมูลรายการธุรกรรม",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+        return false;
+      }
+
+      final curData = docSnap.data() as Map<String, dynamic>;
+      final curStatus = (curData['status'] ?? '').toString().toLowerCase();
+
+      if (curStatus == 'cancelled' || curStatus == 'canceled') {
+        Get.snackbar(
+          "ไม่สามารถดำเนินการได้",
+          "ผู้ใช้ได้ยกเลิกคำขอถอนเงินนี้ไปแล้วก่อนหน้านี้",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+
+      if (curStatus == 'success' || curStatus == 'completed') {
+        return true;
+      }
+
+      await docRef.update({
+        'status': 'processing',
+        'processingAt': FieldValue.serverTimestamp(),
+      });
+
+      if (uid.isNotEmpty) {
+        await NotificationService.sendNotification(
+          userId: uid,
+          title: "กำลังดำเนินการโอนเงิน ฿${amount.toStringAsFixed(2)}",
+          body: "แอดมินกำลังดำเนินการโอนเงินเข้าบัญชีของคุณ กรุณารอสักครู่",
+          type: "wallet",
+        );
+      }
+
+      if (!silent) {
+        Get.back(); // ปิด bottom sheet
+        Get.snackbar(
+          "อัปเดตสถานะสำเร็จ",
+          "เปลี่ยนสถานะเป็น 'กำลังดำเนินการ' แล้ว (ผู้ใช้ไม่สามารถกดยกเลิกได้)",
+          backgroundColor: Colors.blue.shade700,
+          colorText: Colors.white,
+          icon: const Icon(
+            CupertinoIcons.checkmark_shield_fill,
+            color: Colors.white,
+          ),
+          duration: const Duration(seconds: 3),
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint("Error in _markAsProcessing: $e");
+      if (!silent) {
+        Get.snackbar(
+          "เกิดข้อผิดพลาด",
+          e.toString(),
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+      return false;
+    }
+  }
+
   void _showWithdrawalActionDialog(
     BuildContext context,
     String docId,
@@ -442,11 +637,28 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     final accountNumber = data['accountNumber'] ?? 'ไม่ระบุเลขบัญชี';
     final cleanNumber = accountNumber.replaceAll(RegExp(r'[^0-9]'), '');
     final bankColor = _getBankColor(bankName);
-    final bool isPromptPay =
-        bankName.toLowerCase().contains('promptpay') ||
-        bankName.contains('พร้อมเพย์') ||
-        cleanNumber.length == 10 ||
-        cleanNumber.length == 13;
+    final bool isPhone = _isPhoneNumber(accountNumber, bankName);
+    final String promptPayTarget = _normalizePromptPayTarget(accountNumber);
+    final String currentStatus =
+        (data['status'] ?? 'pending').toString().toLowerCase();
+    final bool isProcessing = currentStatus == 'processing';
+    final String qrAmount = (amount % 1 == 0)
+        ? amount.toInt().toString()
+        : amount.toStringAsFixed(2);
+    final String qrUrl = amount > 0
+        ? 'https://promptpay.io/$promptPayTarget/$qrAmount.png'
+        : 'https://promptpay.io/$promptPayTarget.png';
+    String? existingSlipUrl =
+        (data['slipUrl'] ??
+                data['slip_image'] ??
+                data['slip_url'] ??
+                data['slipImage'])
+            ?.toString();
+    if (existingSlipUrl == null || existingSlipUrl.isEmpty) {
+      if (data['slipData'] is Map && data['slipData']['url'] != null) {
+        existingSlipUrl = data['slipData']['url'].toString();
+      }
+    }
 
     Get.bottomSheet(
       Container(
@@ -486,7 +698,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isPromptPay
+                          isPhone
                               ? CupertinoIcons.qrcode
                               : CupertinoIcons.building_2_fill,
                           size: 14,
@@ -506,71 +718,259 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+
+              // Status Banner
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: isProcessing
+                      ? Colors.blue.withValues(alpha: 0.12)
+                      : Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isProcessing
+                        ? Colors.blue.withValues(alpha: 0.35)
+                        : Colors.orange.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isProcessing
+                          ? CupertinoIcons.hourglass
+                          : CupertinoIcons.clock,
+                      color: isProcessing ? Colors.blue : Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isProcessing
+                                ? "สถานะ: กำลังดำเนินการโอนเงิน (Processing)"
+                                : "สถานะ: รอดำเนินการ (Pending)",
+                            style: TextStyle(
+                              color: isProcessing
+                                  ? Colors.blue
+                                  : Colors.orange,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isProcessing
+                                ? "🔒 ผู้ใช้ไม่สามารถกดยกเลิกได้แล้ว เมื่อโอนสำเร็จให้แตะแนบสลิปด้านล่าง"
+                                : "ผู้ใช้ยังกดยกเลิกได้ กด 'เริ่มดำเนินการ' เพื่อล็อกไม่ให้ผู้ใช้ยกเลิกขณะโอนเงิน",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? (isProcessing
+                                      ? Colors.blue.shade100
+                                      : Colors.grey[400])
+                                  : (isProcessing
+                                      ? Colors.blue.shade900
+                                      : Colors.grey[700]),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 15),
 
-              if (isPromptPay && cleanNumber.isNotEmpty) ...[
+              // แสดง QR PromptPay เฉพาะเมื่อเป็นเลขเบอร์โทร (หรือพร้อมเพย์) เท่านั้น
+              // ถ้าเป็นเลขบัญชีธนาคารจะไม่ทำและไม่แสดง QR Code
+              if (isPhone && promptPayTarget.isNotEmpty) ...[
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.all(14),
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 320),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF113566).withValues(alpha: 0.25),
+                        width: 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 10,
+                          blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Column(
                       children: [
+                        // PromptPay Header Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF113566),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(CupertinoIcons.qrcode, color: Colors.white, size: 16),
+                              SizedBox(width: 6),
+                              Text(
+                                "พร้อมเพย์ | PromptPay",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // QR Code Image from promptpay.io
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
                           child: Image.network(
-                            'https://promptpay.io/$cleanNumber/$amount.png',
-                            width: 160,
-                            height: 160,
+                            qrUrl,
+                            width: 175,
+                            height: 175,
                             fit: BoxFit.contain,
                             loadingBuilder: (ctx, child, progress) {
                               if (progress == null) return child;
-                              return const SizedBox(
-                                width: 160,
-                                height: 160,
+                              return SizedBox(
+                                width: 175,
+                                height: 175,
                                 child: Center(
                                   child: CircularProgressIndicator(
-                                    color: AppTheme.primaryColor,
+                                    value: progress.expectedTotalBytes != null
+                                        ? progress.cumulativeBytesLoaded /
+                                            progress.expectedTotalBytes!
+                                        : null,
+                                    color: const Color(0xFF113566),
                                   ),
                                 ),
                               );
                             },
-                            errorBuilder: (ctx, error, stack) => const SizedBox(
-                              width: 160,
-                              height: 160,
-                              child: Center(
-                                child: Text(
-                                  "QR ไม่พร้อมใช้งาน",
-                                  style: TextStyle(color: Colors.grey),
+                            errorBuilder: (ctx, error, stack) => Container(
+                              width: 175,
+                              height: 175,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.exclamationmark_triangle,
+                                      color: Colors.orange,
+                                      size: 36,
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      "ไม่สามารถโหลด QR ได้",
+                                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 10),
+
+                        // Target and amount info
+                        Text(
+                          "โอนไปยังเบอร์: $promptPayTarget",
+                          style: const TextStyle(
+                            color: Color(0xFF113566),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "ยอดเงิน: ฿${amount.toStringAsFixed(2)}",
+                          style: const TextStyle(
+                            color: Colors.green,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         const Text(
                           "📱 สแกนด้วยแอปธนาคารเพื่อโอนทันที",
                           style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            fontSize: 11,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 15),
+                const SizedBox(height: 16),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: bankColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: bankColor.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        CupertinoIcons.building_2_fill,
+                        size: 22,
+                        color: bankColor,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "โอนเงินเข้าบัญชีธนาคาร ($bankName)",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: bankColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              "เลขบัญชีไม่ใช่เบอร์โทรศัพท์ จึงไม่แสดง QR พร้อมเพย์ กรุณาคัดลอกเลขบัญชีเพื่อโอนในแอปธนาคาร",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
 
               _buildDetailRow("ผู้ขอถอนเงิน", userName, isDark),
@@ -596,51 +996,79 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               _buildDetailRow("ธนาคาร", bankName, isDark),
               _buildDetailRow("ชื่อบัญชี", accountName, isDark),
               _buildDetailRow(
-                "เลขที่บัญชี",
+                isPhone ? "เบอร์พร้อมเพย์" : "เลขที่บัญชี",
                 accountNumber,
                 isDark,
                 onCopy: () {
-                  Clipboard.setData(ClipboardData(text: cleanNumber));
+                  Clipboard.setData(
+                    ClipboardData(
+                      text: isPhone ? promptPayTarget : cleanNumber,
+                    ),
+                  );
                   Get.snackbar(
                     "คัดลอกแล้ว",
-                    "คัดลอกเลขบัญชี $cleanNumber แล้ว",
+                    "คัดลอก${isPhone ? 'เบอร์พร้อมเพย์' : 'เลขบัญชี'} ${isPhone ? promptPayTarget : cleanNumber} แล้ว",
                     backgroundColor: Colors.black87,
                     colorText: Colors.white,
                     duration: const Duration(seconds: 2),
                   );
                 },
               ),
-              const SizedBox(height: 10),
 
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    String fullDetails =
-                        "[$bankName]\nเลขบัญชี: $cleanNumber\nชื่อบัญชี: $accountName\nยอดโอน: ${amount.toStringAsFixed(2)} บาท";
-                    Clipboard.setData(ClipboardData(text: fullDetails));
-                    Get.snackbar(
-                      "คัดลอกทั้งหมดแล้ว",
-                      "คัดลอกข้อมูลการโอนเรียบร้อย นำไปวางในแอปธนาคารได้เลย",
-                      backgroundColor: Colors.black87,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
-                  },
-                  icon: const Icon(CupertinoIcons.doc_on_clipboard, size: 16),
-                  label: const Text("คัดลอกข้อมูลการโอนทั้งหมด"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: bankColor,
-                    side: BorderSide(color: bankColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              if (existingSlipUrl != null && existingSlipUrl.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showSlipDialog(
+                      context,
+                      existingSlipUrl!,
+                      data,
+                      userName,
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    icon: const Icon(
+                      CupertinoIcons.doc_text_viewfinder,
+                      size: 16,
+                    ),
+                    label: const Text("ดูสลิปหลักฐานการโอน"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
                   ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 25),
+              if (!isProcessing) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _markAsProcessing(docId, uid, amount),
+                    icon: const Icon(CupertinoIcons.lock_shield, size: 18),
+                    label: const Text(
+                      "เริ่มดำเนินการ (ล็อกไม่ให้ผู้ใช้กดยกเลิก)",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue.shade700,
+                      side: BorderSide(
+                        color: Colors.blue.shade700,
+                        width: 1.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   Expanded(
@@ -665,11 +1093,24 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   ),
                   const SizedBox(width: 15),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
                         Get.back();
-                        _showUploadSlipDialog(docId, amount);
+                        // อัปเดตสถานะเป็นกำลังดำเนินการก่อนเปิดกล่องแนบสลิป เพื่อล็อกไม่ให้ผู้ใช้กดยกเลิกขณะแอดมินแนบสลิป
+                        bool ok = await _markAsProcessing(
+                          docId,
+                          uid,
+                          amount,
+                          silent: true,
+                        );
+                        if (ok) {
+                          _showUploadSlipDialog(docId, amount);
+                        }
                       },
+                      icon: const Icon(
+                        CupertinoIcons.arrow_up_doc_fill,
+                        size: 18,
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
@@ -678,9 +1119,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        "โอนเงินเรียบร้อย",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      label: Text(
+                        isProcessing ? "แนบสลิปโอนเงิน" : "โอนเงินเรียบร้อย",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -1205,10 +1646,13 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           throw Exception("ไม่พบข้อมูลรายการถอนเงิน");
         }
         Map<String, dynamic> txData = txSnap.data() as Map<String, dynamic>;
-        String expectedUserAccountName = (txData['accountName'] ?? '').toString();
-        String expectedUserAccountNumber = (txData['accountNumber'] ?? '').toString();
+        String expectedUserAccountName = (txData['accountName'] ?? '')
+            .toString();
+        String expectedUserAccountNumber = (txData['accountNumber'] ?? '')
+            .toString();
 
-        if (expectedUserAccountName.isNotEmpty || expectedUserAccountNumber.isNotEmpty) {
+        if (expectedUserAccountName.isNotEmpty ||
+            expectedUserAccountNumber.isNotEmpty) {
           bool isReceiverValid = SecurityService.isSlipReceiverValid(
             receiverData: slipData['receiver'],
             expectedAccountName: expectedUserAccountName,
@@ -1335,6 +1779,441 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     }
   }
 
+  void _showSlipDialog(
+    BuildContext context,
+    String slipUrl,
+    Map<String, dynamic> data,
+    String userName,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final amount = (data['amount'] ?? 0).toDouble();
+    final type = (data['type'] ?? 'unknown').toString().toLowerCase();
+    final status = (data['status'] ?? 'pending').toString();
+    final String bankName = data['bankName'] ?? '';
+    final String accountNumber = data['accountNumber'] ?? '';
+    final String accountName = data['accountName'] ?? '';
+    final String? note = data['note'];
+    final String transRef =
+        (data['transRef'] ??
+                data['refNumber'] ??
+                data['transactionId'] ??
+                data['ref'] ??
+                '')
+            .toString();
+
+    Timestamp? ts = data['createdAt'];
+    DateTime date = ts?.toDate() ?? DateTime.now();
+    String formattedDate =
+        "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.88,
+            maxWidth: 480,
+          ),
+          decoration: BoxDecoration(
+            color: theme.scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white10 : Colors.grey.shade100,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        CupertinoIcons.doc_text_viewfinder,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "สลิปหลักฐานการโอนเงิน",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            "ใช้นิ้วซูม/ขยายเพื่อตรวจสอบความถูกต้อง",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        CupertinoIcons.xmark_circle_fill,
+                        size: 24,
+                      ),
+                      color: Colors.grey,
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Scrollable Body (Image + Details)
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Zoomable Image Container
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 380),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white12
+                                : Colors.grey.shade300,
+                          ),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            InteractiveViewer(
+                              minScale: 1.0,
+                              maxScale: 4.5,
+                              child: Center(
+                                child: Image.network(
+                                  slipUrl,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return SizedBox(
+                                      height: 240,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          value:
+                                              progress.expectedTotalBytes !=
+                                                  null
+                                              ? progress.cumulativeBytesLoaded /
+                                                    progress.expectedTotalBytes!
+                                              : null,
+                                          color: AppTheme.primaryColor,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        height: 200,
+                                        color: isDark
+                                            ? Colors.grey[900]
+                                            : Colors.grey[200],
+                                        padding: const EdgeInsets.all(16),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                CupertinoIcons
+                                                    .exclamationmark_triangle_fill,
+                                                color: Colors.orange,
+                                                size: 36,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                "ไม่สามารถโหลดรูปภาพสลิปได้",
+                                                style: GoogleFonts.kanit(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                "อาจเกิดจาก URL หมดอายุหรือปัญหาการเชื่อมต่อ",
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey[500],
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                ),
+                              ),
+                            ),
+                            // Zoom hint badge
+                            Positioned(
+                              bottom: 10,
+                              right: 10,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      CupertinoIcons.zoom_in,
+                                      color: Colors.white,
+                                      size: 13,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      "ซูมได้ 4.5 เท่า",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Transaction Info Card
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white10
+                                : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _getTransactionTypeName(type),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                _buildStatusBadge(status),
+                              ],
+                            ),
+                            const Divider(height: 20),
+                            _buildDetailRow("ผู้ทำรายการ", userName, isDark),
+                            _buildDetailRow(
+                              "ยอดเงิน",
+                              "฿${amount.toStringAsFixed(2)}",
+                              isDark,
+                              isHighlight: true,
+                            ),
+                            _buildDetailRow("วันเวลา", formattedDate, isDark),
+                            if (bankName.isNotEmpty)
+                              _buildDetailRow("ธนาคาร", bankName, isDark),
+                            if (accountName.isNotEmpty)
+                              _buildDetailRow("ชื่อบัญชี", accountName, isDark),
+                            if (accountNumber.isNotEmpty)
+                              _buildDetailRow(
+                                "เลขที่บัญชี",
+                                accountNumber,
+                                isDark,
+                              ),
+                            if (transRef.isNotEmpty)
+                              _buildDetailRow(
+                                "เลขอ้างอิง",
+                                transRef,
+                                isDark,
+                                onCopy: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: transRef),
+                                  );
+                                  Get.snackbar(
+                                    "คัดลอกแล้ว",
+                                    "คัดลอกเลขอ้างอิง $transRef แล้ว",
+                                    backgroundColor: Colors.black87,
+                                    colorText: Colors.white,
+                                    duration: const Duration(seconds: 2),
+                                  );
+                                },
+                              ),
+                            if (note != null && note.isNotEmpty)
+                              _buildDetailRow("หมายเหตุ", note, isDark),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTransactionDetailDialog(
+    BuildContext context,
+    Map<String, dynamic> data,
+    String userName,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final amount = (data['amount'] ?? 0).toDouble();
+    final type = (data['type'] ?? 'unknown').toString().toLowerCase();
+    final status = (data['status'] ?? 'pending').toString();
+    final String bankName = data['bankName'] ?? '';
+    final String accountNumber = data['accountNumber'] ?? '';
+    final String accountName = data['accountName'] ?? '';
+    final String? note = data['note'];
+    final String transRef =
+        (data['transRef'] ??
+                data['refNumber'] ??
+                data['transactionId'] ??
+                data['ref'] ??
+                '')
+            .toString();
+
+    Timestamp? ts = data['createdAt'];
+    DateTime date = ts?.toDate() ?? DateTime.now();
+    String formattedDate =
+        "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(24),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "รายละเอียดธุรกรรม",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  _buildStatusBadge(status),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildDetailRow("ประเภท", _getTransactionTypeName(type), isDark),
+              _buildDetailRow("ผู้ทำรายการ", userName, isDark),
+              _buildDetailRow(
+                "ยอดเงิน",
+                "฿${amount.toStringAsFixed(2)}",
+                isDark,
+                isHighlight: true,
+              ),
+              _buildDetailRow("วันเวลา", formattedDate, isDark),
+              if (bankName.isNotEmpty)
+                _buildDetailRow("ธนาคาร", bankName, isDark),
+              if (accountName.isNotEmpty)
+                _buildDetailRow("ชื่อบัญชี", accountName, isDark),
+              if (accountNumber.isNotEmpty)
+                _buildDetailRow("เลขบัญชี/พร้อมเพย์", accountNumber, isDark),
+              if (transRef.isNotEmpty)
+                _buildDetailRow(
+                  "เลขอ้างอิง",
+                  transRef,
+                  isDark,
+                  onCopy: () {
+                    Clipboard.setData(ClipboardData(text: transRef));
+                    Get.snackbar(
+                      "คัดลอกแล้ว",
+                      "คัดลอกเลขอ้างอิง $transRef แล้ว",
+                      backgroundColor: Colors.black87,
+                      colorText: Colors.white,
+                      duration: const Duration(seconds: 2),
+                    );
+                  },
+                ),
+              if (note != null && note.isNotEmpty)
+                _buildDetailRow("หมายเหตุ", note, isDark),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("ปิด"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
   Widget _buildTransactionItem(
     BuildContext context,
     Map<String, dynamic> data,
@@ -1352,6 +2231,17 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
         "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
 
     bool isAppIn = _isAppIncome(type);
+
+    String? slipUrl =
+        (data['slipUrl'] ??
+                data['slip_image'] ??
+                data['slip_url'] ??
+                data['slipImage'])
+            ?.toString();
+    if ((slipUrl == null || slipUrl.isEmpty) && data['slipData'] is Map) {
+      slipUrl = data['slipData']['url']?.toString();
+    }
+    final bool hasSlip = slipUrl != null && slipUrl.isNotEmpty;
 
     return FutureBuilder<DocumentSnapshot?>(
       future: uid.isEmpty
@@ -1371,7 +2261,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           }
         }
 
-        bool isPendingWithdraw = type == 'withdraw' && status == 'pending';
+        bool isPendingWithdraw =
+            type == 'withdraw' &&
+            (status == 'pending' || status == 'processing');
+        bool isProcessing = type == 'withdraw' && status == 'processing';
         int hoursWaited = DateTime.now().difference(date).inHours;
         int nudgedCount = data['nudgedCount'] ?? 0;
         bool isCritical = isPendingWithdraw && hoursWaited >= 18;
@@ -1387,7 +2280,13 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   data,
                   userName,
                 )
-              : null,
+              : (hasSlip
+                    ? () => _showSlipDialog(context, slipUrl!, data, userName)
+                    : () => _showTransactionDetailDialog(
+                        context,
+                        data,
+                        userName,
+                      )),
           borderRadius: BorderRadius.circular(20),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -1397,10 +2296,14 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isPendingWithdraw
-                    ? (isCritical
-                          ? Colors.redAccent.withValues(alpha: 0.6)
-                          : Colors.orange.withValues(alpha: 0.5))
-                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                    ? (isProcessing
+                          ? Colors.blue.withValues(alpha: 0.6)
+                          : (isCritical
+                                ? Colors.redAccent.withValues(alpha: 0.6)
+                                : Colors.orange.withValues(alpha: 0.5)))
+                    : (hasSlip
+                          ? Colors.blue.withValues(alpha: 0.3)
+                          : (isDark ? Colors.white10 : Colors.grey.shade100)),
                 width: isPendingWithdraw ? 1.2 : 1.0,
               ),
               boxShadow: [
@@ -1469,16 +2372,88 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          Text(
-                            _getTransactionTypeName(type),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
+                          Flexible(
+                            child: Text(
+                              _getTransactionTypeName(type),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (isPendingWithdraw && isCritical) ...[
+                          if (hasSlip) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.blue.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.doc_text_viewfinder,
+                                    size: 10,
+                                    color: Colors.blue,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    "มีสลิป",
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (isProcessing) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.blue.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    CupertinoIcons.hourglass,
+                                    size: 10,
+                                    color: Colors.blue,
+                                  ),
+                                  SizedBox(width: 3),
+                                  Text(
+                                    "กำลังโอน",
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (isPendingWithdraw && isCritical) ...[
                             const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -1534,6 +2509,55 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         formattedDate,
                         style: TextStyle(fontSize: 10, color: Colors.grey[500]),
                       ),
+                      if (hasSlip) ...[
+                        const SizedBox(height: 6),
+                        InkWell(
+                          onTap: () => _showSlipDialog(
+                            context,
+                            slipUrl!,
+                            data,
+                            userName,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.25,
+                                ),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.photo,
+                                  size: 11,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  "ดูสลิปหลักฐาน",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1545,7 +2569,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
-
                         color: isAppIn ? Colors.green : Colors.redAccent,
                       ),
                     ),
@@ -1565,11 +2588,23 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     Color color;
     String label;
     switch (status.toLowerCase()) {
+      case 'processing':
+        color = Colors.blue;
+        label = "กำลังดำเนินการ";
+        break;
       case 'success':
+      case 'completed':
+      case 'approved':
         color = Colors.green;
         label = "สำเร็จ";
         break;
+      case 'rejected':
+        color = Colors.red;
+        label = "ปฏิเสธ";
+        break;
       case 'cancelled':
+      case 'canceled':
+      case 'failed':
         color = Colors.red;
         label = "ยกเลิก";
         break;

@@ -697,18 +697,25 @@ class _LoginScreenState extends State<LoginScreen> {
           String? fcmToken = await FirebaseMessaging.instance.getToken();
 
           if (fcmToken != null) {
-            String collectionPath = isAdmin
-                ? FirestoreCollections.admins
-                : FirestoreCollections.users;
-
             await FirebaseFirestore.instance
-                .collection(collectionPath)
+                .collection(FirestoreCollections.users)
                 .doc(user.uid)
                 .set({
                   'fcmToken': fcmToken,
                   'lastLogin': FieldValue.serverTimestamp(),
                 }, SetOptions(merge: true));
-            debugPrint("FCM Token Saved to $collectionPath: $fcmToken");
+            debugPrint("FCM Token Saved to users: $fcmToken");
+
+            if (isAdmin) {
+              await FirebaseFirestore.instance
+                  .collection(FirestoreCollections.admins)
+                  .doc(user.uid)
+                  .set({
+                    'fcmToken': fcmToken,
+                    'lastLogin': FieldValue.serverTimestamp(),
+                  }, SetOptions(merge: true));
+              debugPrint("FCM Token Saved to admins: $fcmToken");
+            }
           }
         } catch (tokenError) {
           debugPrint("Failed to fetch or save FCM Token: $tokenError");

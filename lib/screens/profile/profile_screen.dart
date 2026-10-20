@@ -1131,7 +1131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                "เวอร์ชัน 1.0.1",
+                "เวอร์ชัน 1.0.2",
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,

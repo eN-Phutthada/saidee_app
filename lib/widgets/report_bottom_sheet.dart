@@ -299,37 +299,29 @@ class _ReportBottomSheetState extends State<ReportBottomSheet> {
       }
 
       try {
-        final adminDocs = await FirebaseFirestore.instance
-            .collection(FirestoreCollections.admins)
-            .get();
+        await NotificationService.notifyAllAdmins(
+          title: "มีการรายงานสมาชิกใหม่ ⚠️",
+          body:
+              "ผู้แจ้ง: $reporterName ได้รายงาน: ${widget.reportedUserName ?? widget.reportedUserId}\nสาเหตุ: $_selectedCategory",
+          type: 'report',
+          extraData: {
+            'reportedUserId': widget.reportedUserId,
+            'targetId': widget.targetId,
+            'targetType': widget.targetType,
+          },
+        );
 
-        for (var admin in adminDocs.docs) {
-          await NotificationService.sendNotification(
-            userId: admin.id,
-            title: "มีการรายงานสมาชิกใหม่ ⚠️",
+        if (isThresholdReached) {
+          await NotificationService.notifyAllAdmins(
+            title: "🚨 แจ้งเตือนด่วน: สมาชิกถูกรายงานครบ 3 รายแล้ว!",
             body:
-                "ผู้แจ้ง: $reporterName ได้รายงาน: ${widget.reportedUserName ?? widget.reportedUserId}\nสาเหตุ: $_selectedCategory",
-            type: 'system',
+                "ผู้ใช้ ${widget.reportedUserName ?? widget.reportedUserId} ถูกรายงานจากผู้ใช้ที่ไม่ซ้ำกันครบ $uniqueReportCount รายแล้ว กรุณาเข้าตรวจสอบเพื่อพิจารณาระงับบัญชี",
+            type: 'report',
             extraData: {
               'reportedUserId': widget.reportedUserId,
-              'targetId': widget.targetId,
-              'targetType': widget.targetType,
+              'urgent': true,
             },
           );
-
-          if (isThresholdReached) {
-            await NotificationService.sendNotification(
-              userId: admin.id,
-              title: "🚨 แจ้งเตือนด่วน: สมาชิกถูกรายงานครบ 3 รายแล้ว!",
-              body:
-                  "ผู้ใช้ ${widget.reportedUserName ?? widget.reportedUserId} ถูกรายงานจากผู้ใช้ที่ไม่ซ้ำกันครบ $uniqueReportCount รายแล้ว กรุณาเข้าตรวจสอบเพื่อพิจารณาระงับบัญชี",
-              type: 'system',
-              extraData: {
-                'reportedUserId': widget.reportedUserId,
-                'urgent': true,
-              },
-            );
-          }
         }
       } catch (adminErr) {
         debugPrint("Error sending admin report notifications: $adminErr");

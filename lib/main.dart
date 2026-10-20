@@ -18,6 +18,7 @@ import 'package:saidee_app/screens/order/seller_orders_screen.dart';
 import 'package:saidee_app/screens/order/seller_order_detail_screen.dart';
 import 'package:saidee_app/screens/wallet/wallet_history_screen.dart';
 import 'package:saidee_app/screens/admin/admin_dashboard.dart';
+import 'package:saidee_app/screens/admin/manage_report.dart';
 import 'package:saidee_app/screens/notification/notification_screen.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/services/notification_service.dart';
@@ -100,11 +101,46 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 void handleNotificationClickFromData(Map<String, dynamic> data) async {
+  // Dismiss any lingering in-app snackbars immediately
+  if (Get.isSnackbarOpen) {
+    Get.closeCurrentSnackbar();
+  }
+
+  // Mark the transaction/report/order ID as handled so in-app listeners do not re-alert
+  String id = (data['transactionId'] ??
+          data['orderId'] ??
+          data['reportId'] ??
+          data['targetId'] ??
+          '')
+      .toString();
+  if (id.isNotEmpty) {
+    NotificationService.markNotificationAsHandled(id);
+  }
+
+  String title = (data['title'] ?? '').toString();
+  String body = (data['body'] ?? '').toString();
+  if (title.isNotEmpty || body.isNotEmpty) {
+    NotificationService.isDuplicateNotification(
+      title,
+      body,
+      customId: id.isNotEmpty ? id : null,
+    );
+  }
+
   final isAdmin = await RoleGuardService.isCurrentUserAdmin();
   if (isAdmin) {
-    debugPrint("[FCM Route] Admin clicked notification - redirecting to AdminDashboard");
-    Get.offAll(() => const AdminDashboard());
-    return;
+    debugPrint("[FCM Route] Admin clicked notification: $data");
+    String? type = data['type'];
+    if (type == 'withdraw' || type == 'wallet') {
+      Get.offAll(() => const AdminDashboard(initialIndex: 1));
+      return;
+    } else if (type == 'report') {
+      Get.to(() => const ManageReportScreen());
+      return;
+    } else {
+      Get.to(() => const NotificationScreen());
+      return;
+    }
   }
 
   String? type = data['type'];
@@ -268,17 +304,26 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           .doc(currentUser.uid)
           .get();
 
-      final targetCollection = adminDoc.exists ? 'admins' : 'users';
-
+      // Always sync to users so backend functions and notification systems locate the token
       await FirebaseFirestore.instance
-          .collection(targetCollection)
+          .collection('users')
           .doc(currentUser.uid)
           .set({
             'fcmToken': token,
             'lastActive': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
+      debugPrint("FCM Token synced to users: $token");
 
-      debugPrint("FCM Token synced to $targetCollection: $token");
+      if (adminDoc.exists) {
+        await FirebaseFirestore.instance
+            .collection('admins')
+            .doc(currentUser.uid)
+            .set({
+              'fcmToken': token,
+              'lastActive': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+        debugPrint("FCM Token synced to admins: $token");
+      }
     } catch (e) {
       debugPrint("Error syncing FCM token: $e");
     }
@@ -345,7 +390,26 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
 
       if (title.isEmpty && body.isEmpty) return;
 
-      if (NotificationService.isDuplicateNotification(title, body)) return;
+      String notifId = (message.data['transactionId'] ??
+              message.data['orderId'] ??
+              message.data['reportId'] ??
+              message.messageId ??
+              '')
+          .toString();
+
+      if (notifId.isNotEmpty &&
+          NotificationService.wasNotificationRecentlyHandled(notifId)) {
+        debugPrint("Skipping foreground snackbar: already handled ($notifId)");
+        return;
+      }
+
+      if (NotificationService.isDuplicateNotification(
+        title,
+        body,
+        customId: notifId.isNotEmpty ? notifId : null,
+      )) {
+        return;
+      }
 
       IconData notifIcon = CupertinoIcons.bell_fill;
       Color notifColor = AppTheme.primaryColor;
@@ -396,14 +460,28 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('ผู้ใช้กดเปิดแอปจากการแจ้งเตือน!');
+      if (Get.isSnackbarOpen) {
+        Get.closeCurrentSnackbar();
+      }
       handleNotificationClickFromData(message.data);
     });
 
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      debugPrint("App launched from terminated via FCM notification: ${initialMessage.data}");
+      debugPrint(
+        "App launched from terminated via FCM notification: ${initialMessage.data}",
+      );
       NotificationService.pendingNotificationData = initialMessage.data;
+      String id = (initialMessage.data['transactionId'] ??
+              initialMessage.data['orderId'] ??
+              initialMessage.data['reportId'] ??
+              initialMessage.data['targetId'] ??
+              '')
+          .toString();
+      if (id.isNotEmpty) {
+        NotificationService.markNotificationAsHandled(id);
+      }
     }
 
     final NotificationAppLaunchDetails? launchDetails =

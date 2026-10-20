@@ -10,6 +10,7 @@ import 'package:saidee_app/config/theme.dart';
 import 'package:saidee_app/config/firestore_collections.dart';
 import 'package:saidee_app/services/role_guard_service.dart';
 import 'package:saidee_app/services/contact_service.dart';
+import 'package:saidee_app/services/notification_service.dart';
 
 class WalletHistoryScreen extends StatefulWidget {
   const WalletHistoryScreen({super.key});
@@ -57,6 +58,10 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
       case 'completed':
         color = Colors.green;
         label = "สำเร็จ";
+        break;
+      case 'processing':
+        color = Colors.blue;
+        label = "กำลังดำเนินการ";
         break;
       case 'cancelled':
       case 'failed':
@@ -246,8 +251,11 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                         "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} • ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')} น.";
 
                     bool isAppIn = _isAppIncome(type);
-                    bool isPendingWithdrawal =
-                        type == 'withdraw' && status.toLowerCase() == 'pending';
+                    bool isPendingWithdrawal = type == 'withdraw' &&
+                        (status.toLowerCase() == 'pending' ||
+                            status.toLowerCase() == 'processing');
+                    bool isProcessing = type == 'withdraw' &&
+                        status.toLowerCase() == 'processing';
                     bool isSlaExpired =
                         DateTime.now().difference(date).inSeconds >= 86400;
 
@@ -258,9 +266,11 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                         borderRadius: BorderRadius.circular(16),
                         border: isPendingWithdrawal
                             ? Border.all(
-                                color: isSlaExpired
-                                    ? Colors.redAccent.withValues(alpha: 0.5)
-                                    : Colors.orange.withValues(alpha: 0.4),
+                                color: isProcessing
+                                    ? Colors.blue.withValues(alpha: 0.5)
+                                    : (isSlaExpired
+                                        ? Colors.redAccent.withValues(alpha: 0.5)
+                                        : Colors.orange.withValues(alpha: 0.4)),
                                 width: 1.5,
                               )
                             : null,
@@ -384,6 +394,7 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                               lastNudgedAt: lastNudgedAt,
                               createdAt: date,
                               isDark: isDark,
+                              isProcessing: isProcessing,
                               onCancel: () => _cancelWithdrawal(
                                 context,
                                 docId,
@@ -460,8 +471,13 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                       .doc(docId);
                   DocumentSnapshot txSnap = await transaction.get(txRef);
                   if (!txSnap.exists) throw Exception("ไม่พบข้อมูลรายการ");
-                  if ((txSnap.data() as Map<String, dynamic>)['status'] !=
-                      'pending') {
+                  String currentStatus = ((txSnap.data() as Map<String, dynamic>)['status'] ?? '')
+                      .toString()
+                      .toLowerCase();
+                  if (currentStatus == 'processing') {
+                    throw Exception("รายการอยู่ระหว่างการโอนเงินโดยเจ้าหน้าที่ ไม่สามารถยกเลิกได้");
+                  }
+                  if (currentStatus != 'pending') {
                     throw Exception("รายการนี้ได้รับการประมวลผลไปแล้ว");
                   }
 
@@ -567,8 +583,13 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
                       .doc(docId);
                   DocumentSnapshot txSnap = await transaction.get(txRef);
                   if (!txSnap.exists) throw Exception("ไม่พบข้อมูลรายการ");
-                  if ((txSnap.data() as Map<String, dynamic>)['status'] !=
-                      'pending') {
+                  String currentStatus = ((txSnap.data() as Map<String, dynamic>)['status'] ?? '')
+                      .toString()
+                      .toLowerCase();
+                  if (currentStatus == 'processing') {
+                    throw Exception("รายการอยู่ระหว่างการโอนเงินโดยเจ้าหน้าที่ ไม่สามารถดึงเงินคืนได้");
+                  }
+                  if (currentStatus != 'pending') {
                     throw Exception("รายการนี้ได้รับการประมวลผลไปแล้ว");
                   }
 
@@ -661,6 +682,17 @@ class _WalletHistoryScreenState extends State<WalletHistoryScreen> {
             'lastNudgedAt': FieldValue.serverTimestamp(),
             'nudgedCount': FieldValue.increment(1),
           });
+
+      NotificationService.notifyAllAdmins(
+        title: "🔔 ผู้ใช้สะกิดเตือนถอนเงินด่วน!",
+        body: "คำขอถอนเงิน ฿${amount.toStringAsFixed(2)} กำลังรอดำเนินการ โปรดตรวจสอบ",
+        type: 'withdraw',
+        extraData: {
+          'transactionId': docId,
+          'amount': amount,
+          'isNudge': true,
+        },
+      );
 
       Get.snackbar(
         "สะกิดแอดมินสำเร็จ!",
@@ -925,6 +957,7 @@ class _PendingCountdownBox extends StatefulWidget {
   final Timestamp? lastNudgedAt;
   final DateTime createdAt;
   final bool isDark;
+  final bool isProcessing;
   final VoidCallback onCancel;
   final VoidCallback onNudge;
   final VoidCallback onContact;
@@ -937,6 +970,7 @@ class _PendingCountdownBox extends StatefulWidget {
     required this.lastNudgedAt,
     required this.createdAt,
     required this.isDark,
+    this.isProcessing = false,
     required this.onCancel,
     required this.onNudge,
     required this.onContact,
@@ -999,9 +1033,11 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isExpired
-            ? Colors.red.withValues(alpha: widget.isDark ? 0.12 : 0.05)
-            : Colors.orange.withValues(alpha: widget.isDark ? 0.12 : 0.05),
+        color: widget.isProcessing
+            ? Colors.blue.withValues(alpha: widget.isDark ? 0.15 : 0.07)
+            : (isExpired
+                ? Colors.red.withValues(alpha: widget.isDark ? 0.12 : 0.05)
+                : Colors.orange.withValues(alpha: widget.isDark ? 0.12 : 0.05)),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
       ),
       child: Column(
@@ -1013,21 +1049,29 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
               Row(
                 children: [
                   Icon(
-                    isExpired
-                        ? CupertinoIcons.exclamationmark_triangle_fill
-                        : CupertinoIcons.clock_fill,
+                    widget.isProcessing
+                        ? CupertinoIcons.arrow_2_circlepath
+                        : (isExpired
+                            ? CupertinoIcons.exclamationmark_triangle_fill
+                            : CupertinoIcons.clock_fill),
                     size: 16,
-                    color: isExpired ? Colors.redAccent : Colors.orange,
+                    color: widget.isProcessing
+                        ? Colors.blue
+                        : (isExpired ? Colors.redAccent : Colors.orange),
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    isExpired
-                        ? "เกินเวลารับประกัน 24 ชม."
-                        : "รอดำเนินการ (เป้าหมาย 24 ชม.)",
+                    widget.isProcessing
+                        ? "แอดมินกำลังดำเนินการโอนเงิน"
+                        : (isExpired
+                            ? "เกินเวลารับประกัน 24 ชม."
+                            : "รอดำเนินการ (เป้าหมาย 24 ชม.)"),
                     style: GoogleFonts.kanit(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: isExpired ? Colors.redAccent : Colors.orange[800],
+                      color: widget.isProcessing
+                          ? Colors.blue
+                          : (isExpired ? Colors.redAccent : Colors.orange[800]),
                     ),
                   ),
                 ],
@@ -1038,12 +1082,18 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: (isExpired ? Colors.red : Colors.orange).withValues(
+                  color: (widget.isProcessing
+                          ? Colors.blue
+                          : (isExpired ? Colors.red : Colors.orange))
+                      .withValues(
                     alpha: widget.isDark ? 0.25 : 0.15,
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: (isExpired ? Colors.red : Colors.orange).withValues(
+                    color: (widget.isProcessing
+                            ? Colors.blue
+                            : (isExpired ? Colors.red : Colors.orange))
+                        .withValues(
                       alpha: 0.5,
                     ),
                   ),
@@ -1052,21 +1102,29 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      isExpired
-                          ? CupertinoIcons.xmark_circle_fill
-                          : CupertinoIcons.stopwatch,
+                      widget.isProcessing
+                          ? CupertinoIcons.hourglass
+                          : (isExpired
+                              ? CupertinoIcons.xmark_circle_fill
+                              : CupertinoIcons.stopwatch),
                       size: 12,
-                      color: isExpired ? Colors.red : Colors.orange[800],
+                      color: widget.isProcessing
+                          ? Colors.blue
+                          : (isExpired ? Colors.red : Colors.orange[800]),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      isExpired
-                          ? "เกินกำหนด"
-                          : _formatDuration(remainingSeconds),
+                      widget.isProcessing
+                          ? "กำลังโอนเงิน"
+                          : (isExpired
+                              ? "เกินกำหนด"
+                              : _formatDuration(remainingSeconds)),
                       style: GoogleFonts.kanit(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: isExpired ? Colors.red : Colors.orange[900],
+                        color: widget.isProcessing
+                            ? Colors.blue
+                            : (isExpired ? Colors.red : Colors.orange[900]),
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
@@ -1078,7 +1136,25 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
 
           const SizedBox(height: 10),
 
-          if (!isExpired) ...[
+          if (widget.isProcessing) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.blue.withValues(alpha: 0.2),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                minHeight: 5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "เจ้าหน้าที่กำลังดำเนินการตรวจสอบและโอนเงินเข้าบัญชีของคุณ ระบบได้ล็อกการยกเลิกคำขอแล้วเพื่อความถูกต้อง หากมีข้อสงสัยสามารถติดต่อแอดมินได้ทันที",
+              style: GoogleFonts.kanit(
+                fontSize: 12,
+                color: widget.isDark ? Colors.grey[300] : Colors.grey[700],
+                height: 1.35,
+              ),
+            ),
+          ] else if (!isExpired) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
@@ -1091,22 +1167,85 @@ class _PendingCountdownBoxState extends State<_PendingCountdownBox> {
               ),
             ),
             const SizedBox(height: 10),
-          ],
-
-          Text(
-            isExpired
-                ? "คำขอนี้เกินเวลา 24 ชั่วโมงแล้ว ตามนโยบายความเป็นธรรม ท่านสามารถดึงเงินคืนเข้าวอลเล็ทได้ทันที หรือติดต่อแอดมินเพื่อสอบถามข้อมูล"
-                : "ท่านสามารถยกเลิกคำขอเพื่อรับเงินคืนเข้าวอลเล็ทได้ตลอดเวลา หรือสะกิดเตือนแอดมินหากต้องการเร่งด่วน",
-            style: GoogleFonts.kanit(
-              fontSize: 12,
-              color: isExpired ? Colors.red[700] : Colors.grey[600],
-              height: 1.35,
+            Text(
+              "ท่านสามารถยกเลิกคำขอเพื่อรับเงินคืนเข้าวอลเล็ทได้ตลอดเวลา หรือสะกิดเตือนแอดมินหากต้องการเร่งด่วน",
+              style: GoogleFonts.kanit(
+                fontSize: 12,
+                color: Colors.grey[600],
+                height: 1.35,
+              ),
             ),
-          ),
+          ] else ...[
+            Text(
+              "คำขอนี้เกินเวลา 24 ชั่วโมงแล้ว ตามนโยบายความเป็นธรรม ท่านสามารถดึงเงินคืนเข้าวอลเล็ทได้ทันที หรือติดต่อแอดมินเพื่อสอบถามข้อมูล",
+              style: GoogleFonts.kanit(
+                fontSize: 12,
+                color: Colors.red[700],
+                height: 1.35,
+              ),
+            ),
+          ],
 
           const SizedBox(height: 12),
 
-          if (isExpired)
+          if (widget.isProcessing)
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const Icon(CupertinoIcons.lock_fill, size: 14),
+                    label: Text(
+                      "ไม่สามารถยกเลิกได้",
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      disabledForegroundColor: Colors.grey[500],
+                      side: BorderSide(
+                        color: Colors.grey.withValues(alpha: 0.4),
+                        width: 1.2,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onContact,
+                    icon: const Icon(CupertinoIcons.phone_fill, size: 14),
+                    label: Text(
+                      "ติดต่อแอดมิน",
+                      style: GoogleFonts.kanit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue, width: 1.2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (isExpired)
             Row(
               children: [
                 Expanded(
