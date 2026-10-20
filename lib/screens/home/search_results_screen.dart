@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:saidee_app/config/theme.dart';
+import 'package:saidee_app/config/firestore_collections.dart';
 import '../../models/product_model.dart';
 import '../product/product_detail_screen.dart';
 import '../../services/role_guard_service.dart';
@@ -30,82 +31,204 @@ class SearchResultsScreen extends StatefulWidget {
 }
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
-  final Map<String, bool> _sellerStatusCache = {};
-  final Map<String, Map<String, String>> _sellerProfileCache = {};
+  // Global cache across searches in the same session to eliminate redundant Firestore queries
+  static final Map<String, bool> _globalSellerStatusCache = {};
+  static final Map<String, Map<String, String>> _globalSellerProfileCache = {};
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _products = [];
 
   @override
   void initState() {
     super.initState();
     RoleGuardService.redirectIfAdmin(context);
+    _loadSearchResults();
   }
 
-  Future<List<QueryDocumentSnapshot>> _filterValidProducts(
-    List<QueryDocumentSnapshot> rawProducts,
-  ) async {
-    List<QueryDocumentSnapshot> validProducts = [];
-    Set<String> sellersToFetch = {};
-
-    for (var p in rawProducts) {
-      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
-      if (sId.isNotEmpty && !_sellerStatusCache.containsKey(sId)) {
-        sellersToFetch.add(sId);
-      }
+  Future<void> _loadSearchResults({bool isRefresh = false}) async {
+    if (!isRefresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
     }
 
-    for (String sId in sellersToFetch) {
+    try {
+      // 1. Query only active products from Firestore with a safety limit
+      final snapshot = await FirebaseFirestore.instance
+          .collection(FirestoreCollections.products)
+          .where('status', isEqualTo: 'active')
+          .limit(200)
+          .get();
+
+      var rawProducts = snapshot.docs;
+
+      // 2. Perform in-memory multi-attribute filters in a single pass
+      final filteredProducts = rawProducts.where((doc) {
+        final data = doc.data();
+
+        if (widget.categories != null && widget.categories!.isNotEmpty) {
+          final cat = data['category']?.toString() ?? '';
+          if (!widget.categories!.contains(cat)) return false;
+        }
+
+        if (widget.types != null && widget.types!.isNotEmpty) {
+          final t = data['type']?.toString() ?? '';
+          if (!widget.types!.contains(t)) return false;
+        }
+
+        if (widget.sizes != null && widget.sizes!.isNotEmpty) {
+          final s = data['size']?.toString() ?? '';
+          if (!widget.sizes!.contains(s)) return false;
+        }
+
+        if (widget.keyword.trim().isNotEmpty) {
+          final searchTerm = widget.keyword.trim().toLowerCase();
+          final name = (data['name'] ?? '').toString().toLowerCase();
+          final brand = (data['brand'] ?? '').toString().toLowerCase();
+          if (!name.contains(searchTerm) && !brand.contains(searchTerm)) {
+            return false;
+          }
+        }
+
+        if (widget.minPrice != null || widget.maxPrice != null) {
+          final price = (data['price'] ?? 0).toDouble();
+          if (widget.minPrice != null && price < widget.minPrice!) return false;
+          if (widget.maxPrice != null && price > widget.maxPrice!) return false;
+        }
+
+        return true;
+      }).toList();
+
+      // 3. Batch fetch seller statuses and profiles for the filtered products
+      final sellerIds = <String>{};
+      for (var doc in filteredProducts) {
+        final sId = doc.data()['sellerId']?.toString() ?? '';
+        if (sId.isNotEmpty) {
+          sellerIds.add(sId);
+        }
+      }
+
+      if (sellerIds.isNotEmpty) {
+        await _batchFetchSellers(sellerIds);
+      }
+
+      // 4. Exclude products from suspended or banned sellers
+      final validProducts = filteredProducts.where((doc) {
+        final sId = doc.data()['sellerId']?.toString() ?? '';
+        return sId.isEmpty || _globalSellerStatusCache[sId] != false;
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _products = validProducts;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading search results: $e");
+      if (mounted) {
+        setState(() {
+          _errorMessage = "เกิดข้อผิดพลาดในการโหลดข้อมูลสินค้า";
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _batchFetchSellers(Set<String> sellerIds) async {
+    final toFetch = sellerIds
+        .where((id) => !_globalSellerStatusCache.containsKey(id))
+        .toList();
+
+    if (toFetch.isEmpty) return;
+
+    // Fetch from users collection in chunks of 30 (Firestore whereIn limit)
+    for (int i = 0; i < toFetch.length; i += 30) {
+      final chunk = toFetch.sublist(
+        i,
+        i + 30 > toFetch.length ? toFetch.length : i + 30,
+      );
+
       try {
-        var userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(sId)
+        final usersSnap = await FirebaseFirestore.instance
+            .collection(FirestoreCollections.users)
+            .where(FieldPath.documentId, whereIn: chunk)
             .get();
-        if (userDoc.exists) {
-          var userData = userDoc.data() as Map<String, dynamic>;
-          String status = (userData['status'] ?? 'active').toString().toLowerCase();
-          _sellerStatusCache[sId] =
+
+        final foundIds = <String>{};
+        for (var doc in usersSnap.docs) {
+          foundIds.add(doc.id);
+          final data = doc.data();
+          final status = (data['status'] ?? 'active').toString().toLowerCase();
+          _globalSellerStatusCache[doc.id] =
               (status != 'suspended' && status != 'banned');
-          _sellerProfileCache[sId] = {
-            'name': userData['name'] ?? 'ผู้ขาย',
-            'profileImage': userData['profileImage'] ?? '',
+          _globalSellerProfileCache[doc.id] = {
+            'name': data['name'] ?? 'ผู้ขาย',
+            'profileImage': data['profileImage'] ?? '',
           };
-        } else {
-          var adminDoc = await FirebaseFirestore.instance
-              .collection('admins')
-              .doc(sId)
-              .get();
-          if (adminDoc.exists) {
-            var adminData = adminDoc.data() as Map<String, dynamic>;
-            String status = (adminData['status'] ?? 'active').toString().toLowerCase();
-            _sellerStatusCache[sId] =
-                (status != 'suspended' && status != 'banned');
-            _sellerProfileCache[sId] = {
-              'name': adminData['name'] ?? 'ผู้ดูแลระบบ',
-              'profileImage': adminData['profileImage'] ?? '',
-            };
-          } else {
-            _sellerStatusCache[sId] = true;
-            _sellerProfileCache[sId] = {
-              'name': 'ร้านค้า',
-              'profileImage': '',
-            };
+        }
+
+        // Check if any sellers are in the admins collection instead
+        final missingIds = chunk.where((id) => !foundIds.contains(id)).toList();
+        if (missingIds.isNotEmpty) {
+          for (int j = 0; j < missingIds.length; j += 30) {
+            final adminChunk = missingIds.sublist(
+              j,
+              j + 30 > missingIds.length ? missingIds.length : j + 30,
+            );
+            try {
+              final adminsSnap = await FirebaseFirestore.instance
+                  .collection(FirestoreCollections.admins)
+                  .where(FieldPath.documentId, whereIn: adminChunk)
+                  .get();
+
+              final adminFoundIds = <String>{};
+              for (var doc in adminsSnap.docs) {
+                adminFoundIds.add(doc.id);
+                final data = doc.data();
+                final status =
+                    (data['status'] ?? 'active').toString().toLowerCase();
+                _globalSellerStatusCache[doc.id] =
+                    (status != 'suspended' && status != 'banned');
+                _globalSellerProfileCache[doc.id] = {
+                  'name': data['name'] ?? 'ผู้ดูแลระบบ',
+                  'profileImage': data['profileImage'] ?? '',
+                };
+              }
+
+              for (var id in adminChunk) {
+                if (!adminFoundIds.contains(id)) {
+                  _globalSellerStatusCache[id] = true;
+                  _globalSellerProfileCache[id] = {
+                    'name': 'ร้านค้า',
+                    'profileImage': '',
+                  };
+                }
+              }
+            } catch (e) {
+              for (var id in adminChunk) {
+                _globalSellerStatusCache[id] = true;
+                _globalSellerProfileCache[id] = {
+                  'name': 'ร้านค้า',
+                  'profileImage': '',
+                };
+              }
+            }
           }
         }
       } catch (e) {
-        _sellerStatusCache[sId] = true;
-        _sellerProfileCache[sId] = {
-          'name': 'ร้านค้า',
-          'profileImage': '',
-        };
+        debugPrint("Error batch fetching sellers from users: $e");
+        for (var id in chunk) {
+          _globalSellerStatusCache[id] = true;
+          _globalSellerProfileCache[id] = {
+            'name': 'ร้านค้า',
+            'profileImage': '',
+          };
+        }
       }
     }
-
-    for (var p in rawProducts) {
-      String sId = (p.data() as Map<String, dynamic>)['sellerId'] ?? '';
-      if (sId.isEmpty || _sellerStatusCache[sId] != false) {
-        validProducts.add(p);
-      }
-    }
-
-    return validProducts;
   }
 
   String get _appBarTitle {
@@ -156,8 +279,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    Query query = FirebaseFirestore.instance.collection('products');
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -175,110 +296,48 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           onPressed: () => Get.back(),
         ),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: query.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return _buildEmptyResult(theme, isDark);
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyResult(theme, isDark);
-          }
-
-          var products = snapshot.data!.docs;
-
-          products = products.where((doc) {
-            var data = doc.data() as Map<String, dynamic>;
-            String status = (data['status'] ?? 'active').toString().toLowerCase();
-            return status == 'active';
-          }).toList();
-
-          if (widget.categories != null && widget.categories!.isNotEmpty) {
-            products = products.where((doc) {
-              var data = doc.data() as Map<String, dynamic>;
-              String cat = data['category']?.toString() ?? '';
-              return widget.categories!.contains(cat);
-            }).toList();
-          }
-
-          if (widget.types != null && widget.types!.isNotEmpty) {
-            products = products.where((doc) {
-              var data = doc.data() as Map<String, dynamic>;
-              String t = data['type']?.toString() ?? '';
-              return widget.types!.contains(t);
-            }).toList();
-          }
-
-          if (widget.sizes != null && widget.sizes!.isNotEmpty) {
-            products = products.where((doc) {
-              var data = doc.data() as Map<String, dynamic>;
-              String s = data['size']?.toString() ?? '';
-              return widget.sizes!.contains(s);
-            }).toList();
-          }
-
-          if (widget.keyword.isNotEmpty) {
-            final searchTerm = widget.keyword.toLowerCase();
-            products = products.where((doc) {
-              var data = doc.data() as Map<String, dynamic>;
-              String name = (data['name'] ?? '').toLowerCase();
-              String brand = (data['brand'] ?? '').toLowerCase();
-              return name.contains(searchTerm) || brand.contains(searchTerm);
-            }).toList();
-          }
-
-          if (widget.minPrice != null || widget.maxPrice != null) {
-            products = products.where((doc) {
-              var data = doc.data() as Map<String, dynamic>;
-              double price = (data['price'] ?? 0).toDouble();
-              if (widget.minPrice != null && price < widget.minPrice!) return false;
-              if (widget.maxPrice != null && price > widget.maxPrice!) return false;
-              return true;
-            }).toList();
-          }
-
-          if (products.isEmpty) {
-            return _buildEmptyResult(theme, isDark);
-          }
-
-          return FutureBuilder<List<QueryDocumentSnapshot>>(
-            future: _filterValidProducts(products),
-            builder: (context, filterSnapshot) {
-              if (filterSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              var validProducts = filterSnapshot.data ?? [];
-
-              if (validProducts.isEmpty) {
-                return _buildEmptyResult(theme, isDark);
-              }
-
-              return GridView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.65,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 12,
-                ),
-                itemCount: validProducts.length,
-                itemBuilder: (context, index) {
-                  var doc = validProducts[index];
-                  var data = doc.data() as Map<String, dynamic>;
-                  return _buildProductCard(context, data, doc.id, isDark);
-                },
-              );
-            },
-          );
-        },
+      body: RefreshIndicator(
+        onRefresh: () => _loadSearchResults(isRefresh: true),
+        color: AppTheme.primaryColor,
+        child: _buildBody(theme, isDark),
       ),
+    );
+  }
+
+  Widget _buildBody(ThemeData theme, bool isDark) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null || _products.isEmpty) {
+      return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverFillRemaining(
+            child: _buildEmptyResult(theme, isDark),
+          ),
+        ],
+      );
+    }
+
+    return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 12,
+      ),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.65,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: _products.length,
+      itemBuilder: (context, index) {
+        var doc = _products[index];
+        var data = doc.data();
+        return _buildProductCard(context, data, doc.id, isDark);
+      },
     );
   }
 
@@ -294,7 +353,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           ),
           const SizedBox(height: 15),
           Text(
-            "ไม่พบสินค้าที่คุณค้นหา",
+            _errorMessage ?? "ไม่พบสินค้าที่คุณค้นหา",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -358,6 +417,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
+                        cacheWidth: 400,
+                        cacheHeight: 600,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[200],
                           child: const Center(
@@ -455,14 +516,20 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   Builder(
                     builder: (context) {
                       String sId = data['sellerId'] ?? '';
-                      String sellerName = _sellerProfileCache[sId]?['name'] ?? 'ร้านค้า';
-                      String sellerImg = _sellerProfileCache[sId]?['profileImage'] ?? '';
+                      String sellerName =
+                          _globalSellerProfileCache[sId]?['name'] ?? 'ร้านค้า';
+                      String sellerImg =
+                          _globalSellerProfileCache[sId]?['profileImage'] ?? '';
                       return Row(
                         children: [
                           CircleAvatar(
                             radius: 8.5,
                             backgroundImage: sellerImg.isNotEmpty
-                                ? NetworkImage(sellerImg)
+                                ? ResizeImage(
+                                    NetworkImage(sellerImg),
+                                    width: 50,
+                                    height: 50,
+                                  )
                                 : null,
                             backgroundColor: isDark
                                 ? Colors.grey[700]
