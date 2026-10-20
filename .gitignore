@@ -81,3 +81,6 @@ firebase.json
 *.key
 *.cert
 .env*
+
+# Documentation
+docs/
