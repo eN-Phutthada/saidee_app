@@ -13,7 +13,9 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
-    project.evaluationDependsOn(":app")
+    if (project.name != "app") {
+        project.evaluationDependsOn(":app")
+    }
 
     val configureSubproject = {
         // Workaround for plugins missing the namespace property
@@ -27,12 +29,12 @@ subprojects {
                 // Ignore, as it might not be a LibraryExtension or method doesn't exist
             }
 
-            // Workaround for legacy plugins with compileSdkVersion < 30
+            // Workaround for legacy plugins with compileSdkVersion
             try {
-                android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(android, 34)
+                android.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType).invoke(android, 36)
             } catch (e: Exception) {
                 try {
-                    android.javaClass.getMethod("compileSdkVersion", String::class.java).invoke(android, "android-34")
+                    android.javaClass.getMethod("compileSdkVersion", String::class.java).invoke(android, "android-36")
                 } catch (e2: Exception) {
                     // Ignore
                 }

@@ -15,7 +15,7 @@ if (envFile.exists()) {
 
 android {
     namespace = "com.example.saidee_app" 
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = "28.2.13676358"
 
     compileOptions {
