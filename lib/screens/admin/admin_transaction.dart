@@ -496,7 +496,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
       clean = '0$clean';
     }
 
-    // 1. เบอร์มือถือไทย 10 หลัก ขึ้นต้นด้วย 06, 08, 09 (เป็นเบอร์โทรศัพท์แน่นอน)
     if (clean.length == 10 &&
         (clean.startsWith('06') ||
             clean.startsWith('08') ||
@@ -504,18 +503,15 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
       return true;
     }
 
-    // 2. ถ้าชื่อธนาคารระบุเป็นพร้อมเพย์ และเป็นเลข 10 หลัก (เบอร์) หรือ 13 หลัก (เลข ปชช.)
     final b = bankName.toLowerCase().trim();
     final bool isPromptPayBank =
         b.contains('พร้อมเพย์') || b.contains('promptpay');
     if (isPromptPayBank) {
-      if ((clean.length == 10 && clean.startsWith('0')) ||
-          clean.length == 13) {
+      if ((clean.length == 10 && clean.startsWith('0')) || clean.length == 13) {
         return true;
       }
     }
 
-    // 3. กรณีเลข 10 หลัก ขึ้นต้นด้วย 0 และไม่ใช่ธนาคารพาณิชย์
     if (clean.length == 10 &&
         clean.startsWith('0') &&
         !_isCommercialBank(bankName)) {
@@ -594,7 +590,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
       }
 
       if (!silent) {
-        Get.back(); // ปิด bottom sheet
+        Get.back();
         Get.snackbar(
           "อัปเดตสถานะสำเร็จ",
           "เปลี่ยนสถานะเป็น 'กำลังดำเนินการ' แล้ว (ผู้ใช้ไม่สามารถกดยกเลิกได้)",
@@ -639,8 +635,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
     final bankColor = _getBankColor(bankName);
     final bool isPhone = _isPhoneNumber(accountNumber, bankName);
     final String promptPayTarget = _normalizePromptPayTarget(accountNumber);
-    final String currentStatus =
-        (data['status'] ?? 'pending').toString().toLowerCase();
+    final String currentStatus = (data['status'] ?? 'pending')
+        .toString()
+        .toLowerCase();
     final bool isProcessing = currentStatus == 'processing';
     final String qrAmount = (amount % 1 == 0)
         ? amount.toInt().toString()
@@ -719,8 +716,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-
-              // Status Banner
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
@@ -757,9 +752,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                 ? "สถานะ: กำลังดำเนินการโอนเงิน (Processing)"
                                 : "สถานะ: รอดำเนินการ (Pending)",
                             style: TextStyle(
-                              color: isProcessing
-                                  ? Colors.blue
-                                  : Colors.orange,
+                              color: isProcessing ? Colors.blue : Colors.orange,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -773,11 +766,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                               fontSize: 11,
                               color: isDark
                                   ? (isProcessing
-                                      ? Colors.blue.shade100
-                                      : Colors.grey[400])
+                                        ? Colors.blue.shade100
+                                        : Colors.grey[400])
                                   : (isProcessing
-                                      ? Colors.blue.shade900
-                                      : Colors.grey[700]),
+                                        ? Colors.blue.shade900
+                                        : Colors.grey[700]),
                             ),
                           ),
                         ],
@@ -787,15 +780,15 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                 ),
               ),
               const SizedBox(height: 15),
-
-              // แสดง QR PromptPay เฉพาะเมื่อเป็นเลขเบอร์โทร (หรือพร้อมเพย์) เท่านั้น
-              // ถ้าเป็นเลขบัญชีธนาคารจะไม่ทำและไม่แสดง QR Code
               if (isPhone && promptPayTarget.isNotEmpty) ...[
                 Center(
                   child: Container(
                     width: double.infinity,
                     constraints: const BoxConstraints(maxWidth: 320),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -813,7 +806,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                     ),
                     child: Column(
                       children: [
-                        // PromptPay Header Badge
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
@@ -826,7 +818,11 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(CupertinoIcons.qrcode, color: Colors.white, size: 16),
+                              Icon(
+                                CupertinoIcons.qrcode,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                               SizedBox(width: 6),
                               Text(
                                 "พร้อมเพย์ | PromptPay",
@@ -840,8 +836,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-
-                        // QR Code Image from promptpay.io
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(
@@ -858,7 +852,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                   child: CircularProgressIndicator(
                                     value: progress.expectedTotalBytes != null
                                         ? progress.cumulativeBytesLoaded /
-                                            progress.expectedTotalBytes!
+                                              progress.expectedTotalBytes!
                                         : null,
                                     color: const Color(0xFF113566),
                                   ),
@@ -884,7 +878,10 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                     SizedBox(height: 6),
                                     Text(
                                       "ไม่สามารถโหลด QR ได้",
-                                      style: TextStyle(color: Colors.grey, fontSize: 11),
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -893,8 +890,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
-                        // Target and amount info
                         Text(
                           "โอนไปยังเบอร์: $promptPayTarget",
                           style: const TextStyle(
@@ -915,10 +910,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                         const SizedBox(height: 4),
                         const Text(
                           "📱 สแกนด้วยแอปธนาคารเพื่อโอนทันที",
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 11,
-                          ),
+                          style: TextStyle(color: Colors.grey, fontSize: 11),
                         ),
                       ],
                     ),
@@ -934,7 +926,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   decoration: BoxDecoration(
                     color: bankColor.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: bankColor.withValues(alpha: 0.25)),
+                    border: Border.all(
+                      color: bankColor.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -961,7 +955,9 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                               "เลขบัญชีไม่ใช่เบอร์โทรศัพท์ จึงไม่แสดง QR พร้อมเพย์ กรุณาคัดลอกเลขบัญชีเพื่อโอนในแอปธนาคาร",
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                color: isDark
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
                               ),
                             ),
                           ],
@@ -1056,10 +1052,7 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.blue.shade700,
-                      side: BorderSide(
-                        color: Colors.blue.shade700,
-                        width: 1.5,
-                      ),
+                      side: BorderSide(color: Colors.blue.shade700, width: 1.5),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1096,7 +1089,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         Get.back();
-                        // อัปเดตสถานะเป็นกำลังดำเนินการก่อนเปิดกล่องแนบสลิป เพื่อล็อกไม่ให้ผู้ใช้กดยกเลิกขณะแอดมินแนบสลิป
                         bool ok = await _markAsProcessing(
                           docId,
                           uid,
@@ -1831,7 +1823,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 18,
@@ -1894,15 +1885,12 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                   ],
                 ),
               ),
-
-              // Scrollable Body (Image + Details)
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Zoomable Image Container
                       Container(
                         constraints: const BoxConstraints(maxHeight: 380),
                         decoration: BoxDecoration(
@@ -1982,7 +1970,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                                 ),
                               ),
                             ),
-                            // Zoom hint badge
                             Positioned(
                               bottom: 10,
                               right: 10,
@@ -2021,7 +2008,6 @@ class _AdminTransactionScreenState extends State<AdminTransactionScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Transaction Info Card
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(

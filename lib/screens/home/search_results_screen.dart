@@ -31,7 +31,6 @@ class SearchResultsScreen extends StatefulWidget {
 }
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
-  // Global cache across searches in the same session to eliminate redundant Firestore queries
   static final Map<String, bool> _globalSellerStatusCache = {};
   static final Map<String, Map<String, String>> _globalSellerProfileCache = {};
 
@@ -55,7 +54,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     }
 
     try {
-      // 1. Query only active products from Firestore with a safety limit
       final snapshot = await FirebaseFirestore.instance
           .collection(FirestoreCollections.products)
           .where('status', isEqualTo: 'active')
@@ -64,7 +62,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
       var rawProducts = snapshot.docs;
 
-      // 2. Perform in-memory multi-attribute filters in a single pass
       final filteredProducts = rawProducts.where((doc) {
         final data = doc.data();
 
@@ -101,7 +98,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         return true;
       }).toList();
 
-      // 3. Batch fetch seller statuses and profiles for the filtered products
       final sellerIds = <String>{};
       for (var doc in filteredProducts) {
         final sId = doc.data()['sellerId']?.toString() ?? '';
@@ -114,7 +110,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
         await _batchFetchSellers(sellerIds);
       }
 
-      // 4. Exclude products from suspended or banned sellers
       final validProducts = filteredProducts.where((doc) {
         final sId = doc.data()['sellerId']?.toString() ?? '';
         return sId.isEmpty || _globalSellerStatusCache[sId] != false;
@@ -144,7 +139,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
     if (toFetch.isEmpty) return;
 
-    // Fetch from users collection in chunks of 30 (Firestore whereIn limit)
     for (int i = 0; i < toFetch.length; i += 30) {
       final chunk = toFetch.sublist(
         i,
@@ -170,7 +164,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           };
         }
 
-        // Check if any sellers are in the admins collection instead
         final missingIds = chunk.where((id) => !foundIds.contains(id)).toList();
         if (missingIds.isNotEmpty) {
           for (int j = 0; j < missingIds.length; j += 30) {
@@ -188,8 +181,9 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               for (var doc in adminsSnap.docs) {
                 adminFoundIds.add(doc.id);
                 final data = doc.data();
-                final status =
-                    (data['status'] ?? 'active').toString().toLowerCase();
+                final status = (data['status'] ?? 'active')
+                    .toString()
+                    .toLowerCase();
                 _globalSellerStatusCache[doc.id] =
                     (status != 'suspended' && status != 'banned');
                 _globalSellerProfileCache[doc.id] = {
@@ -312,20 +306,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     if (_errorMessage != null || _products.isEmpty) {
       return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverFillRemaining(
-            child: _buildEmptyResult(theme, isDark),
-          ),
-        ],
+        slivers: [SliverFillRemaining(child: _buildEmptyResult(theme, isDark))],
       );
     }
 
     return GridView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.65,
@@ -379,8 +366,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     final theme = Theme.of(context);
     String? imageUrl =
         (data['images'] != null && (data['images'] as List).isNotEmpty)
-            ? data['images'][0]
-            : null;
+        ? data['images'][0]
+        : null;
 
     return GestureDetector(
       onTap: () {
@@ -430,10 +417,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                     : Container(
                         color: isDark ? Colors.grey[800] : Colors.grey[200],
                         child: const Center(
-                          child: Icon(
-                            CupertinoIcons.photo,
-                            color: Colors.grey,
-                          ),
+                          child: Icon(CupertinoIcons.photo, color: Colors.grey),
                         ),
                       ),
               ),

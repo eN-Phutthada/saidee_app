@@ -27,14 +27,15 @@ import 'config/theme.dart';
 import 'providers/theme_provider.dart';
 import 'firebase_options.dart';
 
-const AndroidNotificationChannel highImportanceChannel = AndroidNotificationChannel(
-  'high_importance_channel',
-  'High Importance Notifications',
-  description: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
-  importance: Importance.max,
-  playSound: true,
-  enableVibration: true,
-);
+const AndroidNotificationChannel highImportanceChannel =
+    AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'ช่องทางการแจ้งเตือนสำคัญของแอป SAIDEE',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -44,7 +45,9 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  debugPrint("Handling a background message: ${message.messageId} (data: ${message.data})");
+  debugPrint(
+    "Handling a background message: ${message.messageId} (data: ${message.data})",
+  );
 
   if (FirebaseAuth.instance.currentUser == null) {
     debugPrint("Background notification skipped: User is not logged in.");
@@ -58,15 +61,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await androidImplementation?.createNotificationChannel(highImportanceChannel);
 
   if (message.notification == null && message.data.isNotEmpty) {
-    String title = (message.data['title'] ??
-            message.data['senderName'] ??
-            'แจ้งเตือนใหม่')
-        .toString();
-    String body = (message.data['body'] ??
-            message.data['message'] ??
-            message.data['content'] ??
-            '')
-        .toString();
+    String title =
+        (message.data['title'] ?? message.data['senderName'] ?? 'แจ้งเตือนใหม่')
+            .toString();
+    String body =
+        (message.data['body'] ??
+                message.data['message'] ??
+                message.data['content'] ??
+                '')
+            .toString();
 
     if (title.isNotEmpty || body.isNotEmpty) {
       const AndroidInitializationSettings initializationSettingsAndroid =
@@ -101,18 +104,17 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 void handleNotificationClickFromData(Map<String, dynamic> data) async {
-  // Dismiss any lingering in-app snackbars immediately
   if (Get.isSnackbarOpen) {
     Get.closeCurrentSnackbar();
   }
 
-  // Mark the transaction/report/order ID as handled so in-app listeners do not re-alert
-  String id = (data['transactionId'] ??
-          data['orderId'] ??
-          data['reportId'] ??
-          data['targetId'] ??
-          '')
-      .toString();
+  String id =
+      (data['transactionId'] ??
+              data['orderId'] ??
+              data['reportId'] ??
+              data['targetId'] ??
+              '')
+          .toString();
   if (id.isNotEmpty) {
     NotificationService.markNotificationAsHandled(id);
   }
@@ -249,8 +251,9 @@ void main() async {
 
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/launcher_icon');
-  const InitializationSettings initializationSettings =
-      InitializationSettings(android: initializationSettingsAndroid);
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
   await flutterLocalNotificationsPlugin.initialize(
     settings: initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse details) {
@@ -304,7 +307,6 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
           .doc(currentUser.uid)
           .get();
 
-      // Always sync to users so backend functions and notification systems locate the token
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -379,23 +381,26 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
         return;
       }
 
-      String title = message.notification?.title ??
+      String title =
+          message.notification?.title ??
           message.data['title'] ??
           message.data['senderName'] ??
           'แจ้งเตือนใหม่';
-      String body = message.notification?.body ??
+      String body =
+          message.notification?.body ??
           message.data['body'] ??
           message.data['message'] ??
           '';
 
       if (title.isEmpty && body.isEmpty) return;
 
-      String notifId = (message.data['transactionId'] ??
-              message.data['orderId'] ??
-              message.data['reportId'] ??
-              message.messageId ??
-              '')
-          .toString();
+      String notifId =
+          (message.data['transactionId'] ??
+                  message.data['orderId'] ??
+                  message.data['reportId'] ??
+                  message.messageId ??
+                  '')
+              .toString();
 
       if (notifId.isNotEmpty &&
           NotificationService.wasNotificationRecentlyHandled(notifId)) {
@@ -466,19 +471,20 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
       handleNotificationClickFromData(message.data);
     });
 
-    RemoteMessage? initialMessage =
-        await FirebaseMessaging.instance.getInitialMessage();
+    RemoteMessage? initialMessage = await FirebaseMessaging.instance
+        .getInitialMessage();
     if (initialMessage != null) {
       debugPrint(
         "App launched from terminated via FCM notification: ${initialMessage.data}",
       );
       NotificationService.pendingNotificationData = initialMessage.data;
-      String id = (initialMessage.data['transactionId'] ??
-              initialMessage.data['orderId'] ??
-              initialMessage.data['reportId'] ??
-              initialMessage.data['targetId'] ??
-              '')
-          .toString();
+      String id =
+          (initialMessage.data['transactionId'] ??
+                  initialMessage.data['orderId'] ??
+                  initialMessage.data['reportId'] ??
+                  initialMessage.data['targetId'] ??
+                  '')
+              .toString();
       if (id.isNotEmpty) {
         NotificationService.markNotificationAsHandled(id);
       }
@@ -491,9 +497,12 @@ class _SaiDeeAppState extends State<SaiDeeApp> {
         launchDetails.notificationResponse?.payload != null &&
         launchDetails.notificationResponse!.payload!.isNotEmpty) {
       try {
-        Map<String, dynamic> data =
-            jsonDecode(launchDetails.notificationResponse!.payload!);
-        debugPrint("App launched from terminated via local notification: $data");
+        Map<String, dynamic> data = jsonDecode(
+          launchDetails.notificationResponse!.payload!,
+        );
+        debugPrint(
+          "App launched from terminated via local notification: $data",
+        );
         NotificationService.pendingNotificationData = data;
       } catch (e) {
         debugPrint("Error parsing launch notification payload: $e");

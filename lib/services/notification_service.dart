@@ -5,7 +5,6 @@ import 'package:saidee_app/config/firestore_collections.dart';
 class NotificationService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  /// Holds cold-start notification payload to be processed cleanly after HomeScreen mounts
   static Map<String, dynamic>? pendingNotificationData;
 
   static final Map<String, int> _recentNotifications = {};
@@ -14,15 +13,15 @@ class NotificationService {
   static final Map<String, int> _handledNotificationIds = {};
   static const int _handledTtlMs = 30000;
 
-  /// บันทึกว่าการแจ้งเตือนหรือธุรกรรมนี้เพิ่งถูกกดเปิดจากภายนอกแอป (Push Notification Click)
   static void markNotificationAsHandled(String id) {
     if (id.isEmpty) return;
     int now = DateTime.now().millisecondsSinceEpoch;
-    _handledNotificationIds.removeWhere((_, time) => now - time > _handledTtlMs);
+    _handledNotificationIds.removeWhere(
+      (_, time) => now - time > _handledTtlMs,
+    );
     _handledNotificationIds[id] = now;
   }
 
-  /// ตรวจสอบว่ารายการนี้เพิ่งถูกกดเปิดจากภายนอกแอปหรือไม่ เพื่อป้องกันไม่ให้แสดง in-app snackbar ซ้ำ
   static bool wasNotificationRecentlyHandled(String id) {
     if (id.isEmpty) return false;
     int now = DateTime.now().millisecondsSinceEpoch;
@@ -33,7 +32,11 @@ class NotificationService {
     return false;
   }
 
-  static bool isDuplicateNotification(String title, String body, {String? customId}) {
+  static bool isDuplicateNotification(
+    String title,
+    String body, {
+    String? customId,
+  }) {
     int now = DateTime.now().millisecondsSinceEpoch;
 
     _recentNotifications.removeWhere((_, time) => now - time > _dedupTtlMs);
@@ -69,25 +72,6 @@ class NotificationService {
           .doc(userId)
           .collection(FirestoreCollections.notifications)
           .add({
-        'title': title,
-        'body': body,
-        'type': type,
-        'orderId': orderId ?? '',
-        'extraData': extraData ?? {},
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // Mirror to admins subcollection if recipient is an admin
-      try {
-        final adminDoc = await _db.collection(FirestoreCollections.admins).doc(userId).get();
-        if (adminDoc.exists) {
-          await _db
-              .collection(FirestoreCollections.admins)
-              .doc(userId)
-              .collection(FirestoreCollections.notifications)
-              .doc(docRef.id)
-              .set({
             'title': title,
             'body': body,
             'type': type,
@@ -96,6 +80,27 @@ class NotificationService {
             'isRead': false,
             'createdAt': FieldValue.serverTimestamp(),
           });
+
+      try {
+        final adminDoc = await _db
+            .collection(FirestoreCollections.admins)
+            .doc(userId)
+            .get();
+        if (adminDoc.exists) {
+          await _db
+              .collection(FirestoreCollections.admins)
+              .doc(userId)
+              .collection(FirestoreCollections.notifications)
+              .doc(docRef.id)
+              .set({
+                'title': title,
+                'body': body,
+                'type': type,
+                'orderId': orderId ?? '',
+                'extraData': extraData ?? {},
+                'isRead': false,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
         }
       } catch (_) {}
 
@@ -106,7 +111,6 @@ class NotificationService {
     }
   }
 
-  /// Sends a system/transaction/report notification to all registered admins
   static Future<void> notifyAllAdmins({
     required String title,
     required String body,

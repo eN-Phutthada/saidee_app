@@ -8,23 +8,29 @@ class ContactService {
   static const String adminHotlineFormatted = "064-749-0079";
   static const String adminHotlineRaw = "0647490079";
 
-  /// โทรออกไปยังสายด่วนแอดมินทันที
   static Future<bool> callHotline() async {
-    return await makePhoneCall(adminHotlineRaw, formattedNumber: adminHotlineFormatted);
+    return await makePhoneCall(
+      adminHotlineRaw,
+      formattedNumber: adminHotlineFormatted,
+    );
   }
 
-  /// สั่งเปิดแอปโทรศัพท์พร้อมเบอร์โทร
-  static Future<bool> makePhoneCall(String phoneNumber, {String? formattedNumber}) async {
+  static Future<bool> makePhoneCall(
+    String phoneNumber, {
+    String? formattedNumber,
+  }) async {
     final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     final display = formattedNumber ?? phoneNumber;
     final Uri telUri = Uri(scheme: 'tel', path: cleanNumber);
 
     try {
       if (await canLaunchUrl(telUri)) {
-        final launched = await launchUrl(telUri, mode: LaunchMode.externalApplication);
+        final launched = await launchUrl(
+          telUri,
+          mode: LaunchMode.externalApplication,
+        );
         if (launched) return true;
       }
-      // กรณีไม่สามารถเปิด dialer ได้โดยตรง ให้ fallback เป็นการคัดลอกลงคลิปบอร์ด
       await copyPhoneNumber(cleanNumber, formattedNumber: display);
       return false;
     } catch (e) {
@@ -34,8 +40,10 @@ class ContactService {
     }
   }
 
-  /// คัดลอกเบอร์โทรลงคลิปบอร์ด พร้อมแสดง Snackbar แจ้งเตือนภาษาไทย
-  static Future<void> copyPhoneNumber(String phoneNumber, {String? formattedNumber}) async {
+  static Future<void> copyPhoneNumber(
+    String phoneNumber, {
+    String? formattedNumber,
+  }) async {
     final cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     final display = formattedNumber ?? phoneNumber;
 

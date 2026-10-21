@@ -97,7 +97,6 @@ class _AdminDashboardState extends State<AdminDashboard>
               return;
             }
 
-            // Don't show in-app snackbars if the app is not in the foreground
             if (WidgetsBinding.instance.lifecycleState != null &&
                 WidgetsBinding.instance.lifecycleState !=
                     AppLifecycleState.resumed) {
@@ -108,7 +107,6 @@ class _AdminDashboardState extends State<AdminDashboard>
               final docId = change.doc.id;
               var data = change.doc.data() as Map<String, dynamic>;
 
-              // Skip if this transaction was just opened/handled from a push notification
               if (NotificationService.wasNotificationRecentlyHandled(docId)) {
                 var nudge = data['lastNudgedAt'];
                 if (nudge is Timestamp) {
@@ -129,7 +127,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                     final ageSec = DateTime.now()
                         .difference(createdAt.toDate())
                         .inSeconds;
-                    // Only show snackbar if transaction was created in the last 45 seconds
                     if (ageSec.abs() < 45) {
                       _showWithdrawalNotification(data, docId: docId);
                     }
@@ -148,7 +145,6 @@ class _AdminDashboardState extends State<AdminDashboard>
                   _lastNudgeTimestamps[docId] = newNudgeMs;
                 }
 
-                // Only alert if lastNudgedAt actually changed/increased and was within the last 30 seconds
                 if (newNudgeMs != null &&
                     (oldNudgeMs == null || newNudgeMs > oldNudgeMs)) {
                   final ageSec = DateTime.now()

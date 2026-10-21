@@ -168,7 +168,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
       await batch.commit();
 
-      // บันทึกความชอบไปยัง RecommendationService
       await RecommendationService.trackProductLike(
         user.uid,
         product,
