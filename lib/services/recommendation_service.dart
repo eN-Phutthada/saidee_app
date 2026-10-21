@@ -12,7 +12,6 @@ class ScoredProduct {
   ScoredProduct({required this.doc, required this.score});
 }
 
-/// ข้อมูลความชอบของผู้ใช้ที่ดึงจาก Firestore สำหรับนำไปคำนวณคะแนนสินค้า
 class _UserPreferences {
   final Map<String, double> viewedCategories;
   final Map<String, double> viewedTypes;
@@ -53,7 +52,6 @@ class _UserPreferences {
     final brands = toDoubleMap(map['viewedBrands']);
     final sizes = toDoubleMap(map['preferredSizes']);
 
-    // จำกัดขนาด Array ป้องกันข้อมูลบวม
     final rawKeywords = List<String>.from(map['recentSearchKeywords'] ?? []);
     final keywords = rawKeywords.length > 5
         ? rawKeywords.sublist(rawKeywords.length - 5)
@@ -66,7 +64,6 @@ class _UserPreferences {
 
     final likedIds = List<String>.from(map['likedProductIds'] ?? []);
 
-    // ดึง avgPrice เป็นตัวเลขเดี่ยว (หากไม่มีให้อ่านจาก recentPrices เดิมเพื่อรองรับผู้ใช้เก่า)
     double avg = 0;
     if (map['avgPrice'] is num) {
       avg = (map['avgPrice'] as num).toDouble();
@@ -97,7 +94,8 @@ class _UserPreferences {
       decay = max(0.35, exp(-0.099 * daysAgo));
     }
 
-    bool hasData = categories.isNotEmpty ||
+    bool hasData =
+        categories.isNotEmpty ||
         types.isNotEmpty ||
         brands.isNotEmpty ||
         keywords.isNotEmpty ||
@@ -119,39 +117,35 @@ class _UserPreferences {
   }
 
   factory _UserPreferences.empty() => _UserPreferences(
-        viewedCategories: {},
-        viewedTypes: {},
-        viewedBrands: {},
-        preferredSizes: {},
-        recentSearchKeywords: [],
-        recentViewedIds: [],
-        likedProductIds: [],
-        avgPrice: 0,
-        topSize: '',
-        timeDecay: 1.0,
-        hasPersonalizedData: false,
-      );
+    viewedCategories: {},
+    viewedTypes: {},
+    viewedBrands: {},
+    preferredSizes: {},
+    recentSearchKeywords: [],
+    recentViewedIds: [],
+    likedProductIds: [],
+    avgPrice: 0,
+    topSize: '',
+    timeDecay: 1.0,
+    hasPersonalizedData: false,
+  );
 }
 
 class RecommendationService {
-  // ค่าน้ำหนักคะแนนความชอบตามประเภทการมีปฏิสัมพันธ์
   static const double _weightView = 1.0;
   static const double _weightSearch = 2.5;
   static const double _weightLike = 4.0;
   static const double _weightCart = 5.0;
   static const double _weightPurchase = 8.0;
 
-  // ขีดจำกัดเพื่อป้องกันข้อมูลบวม (Sliding Window Limits)
   static const int _maxRecentViewed = 10;
   static const int _maxRecentSearches = 5;
   static const int _maxStoredBrands = 10;
 
-  // แคชในหน่วยความจำเพื่อคำนวณ Sliding Window และ Moving Average โดยไม่ต้อง Read ซ้ำ
   static final Map<String, List<String>> _viewedCache = {};
   static final Map<String, List<String>> _searchCache = {};
   static final Map<String, double> _avgPriceCache = {};
 
-  /// ตรวจสอบสิทธิ์ว่าผู้ใช้ควรถูกบันทึกข้อมูลพฤติกรรมหรือไม่ (ข้าม Admin และ Guest)
   static Future<bool> _isEligibleForTracking(String userId) async {
     if (userId.isEmpty) return false;
 
@@ -170,7 +164,6 @@ class RecommendationService {
     }
   }
 
-  /// ฟังก์ชันกลางสำหรับอัปเดตข้อมูลความชอบของผู้ใช้ใน Firestore
   static Future<void> _updateAffinityData(
     String userId,
     Map<String, dynamic> updateData,
@@ -189,7 +182,6 @@ class RecommendationService {
     }
   }
 
-  /// รวมฟิลด์ความชอบของสินค้าเข้ากับ Map ข้อมูลอัปเดตแบบกะทัดรัด (ไม่ใช้ Array ราคา)
   static void _addAffinityFields(
     Map<String, dynamic> data, {
     required String category,
@@ -206,7 +198,6 @@ class RecommendationService {
     if (type.isNotEmpty) {
       data['viewedTypes.$type'] = FieldValue.increment(weight);
     }
-    // บันทึกเฉพาะแบรนด์ที่มีชื่อชัดเจนเพื่อไม่ให้แตกฟิลด์ย่อยสูญเปล่า
     if (brand.isNotEmpty && brand != '-' && brand != 'ไม่ระบุ') {
       data['viewedBrands.$brand'] = FieldValue.increment(weight * 0.8);
     }
@@ -214,7 +205,6 @@ class RecommendationService {
       data['preferredSizes.$size'] = FieldValue.increment(weight * 0.6);
     }
 
-    // คำนวณ Moving Average เก็บเป็น avgPrice ตัวเลขเดี่ยวแทนการสะสม Array
     if (price > 0 && weight > 0 && userId != null && userId.isNotEmpty) {
       final oldAvg = _avgPriceCache[userId] ?? 0.0;
       final newAvg = oldAvg <= 0 ? price : (oldAvg * 0.85) + (price * 0.15);
@@ -223,14 +213,12 @@ class RecommendationService {
     }
   }
 
-  /// บันทึกการเข้าชมสินค้า (Product View) - เก็บประวัติไม่เกิน 10 ชิ้นล่าสุด
   static Future<void> trackProductView(
     String userId,
     ProductModel product,
   ) async {
     if (userId.isEmpty || userId == product.sellerId) return;
 
-    // บริหาร Sliding Window ให้มีขนาดไม่เกิน 10 รายการ
     final currentList = List<String>.from(_viewedCache[userId] ?? []);
     currentList.remove(product.id);
     currentList.add(product.id);
@@ -239,9 +227,7 @@ class RecommendationService {
     }
     _viewedCache[userId] = currentList;
 
-    Map<String, dynamic> data = {
-      'recentViewedIds': currentList,
-    };
+    Map<String, dynamic> data = {'recentViewedIds': currentList};
     _addAffinityFields(
       data,
       category: product.category,
@@ -255,7 +241,6 @@ class RecommendationService {
     await _updateAffinityData(userId, data);
   }
 
-  /// บันทึกการถูกใจ / เลิกถูกใจสินค้า (Like / Unlike)
   static Future<void> trackProductLike(
     String userId,
     ProductModel product, {
@@ -281,7 +266,6 @@ class RecommendationService {
     await _updateAffinityData(userId, data);
   }
 
-  /// บันทึกการเพิ่มสินค้าลงในตะกร้า (Cart Add)
   static Future<void> trackCartAdd(String userId, ProductModel product) async {
     if (userId.isEmpty || userId == product.sellerId) return;
 
@@ -299,7 +283,6 @@ class RecommendationService {
     await _updateAffinityData(userId, data);
   }
 
-  /// บันทึกประวัติการค้นหาสินค้า - เก็บคำค้นหาไม่เกิน 5 คำล่าสุด
   static Future<void> trackSearch({
     required String userId,
     required String keyword,
@@ -345,7 +328,6 @@ class RecommendationService {
     await _updateAffinityData(userId, data);
   }
 
-  /// บันทึกเมื่อมีการสั่งซื้อสินค้าสำเร็จ (Order Purchase)
   static Future<void> trackOrderPurchase(
     String userId,
     List<dynamic> items,
@@ -370,7 +352,6 @@ class RecommendationService {
     await _updateAffinityData(userId, data);
   }
 
-  /// ล้างข้อมูลเก่าที่บวมในฐานข้อมูล (Auto-Cleanup สำหรับผู้ใช้เดิม)
   static void _autoCleanupBloatedUserData({
     required String userId,
     required Map<String, dynamic> rawData,
@@ -379,31 +360,26 @@ class RecommendationService {
     required List<String> cappedSearches,
     required double avgPrice,
   }) {
-    // รันแบบ Asynchronous ไม่ให้ขวาง Main Thread
     Future.microtask(() async {
       try {
         Map<String, dynamic> cleanUp = {};
 
-        // 1. ลบ Array ราคาเดิมที่บวมทิ้ง และใส่ avgPrice ตัวเลขเดี่ยวแทน
         if (rawData.containsKey('recentPrices')) {
           cleanUp['recentPrices'] = FieldValue.delete();
           cleanUp['avgPrice'] = avgPrice;
         }
 
-        // 2. ตัดทอน Array สินค้าที่เคยเปิดดูให้เหลือไม่เกิน 10 รายการ
         if (rawData['recentViewedIds'] is List &&
             (rawData['recentViewedIds'] as List).length > _maxRecentViewed) {
           cleanUp['recentViewedIds'] = cappedViews;
         }
 
-        // 3. ตัดทอน Array คำค้นหาให้เหลือไม่เกิน 5 รายการ
         if (rawData['recentSearchKeywords'] is List &&
             (rawData['recentSearchKeywords'] as List).length >
                 _maxRecentSearches) {
           cleanUp['recentSearchKeywords'] = cappedSearches;
         }
 
-        // 4. ตัดแต่งแบรนด์เก่าที่คะแนนต่ำ ให้คงเหลือเฉพาะ Top 10 แบรนด์
         if (brands.length > _maxStoredBrands) {
           final sortedEntries = brands.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value));
@@ -424,7 +400,6 @@ class RecommendationService {
     });
   }
 
-  /// คำนวณคะแนนความเหมาะสมของสินค้าแต่ละชิ้น (Scoring Function)
   static double _calculateScore({
     required ProductModel product,
     required _UserPreferences prefs,
@@ -433,18 +408,17 @@ class RecommendationService {
   }) {
     double score = 0.0;
 
-    // 1. ลดคะแนนสินค้าของตนเอง (เพื่อไม่ให้ผู้ขายเห็นสินค้าตัวเองเป็นอันดับแรกในฟีดแนะนำ)
     if (userId != null && userId.isNotEmpty && product.sellerId == userId) {
       score -= 50.0;
     }
 
-    // 2. คะแนนความนิยม (Popularity): รวมยอดเข้าชม (views) และยอดถูกใจ (likesCount)
     score += log(product.views + 1) * 10.0;
     score += log(product.likesCount + 1) * 16.0;
 
-    // 3. คะแนนความสดใหม่ของสินค้า (Recency)
-    double hoursDiff =
-        now.difference(product.createdAt.toDate()).inHours.toDouble();
+    double hoursDiff = now
+        .difference(product.createdAt.toDate())
+        .inHours
+        .toDouble();
     if (hoursDiff <= 24) {
       score += 65.0;
     } else if (hoursDiff <= 72) {
@@ -453,14 +427,14 @@ class RecommendationService {
       score += 15.0;
     }
 
-    // 4. คะแนนความชอบเฉพาะบุคคล (Personalized Signals)
     if (prefs.hasPersonalizedData) {
-      double catCount =
-          max(0.0, prefs.viewedCategories[product.category] ?? 0.0);
+      double catCount = max(
+        0.0,
+        prefs.viewedCategories[product.category] ?? 0.0,
+      );
       double typeCount = max(0.0, prefs.viewedTypes[product.type] ?? 0.0);
       double brandCount = max(0.0, prefs.viewedBrands[product.brand] ?? 0.0);
 
-      // จำกัดคะแนนไม่ให้บวมเกินไป
       catCount = min(50.0, catCount);
       typeCount = min(50.0, typeCount);
       brandCount = min(50.0, brandCount);
@@ -469,7 +443,6 @@ class RecommendationService {
           (catCount * 22.0) + (typeCount * 28.0) + (brandCount * 16.0);
       score += affinity * prefs.timeDecay;
 
-      // ค้นหาคีย์เวิร์ดที่เกี่ยวข้อง
       String name = product.name.toLowerCase();
       String type = product.type.toLowerCase();
       String brand = product.brand.toLowerCase();
@@ -487,7 +460,6 @@ class RecommendationService {
         }
       }
 
-      // ช่วงราคาที่คุ้นเคย (คำนวณจาก avgPrice ตัวเลขเดี่ยว)
       if (prefs.avgPrice > 0 && product.price > 0) {
         double diffRatio =
             (product.price - prefs.avgPrice).abs() / prefs.avgPrice;
@@ -498,7 +470,6 @@ class RecommendationService {
         }
       }
 
-      // ไซส์ที่ตรงกับความชอบ
       if (prefs.topSize.isNotEmpty && product.size == prefs.topSize) {
         score += 18.0;
       } else if (product.size.isNotEmpty &&
@@ -506,12 +477,10 @@ class RecommendationService {
         score += 8.0;
       }
 
-      // โบนัสสำหรับสินค้าที่ผู้ใช้กดถูกใจไว้ (Favorite Boost)
       if (prefs.likedProductIds.contains(product.id)) {
         score += 25.0;
       }
 
-      // ลดคะแนนสินค้าที่เพิ่งเปิดดูไป 3 ชิ้นล่าสุด เพื่อให้เห็นสินค้าใหม่ๆ
       if (prefs.recentViewedIds.take(3).contains(product.id)) {
         score -= 30.0;
       }
@@ -520,7 +489,6 @@ class RecommendationService {
     return score;
   }
 
-  /// ปรับความหลากหลายของรายการแนะนำ ไม่ให้มีสินค้าประเภทเดิมติดกันเกิน 2 ชิ้น
   static List<ScoredProduct> _applyDiversity({
     required List<ScoredProduct> scoredList,
     required int limit,
@@ -535,7 +503,6 @@ class RecommendationService {
     while (result.length < limit && pool.isNotEmpty) {
       int pickIndex = 0;
 
-      // หากมีประเภทเดิมซ้ำกัน 2 ชิ้นแล้ว พยายามสลับประเภทอื่นจากกลุ่มบนมาแสดง
       if (consecutiveCount >= 2 && lastType.isNotEmpty) {
         for (int i = 1; i < min(pool.length, 6); i++) {
           final p = ProductModel.fromMap(
@@ -568,7 +535,6 @@ class RecommendationService {
     return result;
   }
 
-  /// ดึงและจัดอันดับสินค้าแนะนำสำหรับผู้ใช้ พร้อมทำ Auto-Cleanup หากพบข้อมูลบวม
   static Future<List<ScoredProduct>> getRecommendedProducts({
     required String? userId,
     required List<QueryDocumentSnapshot> rawProducts,
@@ -590,21 +556,18 @@ class RecommendationService {
             final rawData = userDoc.data()!;
             prefs = _UserPreferences.fromMap(rawData);
 
-            // ซิงค์แคชในหน่วยความจำ
             _viewedCache[userId] = prefs.recentViewedIds;
             _searchCache[userId] = prefs.recentSearchKeywords;
             _avgPriceCache[userId] = prefs.avgPrice;
 
-            // ตรวจสอบและทำ Auto-Cleanup ลบข้อมูลบวมเดิมในพื้นหลัง
             final bool hasLegacyPrices = rawData.containsKey('recentPrices');
             final bool hasTooManyViews =
                 (rawData['recentViewedIds'] is List) &&
-                    (rawData['recentViewedIds'] as List).length >
-                        _maxRecentViewed;
+                (rawData['recentViewedIds'] as List).length > _maxRecentViewed;
             final bool hasTooManySearches =
                 (rawData['recentSearchKeywords'] is List) &&
-                    (rawData['recentSearchKeywords'] as List).length >
-                        _maxRecentSearches;
+                (rawData['recentSearchKeywords'] as List).length >
+                    _maxRecentSearches;
             final bool hasTooManyBrands =
                 prefs.viewedBrands.length > _maxStoredBrands;
 

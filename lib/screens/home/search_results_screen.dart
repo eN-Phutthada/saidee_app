@@ -417,8 +417,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
-                        cacheWidth: 400,
-                        cacheHeight: 600,
                         errorBuilder: (context, error, stackTrace) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[200],
                           child: const Center(
@@ -525,11 +523,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                           CircleAvatar(
                             radius: 8.5,
                             backgroundImage: sellerImg.isNotEmpty
-                                ? ResizeImage(
-                                    NetworkImage(sellerImg),
-                                    width: 50,
-                                    height: 50,
-                                  )
+                                ? NetworkImage(sellerImg)
                                 : null,
                             backgroundColor: isDark
                                 ? Colors.grey[700]
